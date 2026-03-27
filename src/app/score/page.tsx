@@ -9,15 +9,34 @@ type Skill = { domain: string; title?: string; score: number; date: string; cert
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "—";
-  // Parse YYYY-MM-DD safely (avoid UTC timezone shift)
   const parts = dateStr.split("T")[0].split("-");
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts.map(Number);
-  const months = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  const months = ["jan","fév","mars","avr","mai","juin","juil","août","sep","oct","nov","déc"];
   return `${d} ${months[m - 1]} ${y}`;
 }
 
 const CREDIT_THRESHOLD = 50;
+
+const DOMAIN_ICONS: Record<string, string> = {
+  "Marketing": "campaign",
+  "Développement": "code",
+  "Web": "code",
+  "Design": "palette",
+  "Finance": "account_balance",
+  "Agriculture": "eco",
+  "Langues": "translate",
+};
+
+function getDomainIcon(domain: string): string {
+  for (const key of Object.keys(DOMAIN_ICONS)) {
+    if (domain.toLowerCase().includes(key.toLowerCase())) return DOMAIN_ICONS[key];
+  }
+  return "workspace_premium";
+}
+
+const SKILL_COLORS = ["#005bbf", "#2b5bb5", "#9c27b0", "#ff9800", "#4caf50"];
+function skillColor(i: number): string { return SKILL_COLORS[i % SKILL_COLORS.length]; }
 
 export default function ScorePage() {
   const router = useRouter();
@@ -30,143 +49,212 @@ export default function ScorePage() {
   async function load() {
     const { data: sessionData, error } = await supabase.auth.getSession();
     if (error || !sessionData.session) { router.replace("/login"); return; }
-
-    const { data } = await supabase
-      .from("users")
-      .select("score, skills")
-      .eq("id", sessionData.session.user.id)
-      .single();
-
+    const { data } = await supabase.from("users").select("score, skills")
+      .eq("id", sessionData.session.user.id).single();
     setScore(data?.score ?? 0);
     setSkills(Array.isArray(data?.skills) ? data.skills : []);
     setLoading(false);
   }
 
   const eligible = score >= CREDIT_THRESHOLD;
-  const pointsNeeded = CREDIT_THRESHOLD - score;
+  const progressPct = Math.min(100, Math.round((score / CREDIT_THRESHOLD) * 100));
+  // SVG ring: r=88, circumference = 2πr ≈ 552.9
+  const circumference = 2 * Math.PI * 88;
+  const strokeOffset = circumference * (1 - Math.min(1, score / 100));
 
   return (
-    <main className="min-h-screen bg-[#f4f8ff] text-[#1f2937] pb-24">
-      <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-2xl font-bold text-[#1a73e8] mb-6">Score &amp; Skill Passport</h1>
+    <main className="min-h-screen bg-surface text-on-surface pb-32">
 
-        {loading ? (
-          <p className="text-gray-500">Chargement…</p>
-        ) : (
-          <>
-            {/* ── Score card ── */}
-            <div className="bg-white rounded-xl p-6 shadow border border-blue-100 flex items-center gap-5 mb-4">
-              <div className="h-20 w-20 rounded-full bg-[#1a73e8] text-white flex flex-col items-center justify-center shrink-0 shadow-lg">
-                <span className="text-xs font-semibold opacity-80">Score</span>
-                <span className="text-2xl font-black">{score}</span>
+      {/* Top bar */}
+      <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 py-4">
+        <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
+        <Link href="/learn/onboarding" className="p-2 rounded-full hover:bg-surface-container transition-colors">
+          <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
+        </Link>
+      </header>
+
+      <div className="pt-24 px-6 max-w-2xl mx-auto space-y-8">
+
+        {/* Score ring hero */}
+        <section className="flex flex-col items-center justify-center text-center space-y-4 py-6">
+          {loading ? (
+            <div className="w-12 h-12 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          ) : (
+            <>
+              <div className="relative w-48 h-48 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 192 192">
+                  <circle className="text-surface-container-highest" cx="96" cy="96" r="88"
+                    fill="transparent" stroke="currentColor" strokeWidth="12" />
+                  <circle className="text-primary transition-all duration-1000" cx="96" cy="96" r="88"
+                    fill="transparent" stroke="currentColor" strokeWidth="12"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeOffset}
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-5xl font-extrabold tracking-tighter text-on-surface">
+                    {score}<span className="text-xl text-on-surface-variant font-medium">/100</span>
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary mt-1">Score Global</span>
+                </div>
               </div>
+              <div className="inline-flex items-center px-4 py-2 bg-tertiary-fixed rounded-full gap-2">
+                <span className="material-symbols-outlined text-sm text-on-tertiary-fixed" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+                <span className="text-xs font-bold text-on-tertiary-fixed">
+                  {score >= 80 ? "Expert Digital" : score >= 50 ? "Professionnel Confirmé" : score >= 20 ? "Apprenant Actif" : "Débutant Motivé"}
+                </span>
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Micro-credit eligibility */}
+        <section className="bg-surface-container-low rounded-2xl p-6 space-y-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <h2 className="text-lg font-bold text-on-surface">Éligibilité Micro-crédit</h2>
+              <p className="text-sm text-on-surface-variant">Basé sur vos performances</p>
+            </div>
+            {eligible ? (
+              <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full flex items-center gap-1">
+                <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <span className="text-[11px] font-bold">Éligible</span>
+              </div>
+            ) : (
+              <div className="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full">
+                <span className="text-[11px] font-bold">En cours</span>
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs font-bold">
+              <span className="text-on-surface-variant">Seuil d&apos;activation</span>
+              <span className="text-primary">{Math.min(score, CREDIT_THRESHOLD)} / {CREDIT_THRESHOLD} pts</span>
+            </div>
+            <div className="h-3 w-full bg-surface-container-highest rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
+            </div>
+          </div>
+          {eligible ? (
+            <div className="bg-surface-container-lowest p-4 rounded-xl border border-primary/5 flex items-center justify-between">
               <div>
-                <p className="font-bold text-lg text-gray-800">Ton score GSN</p>
-                <p className="text-sm text-gray-500">+5 points par certificat obtenu</p>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">Crédit disponible</p>
+                <p className="text-xl font-extrabold text-primary">250 000 FCFA</p>
               </div>
+              <Link href="/wallet" className="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-primary/20 active:scale-95 transition-all">
+                Demander
+              </Link>
             </div>
+          ) : (
+            <p className="text-xs text-on-surface-variant">
+              Encore <strong className="text-on-surface">{CREDIT_THRESHOLD - score} points</strong> à obtenir ·{" "}
+              <Link href="/learn/onboarding" className="text-primary font-bold hover:underline">Obtenir une certification</Link>
+            </p>
+          )}
+        </section>
 
-            {/* ── Micro-crédit eligibility ── */}
-            <div className={`rounded-xl p-5 mb-6 shadow border ${eligible ? "bg-green-50 border-green-200" : "bg-white border-blue-100"}`}>
-              <div className="flex items-start gap-4">
-                <div className={`h-12 w-12 rounded-full flex items-center justify-center text-xl font-bold shrink-0 ${eligible ? "bg-green-500 text-white" : "bg-gray-100 text-gray-400"}`}>
-                  {eligible ? "✓" : "🔒"}
-                </div>
-                <div className="flex-1">
-                  <h2 className="font-bold text-[#1a73e8]">Éligibilité Micro-Crédit GSN</h2>
-                  {eligible ? (
-                    <>
-                      <p className="text-sm text-green-700 font-semibold mt-0.5">Tu es éligible au micro-crédit GSN !</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Avec {score} points et {skills.length} certification{skills.length > 1 ? "s" : ""}, tu peux accéder à un financement pour tes projets professionnels.
-                      </p>
-                      <Link href="/wallet" className="inline-block mt-3 text-sm font-semibold text-green-700 underline hover:no-underline">
-                        Voir mes options de financement →
-                      </Link>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-600 mt-0.5">Pas encore éligible au micro-crédit</p>
-                      <div className="mt-2">
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>{score} pts</span>
-                          <span>{CREDIT_THRESHOLD} pts requis</span>
-                        </div>
-                        <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-[#1a73e8] h-2 rounded-full transition-all"
-                            style={{ width: `${Math.min(100, (score / CREDIT_THRESHOLD) * 100)}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-400 mt-1.5">
-                          Encore <strong>{pointsNeeded} points</strong> à obtenir · {Math.ceil(pointsNeeded / 5)} certificat{pointsNeeded > 5 ? "s" : ""} à valider
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+        {/* Skill Passport */}
+        <section className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">Skill Passport</h2>
+            <Link href="/learn/onboarding" className="text-primary text-xs font-bold hover:underline">
+              + Obtenir une certif
+            </Link>
+          </div>
+
+          {loading ? null : skills.length === 0 ? (
+            <div className="bg-surface-container-lowest rounded-2xl p-10 text-center">
+              <span className="material-symbols-outlined text-4xl text-outline-variant mb-3 block">workspace_premium</span>
+              <p className="text-on-surface-variant text-sm mb-4">Aucune compétence certifiée pour le moment.</p>
+              <Link href="/learn/onboarding"
+                className="inline-block bg-primary text-on-primary font-bold px-5 py-2.5 rounded-xl text-sm shadow-md shadow-primary/20 active:scale-95 transition-all">
+                Commencer un parcours
+              </Link>
             </div>
-
-            {/* ── Skill Passport ── */}
-            <div className="bg-white rounded-xl shadow border border-blue-100 overflow-hidden">
-              <div className="p-5 border-b border-blue-50 flex items-center justify-between">
-                <div>
-                  <h2 className="font-bold text-lg text-[#1a73e8]">Skill Passport</h2>
-                  <p className="text-sm text-gray-500">{skills.length} compétence{skills.length !== 1 ? "s" : ""} certifiée{skills.length !== 1 ? "s" : ""} · Visible par les employeurs</p>
-                </div>
-                <Link href="/learn/onboarding" className="text-sm text-[#1a73e8] font-semibold hover:underline">
-                  + Obtenir une certif
-                </Link>
-              </div>
-
-              {skills.length === 0 ? (
-                <div className="p-10 text-center">
-                  <p className="text-gray-400 mb-4">Aucune compétence certifiée pour le moment.</p>
-                  <Link href="/learn/onboarding" className="inline-block rounded-lg bg-[#1a73e8] text-white px-5 py-2.5 font-semibold text-sm hover:opacity-90">
-                    Commencer un parcours
-                  </Link>
-                </div>
-              ) : (
-                <ul className="divide-y divide-gray-50">
-                  {skills.map((skill, i) => (
-                    <li key={i} className="p-4 flex items-start gap-4">
-                      <div className="h-14 w-14 rounded-full bg-[#e8f0fe] text-[#1a73e8] flex flex-col items-center justify-center shrink-0">
-                        <span className="font-black text-lg leading-none">{skill.score}%</span>
-                        <span className="text-xs opacity-60">score</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-gray-800 truncate">{skill.domain}</p>
-                        {skill.title && skill.title !== skill.domain && (
-                          <p className="text-xs text-gray-500 truncate">{skill.title}</p>
-                        )}
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                          <span className="text-xs text-gray-400">📅 {formatDate(skill.date)}</span>
-                          {skill.weeks && <span className="text-xs text-gray-400">⏱ {skill.weeks} semaine{skill.weeks > 1 ? "s" : ""}</span>}
-                          {skill.level && <span className="text-xs text-gray-400">📊 {skill.level}</span>}
-                        </div>
-                        <p className="font-mono text-xs text-gray-400 mt-1">{skill.cert_id}</p>
-                      </div>
-                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold rounded-full px-3 py-1 shrink-0">
-                        🏆 Certifié
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {skills.map((skill, i) => (
+                <div
+                  key={i}
+                  className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm space-y-4"
+                  style={{ borderLeft: `4px solid ${skillColor(i)}` }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ backgroundColor: `${skillColor(i)}15`, color: skillColor(i) }}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">{getDomainIcon(skill.domain)}</span>
+                    </div>
+                    <span className="text-2xl font-black" style={{ color: `${skillColor(i)}30` }}>{skill.score}%</span>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-on-background">{skill.domain}</h3>
+                    {skill.level && <p className="text-xs text-on-surface-variant mt-0.5">{skill.level}</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                      {formatDate(skill.date)}
+                    </span>
+                    {skill.weeks && (
+                      <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        {skill.weeks} sem.
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                    )}
+                  </div>
+                  <p className="font-mono text-[10px] text-outline break-all">{skill.cert_id}</p>
+                </div>
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </section>
+
+        {/* Scoring criteria */}
+        <section className="bg-surface-container-low rounded-2xl p-6 space-y-5">
+          <h2 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Critères de Scoring</h2>
+          {[
+            { label: "Formations académiques", pct: Math.min(100, skills.length * 20), color: "#005bbf" },
+            { label: "Certifications obtenues", pct: Math.min(100, skills.length * 15), color: "#2b5bb5" },
+            { label: "Score total", pct: Math.min(100, score), color: "#005bbf" },
+          ].map((item) => (
+            <div key={item.label} className="space-y-1.5">
+              <div className="flex justify-between text-xs font-medium">
+                <span className="text-on-surface">{item.label}</span>
+                <span className="font-bold">{item.pct}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${item.pct}%`, backgroundColor: item.color }} />
+              </div>
+            </div>
+          ))}
+        </section>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-blue-100 shadow-[0_-4px_20px_rgba(26,115,232,0.08)]">
-        <div className="max-w-4xl mx-auto grid grid-cols-5 text-sm">
-          <Link href="/dashboard" className="py-3 text-center text-gray-600">Accueil</Link>
-          <Link href="/learn" className="py-3 text-center text-gray-600">Apprendre</Link>
-          <Link href="/missions" className="py-3 text-center text-gray-600">Missions</Link>
-          <Link href="/wallet" className="py-3 text-center text-gray-600">Wallet</Link>
-          <Link href="/score" className="py-3 text-center text-[#1a73e8] font-semibold">Score</Link>
-        </div>
+      {/* Bottom nav */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
+        <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">home</span>
+          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+        </Link>
+        <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">school</span>
+          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+        </Link>
+        <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">assignment</span>
+          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+        </Link>
+        <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">account_balance_wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+        </Link>
+        <Link href="/score" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+          <span className="text-[10px] font-medium mt-0.5">Score</span>
+        </Link>
       </nav>
     </main>
   );
