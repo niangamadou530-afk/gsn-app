@@ -22,6 +22,7 @@ type Course = {
   completed?: boolean; test_score?: number;
   modules_done?: string[]; quiz_passed?: string[];
   exercises_submitted?: string[];
+  modules_progress?: Record<string, string>;
 };
 type YTVideo = { videoId: string; title: string; channel: string };
 type ModPhase = "content" | "exercise" | "quiz" | "result";
@@ -42,34 +43,20 @@ function isAccessible(id: string, allIds: string[], passed: Set<string>): boolea
   return passed.has(allIds[idx - 1]);
 }
 
-// Simple markdown → HTML (bold, code, headings, bullets)
+// Markdown → HTML (user-specified version)
 function mdToHtml(text: string): string {
-  const lines = text.split("\n");
-  const out: string[] = [];
-  let inUl = false;
-
-  for (const raw of lines) {
-    let line = raw
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/`(.+?)`/g, '<code class="bg-blue-50 text-blue-700 px-1 rounded text-xs font-mono">$1</code>');
-
-    if (/^#{1,3} /.test(line)) {
-      if (inUl) { out.push("</ul>"); inUl = false; }
-      line = line.replace(/^#{1,3} (.+)$/, '<h4 class="font-bold text-[#1a73e8] mt-4 mb-1 text-sm">$1</h4>');
-      out.push(line);
-    } else if (/^[-*] /.test(line)) {
-      if (!inUl) { out.push('<ul class="list-disc ml-5 space-y-0.5 text-sm text-gray-700">'); inUl = true; }
-      out.push("<li>" + line.replace(/^[-*] /, "") + "</li>");
-    } else if (line.trim() === "") {
-      if (inUl) { out.push("</ul>"); inUl = false; }
-      out.push("");
-    } else {
-      if (inUl) { out.push("</ul>"); inUl = false; }
-      out.push('<p class="text-sm text-gray-700 leading-relaxed">' + line + "</p>");
-    }
-  }
-  if (inUl) out.push("</ul>");
-  return out.join("\n");
+  return text
+    .replace(/^### (.+)$/gm, '<h3 style="color:#0d47a1;font-weight:bold;margin:16px 0 8px">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 style="color:#1a73e8;font-weight:bold;margin:20px 0 10px;border-bottom:2px solid #e8f0fe;padding-bottom:6px">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 style="color:#0d47a1;font-weight:bold;font-size:1.4em;margin:24px 0 12px">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0d47a1">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code style="background:#e8f0fe;padding:2px 6px;border-radius:4px;color:#1a73e8;font-family:monospace">$1</code>')
+    .replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:8px">$1</li>')
+    .replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin:12px 0;padding-left:24px;list-style:disc">$&</ul>')
+    .replace(/\n\n/g, '</p><p style="margin:12px 0;line-height:1.7">')
+    .replace(/^(?!<[h|u|l|p])(.+)$/gm, '<p style="margin:12px 0;line-height:1.7">$1</p>')
+    .replace(/<p[^>]*><\/p>/g, '');
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -88,6 +75,7 @@ export default function CourseDetailPage() {
 
   const [phases, setPhases] = useState<Record<string, ModPhase>>({});
   const [exText, setExText] = useState<Record<string, string>>({});
+  const [exFile, setExFile] = useState<Record<string, { name: string } | null>>({});
   const [mAnswers, setMAnswers] = useState<Record<string, Record<number, number>>>({});
   const [mSubmitted, setMSubmitted] = useState<Record<string, boolean>>({});
   const [mContent, setMContent] = useState<Record<string, ModContent>>({});
@@ -95,7 +83,6 @@ export default function CourseDetailPage() {
   const [yt, setYt] = useState<Record<string, YTVideo[]>>({});
   const [ytLoading, setYtLoading] = useState<Set<string>>(new Set());
   const [ytFallbackSet, setYtFallbackSet] = useState<Set<string>>(new Set());
-  // Per-module current quiz question index
   const [qIdx, setQIdx] = useState<Record<string, number>>({});
 
   useEffect(() => { load(); }, [courseId]);
@@ -111,8 +98,12 @@ export default function CourseDetailPage() {
     if (error || !data) { router.replace("/learn"); return; }
 
     setCourse(data as Course);
-    const passed = new Set<string>(data.quiz_passed ?? []);
-    const exs = new Set<string>(data.exercises_submitted ?? []);
+
+    // Read progression from Supabase — source of truth
+    const passed = new Set<string>(Array.isArray(data.quiz_passed) ? data.quiz_passed : []);
+    const exs = new Set<string>(Array.isArray(data.exercises_submitted) ? data.exercises_submitted : []);
+    const progress: Record<string, string> = data.modules_progress ?? {};
+
     setQuizPassed(passed);
     setExDone(exs);
 
@@ -123,12 +114,20 @@ export default function CourseDetailPage() {
     weeks.forEach((w: Week) => {
       w.modules.forEach((m: Module, mi: number) => {
         const id = modId(w, mi, m);
-        if (passed.has(id)) initialPhases[id] = "result";
-        else if (exs.has(id)) initialPhases[id] = "quiz";
-        else initialPhases[id] = "content";
+        // Use modules_progress as primary source, quiz_passed / exercises_submitted as fallback
+        if (passed.has(id) || progress[id] === "passed") {
+          initialPhases[id] = "result";
+          if (!passed.has(id)) passed.add(id); // keep sets in sync
+        } else if (exs.has(id) || progress[id] === "exercise_done") {
+          initialPhases[id] = "quiz";
+        } else {
+          initialPhases[id] = "content";
+        }
         if (m.content) initialContent[id] = m.content;
       });
     });
+
+    setQuizPassed(new Set(passed));
     setPhases(initialPhases);
     setMContent(initialContent);
     setLoading(false);
@@ -146,7 +145,6 @@ export default function CourseDetailPage() {
       });
       const content: ModContent = await res.json();
       if (!res.ok) throw new Error((content as any).error);
-
       setMContent(prev => ({ ...prev, [id]: content }));
 
       if (course) {
@@ -173,15 +171,15 @@ export default function CourseDetailPage() {
       const q = keywords.slice(0, 2).join(" ");
       const res = await fetch(`/api/youtube?q=${encodeURIComponent(q)}`);
       const data = await res.json();
-      setYt(prev => ({ ...prev, [id]: data.items ?? [] }));
-      if (data.fallback || !data.items?.length) {
+      const items = data.items ?? [];
+      setYt(prev => ({ ...prev, [id]: items }));
+      if (data.fallback || items.length === 0) {
         setYtFallbackSet(prev => new Set([...prev, id]));
       }
     } catch {
       setYt(prev => ({ ...prev, [id]: [] }));
       setYtFallbackSet(prev => new Set([...prev, id]));
-    }
-    finally {
+    } finally {
       setYtLoading(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
   }, [yt, ytLoading]);
@@ -199,11 +197,24 @@ export default function CourseDetailPage() {
   }
 
   async function submitExercise(id: string) {
-    if (!(exText[id] ?? "").trim()) { alert("Écris ta réponse avant de valider."); return; }
+    const hasText = (exText[id] ?? "").trim().length > 0;
+    const hasFile = !!exFile[id];
+    if (!hasText && !hasFile) {
+      alert("Écris ta réponse ou joins un fichier avant de valider.");
+      return;
+    }
     const next = new Set([...exDone, id]);
     setExDone(next);
     goToPhase(id, "quiz");
-    await supabase.from("user_courses").update({ exercises_submitted: Array.from(next) }).eq("id", courseId);
+
+    const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "exercise_done" };
+    setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
+
+    const { error } = await supabase.from("user_courses").update({
+      exercises_submitted: Array.from(next),
+      modules_progress: updatedProgress,
+    }).eq("id", courseId);
+    if (error) console.error("Save exercise error:", error);
   }
 
   function pickAnswer(mid: string, qi: number, oi: number) {
@@ -223,16 +234,21 @@ export default function CourseDetailPage() {
     const passed = pct >= 60;
 
     if (passed) {
-      // Only advance to "result" phase when quiz is passed
-      goToPhase(id, "result");
       const nextPassed = new Set([...quizPassed, id]);
       setQuizPassed(nextPassed);
-      await supabase.from("user_courses").update({
+      goToPhase(id, "result");
+
+      const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "passed" };
+      setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
+
+      const { error } = await supabase.from("user_courses").update({
         quiz_passed: Array.from(nextPassed),
         modules_done: Array.from(nextPassed),
+        modules_progress: updatedProgress,
       }).eq("id", courseId);
+      if (error) console.error("Save quiz error:", error);
     }
-    // If failed: stay on "quiz" phase with isSubmitted=true (shows score + retry)
+    // On failure: stay in "quiz" phase, isSubmitted=true shows score + retry
   }
 
   function retryModQuiz(id: string) {
@@ -341,12 +357,13 @@ export default function CourseDetailPage() {
                         {isOpen && (
                           <div className="px-4 pb-6 border-t border-blue-50 pt-4 space-y-5">
 
-                            {/* Phase tabs (always visible) */}
+                            {/* Phase tabs */}
                             <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
                               {(["content", "exercise", "quiz", "result"] as ModPhase[]).map((p) => {
                                 const labels: Record<ModPhase, string> = { content: "Cours", exercise: "Exercice", quiz: "Quiz", result: "Résultat" };
                                 const isActive = phase === p;
-                                const isDisabled = (p === "exercise" && phase === "content") ||
+                                const isDisabled =
+                                  (p === "exercise" && phase === "content") ||
                                   (p === "quiz" && !exDone.has(id) && phase === "content") ||
                                   (p === "result" && !isPassed);
                                 return (
@@ -375,10 +392,7 @@ export default function CourseDetailPage() {
                                     {content.sections.map((sec, si) => (
                                       <div key={si} className="border-l-4 border-blue-200 pl-4">
                                         <h4 className="font-bold text-[#1a73e8] mb-2 text-sm">{sec.title}</h4>
-                                        <div
-                                          className="space-y-1"
-                                          dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }}
-                                        />
+                                        <div dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }} />
                                       </div>
                                     ))}
                                   </div>
@@ -387,7 +401,7 @@ export default function CourseDetailPage() {
                                 )}
 
                                 {/* YouTube */}
-                                {(m.keywords?.length > 0) && (
+                                {m.keywords?.length > 0 && (
                                   <div>
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Ressources vidéo</p>
                                     {ytLoading.has(id) ? (
@@ -412,7 +426,9 @@ export default function CourseDetailPage() {
                                     ) : (
                                       <div className="flex flex-wrap gap-2">
                                         {m.keywords.map((kw, ki) => (
-                                          <a key={ki} href={`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}`} target="_blank" rel="noopener noreferrer"
+                                          <a key={ki}
+                                            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}`}
+                                            target="_blank" rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100">
                                             ▶ {kw}
                                           </a>
@@ -436,26 +452,60 @@ export default function CourseDetailPage() {
                               <div className="space-y-4">
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                                   <p className="text-xs font-bold text-yellow-700 uppercase mb-2">Exercice pratique</p>
-                                  <p className="text-sm text-yellow-900 font-medium leading-relaxed">{m.exercises || "Applique les concepts du module dans un exercice pratique. Décris ta démarche, les étapes que tu as suivies et ce que tu as appris."}</p>
+                                  <p className="text-sm text-yellow-900 font-medium leading-relaxed">
+                                    {m.exercises || "Applique les concepts du module dans un exercice pratique. Décris ta démarche, les étapes que tu as suivies et ce que tu as appris."}
+                                  </p>
                                 </div>
                                 <div>
                                   <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Ta réponse</label>
                                   <textarea
                                     value={exText[id] ?? ""}
                                     onChange={e => setExText(prev => ({ ...prev, [id]: e.target.value }))}
-                                    rows={6}
+                                    rows={5}
                                     placeholder="Décris ta démarche, ce que tu as fait, ce que tu as appris…"
                                     className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-blue-400 outline-none resize-none"
                                   />
                                 </div>
+
+                                {/* File attachment */}
+                                <div>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.docx"
+                                    id={`file-${id}`}
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      setExFile(prev => ({ ...prev, [id]: f ? { name: f.name } : null }));
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`file-${id}`}
+                                    className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-blue-300 rounded-lg text-sm text-blue-600 cursor-pointer hover:bg-blue-50"
+                                  >
+                                    📎 Joindre un fichier (PDF, image, Word)
+                                  </label>
+                                  {exFile[id] && (
+                                    <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+                                      ✓ {exFile[id]!.name}
+                                      <button
+                                        onClick={() => setExFile(prev => ({ ...prev, [id]: null }))}
+                                        className="text-gray-400 hover:text-red-400 ml-1"
+                                      >✕</button>
+                                    </p>
+                                  )}
+                                </div>
+
                                 <div className="flex gap-2">
                                   <button onClick={() => goToPhase(id, "content")}
                                     className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50">
                                     ← Relire le cours
                                   </button>
-                                  <button onClick={() => submitExercise(id)}
-                                    disabled={!(exText[id] ?? "").trim()}
-                                    className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50">
+                                  <button
+                                    onClick={() => submitExercise(id)}
+                                    disabled={!(exText[id] ?? "").trim() && !exFile[id]}
+                                    className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
+                                  >
                                     Valider l&apos;exercice →
                                   </button>
                                 </div>
@@ -470,7 +520,7 @@ export default function CourseDetailPage() {
                               const answeredCount = Object.keys(ans).length;
                               const correct = quiz.filter((qq, i) => ans[i] === qq.answer).length;
                               const scorePct = Math.round((correct / totalQ) * 100);
-                              const passed = scorePct >= 60;
+                              const quizPassed = scorePct >= 60;
 
                               return (
                                 <div className="space-y-4">
@@ -498,11 +548,19 @@ export default function CourseDetailPage() {
                                       {q.options.map((opt, oi) => {
                                         let cls = "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ";
                                         if (!isSubmitted) {
-                                          cls += userAns === oi ? "border-blue-500 bg-blue-50 font-semibold" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50";
-                                        } else {
+                                          cls += userAns === oi
+                                            ? "border-blue-500 bg-blue-50 font-semibold"
+                                            : "border-gray-200 hover:border-blue-300 hover:bg-blue-50";
+                                        } else if (quizPassed) {
+                                          // Show correct/wrong only if passed
                                           if (oi === q.answer) cls += "border-green-500 bg-green-50 text-green-800 font-semibold";
                                           else if (userAns === oi) cls += "border-red-300 bg-red-50 text-red-700";
                                           else cls += "border-gray-100 text-gray-400";
+                                        } else {
+                                          // Failed: just show selected, no correct/wrong
+                                          cls += userAns === oi
+                                            ? "border-blue-300 bg-blue-50"
+                                            : "border-gray-100 text-gray-400";
                                         }
                                         return (
                                           <button key={oi} className={cls} onClick={() => pickAnswer(id, curQIdx, oi)} disabled={isSubmitted}>
@@ -511,51 +569,54 @@ export default function CourseDetailPage() {
                                         );
                                       })}
                                     </div>
-                                    {isSubmitted && q.explanation && (
+                                    {/* Explanations only on pass */}
+                                    {isSubmitted && quizPassed && q.explanation && (
                                       <p className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-2">💡 {q.explanation}</p>
                                     )}
                                   </div>
 
                                   {/* Navigation */}
-                                  <div className="flex gap-2">
-                                    <button
-                                      onClick={() => setQIdx(prev => ({ ...prev, [id]: Math.max(0, curQIdx - 1) }))}
-                                      disabled={curQIdx === 0}
-                                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-30"
-                                    >
-                                      ← Précédente
-                                    </button>
-                                    {curQIdx < totalQ - 1 ? (
+                                  {!isSubmitted && (
+                                    <div className="flex gap-2">
                                       <button
-                                        onClick={() => setQIdx(prev => ({ ...prev, [id]: curQIdx + 1 }))}
-                                        className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100"
+                                        onClick={() => setQIdx(prev => ({ ...prev, [id]: Math.max(0, curQIdx - 1) }))}
+                                        disabled={curQIdx === 0}
+                                        className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-30"
                                       >
-                                        Suivante →
+                                        ← Précédente
                                       </button>
-                                    ) : !isSubmitted ? (
-                                      <button
-                                        onClick={() => submitModQuiz(id, quiz)}
-                                        disabled={answeredCount < totalQ}
-                                        className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
-                                      >
-                                        Valider le quiz {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
-                                      </button>
-                                    ) : null}
-                                  </div>
+                                      {curQIdx < totalQ - 1 ? (
+                                        <button
+                                          onClick={() => setQIdx(prev => ({ ...prev, [id]: curQIdx + 1 }))}
+                                          className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100"
+                                        >
+                                          Suivante →
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => submitModQuiz(id, quiz)}
+                                          disabled={answeredCount < totalQ}
+                                          className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
+                                        >
+                                          Valider {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
 
-                                  {/* Result after submit */}
+                                  {/* Result banner after submit */}
                                   {isSubmitted && (
-                                    <div className={`rounded-xl p-4 text-center ${passed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-                                      <p className={`text-2xl font-black mb-1 ${passed ? "text-green-600" : "text-red-500"}`}>{scorePct}%</p>
+                                    <div className={`rounded-xl p-4 text-center ${quizPassed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
+                                      <p className={`text-2xl font-black mb-1 ${quizPassed ? "text-green-600" : "text-red-500"}`}>{scorePct}%</p>
                                       <p className="font-semibold text-sm mb-1">
-                                        {passed ? "Quiz réussi ✓" : "Quiz échoué ✗"}
+                                        {quizPassed ? "Quiz réussi ✓" : "Quiz échoué ✗"}
                                       </p>
                                       <p className="text-xs text-gray-500 mb-3">
-                                        {correct}/{totalQ} bonnes réponses · {passed ? "Module suivant débloqué" : "60% minimum requis"}
+                                        {correct}/{totalQ} bonnes réponses · {quizPassed ? "Module suivant débloqué" : "60% minimum requis"}
                                       </p>
-                                      {!passed && (
+                                      {!quizPassed && (
                                         <button onClick={() => retryModQuiz(id)} className="rounded-lg bg-[#1a73e8] text-white px-5 py-2 text-sm font-semibold hover:opacity-90">
-                                          Réessayer le quiz
+                                          Réessayer
                                         </button>
                                       )}
                                     </div>
@@ -602,11 +663,9 @@ export default function CourseDetailPage() {
               {passedCount}/{totalMods} modules validés — complète tous les modules pour accéder au test
             </p>
           )}
-          <div className="block">
-            <Link href={`/learn/${courseId}/test`} className="inline-block rounded-lg bg-[#1a73e8] text-white px-8 py-3 font-semibold hover:opacity-90">
-              Passer le test →
-            </Link>
-          </div>
+          <Link href={`/learn/${courseId}/test`} className="inline-block rounded-lg bg-[#1a73e8] text-white px-8 py-3 font-semibold hover:opacity-90">
+            Passer le test →
+          </Link>
         </div>
       </div>
 
