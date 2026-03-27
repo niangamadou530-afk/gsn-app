@@ -84,13 +84,31 @@ export default function CourseDetailPage() {
 
     setCourse(data as Course);
 
-    // Read progression from Supabase — source of truth
-    const passed = new Set<string>(Array.isArray(data.quiz_passed) ? data.quiz_passed : []);
-    const exs = new Set<string>(Array.isArray(data.exercises_submitted) ? data.exercises_submitted : []);
-    const progress: Record<string, string> = data.modules_progress ?? {};
+    // ── Rebuild progression from ALL available DB sources ──────────────
+    // quiz_passed and modules_done should always be in sync (both saved together),
+    // but we merge them as backup in case one was missed.
+    const quizPassedArr: string[] = Array.isArray(data.quiz_passed) ? data.quiz_passed : [];
+    const modulesDoneArr: string[] = Array.isArray(data.modules_done) ? data.modules_done : [];
+    const exsArr: string[] = Array.isArray(data.exercises_submitted) ? data.exercises_submitted : [];
+    const progress: Record<string, string> = (data.modules_progress && typeof data.modules_progress === "object")
+      ? data.modules_progress
+      : {};
 
-    setQuizPassed(passed);
-    setExDone(exs);
+    // Merge quiz_passed + modules_done → maximum coverage
+    const passed = new Set<string>([...quizPassedArr, ...modulesDoneArr]);
+
+    // Also absorb any "passed" entries from modules_progress
+    for (const [id, val] of Object.entries(progress)) {
+      if (val === "passed") passed.add(id);
+    }
+
+    const exs = new Set<string>([
+      ...exsArr,
+      ...Object.entries(progress).filter(([, v]) => v === "exercise_done").map(([k]) => k),
+    ]);
+
+    console.log('[CourseLoad] quiz_passed:', quizPassedArr, '| modules_done:', modulesDoneArr,
+      '| progress:', progress, '| final passed:', [...passed]);
 
     const initialPhases: Record<string, ModPhase> = {};
     const initialContent: Record<string, ModContent> = {};
@@ -99,11 +117,9 @@ export default function CourseDetailPage() {
     weeks.forEach((w: Week) => {
       w.modules.forEach((m: Module, mi: number) => {
         const id = modId(w, mi, m);
-        // Use modules_progress as primary source, quiz_passed / exercises_submitted as fallback
-        if (passed.has(id) || progress[id] === "passed") {
+        if (passed.has(id)) {
           initialPhases[id] = "result";
-          if (!passed.has(id)) passed.add(id); // keep sets in sync
-        } else if (exs.has(id) || progress[id] === "exercise_done") {
+        } else if (exs.has(id)) {
           initialPhases[id] = "quiz";
         } else {
           initialPhases[id] = "content";
@@ -112,7 +128,9 @@ export default function CourseDetailPage() {
       });
     });
 
+    // Set ALL state together after computing everything
     setQuizPassed(new Set(passed));
+    setExDone(new Set(exs));
     setPhases(initialPhases);
     setMContent(initialContent);
     setLoading(false);
