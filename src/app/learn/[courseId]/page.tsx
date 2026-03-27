@@ -43,20 +43,44 @@ function isAccessible(id: string, allIds: string[], passed: Set<string>): boolea
   return passed.has(allIds[idx - 1]);
 }
 
-// Markdown → HTML (user-specified version)
+// Markdown → HTML
 function mdToHtml(text: string): string {
-  return text
+  // Step 1: normalize line endings (Windows \r\n → \n)
+  let s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+  console.log('[mdToHtml] raw (200):', s.slice(0, 200));
+
+  // Step 2: headings — must run BEFORE paragraph logic
+  s = s
     .replace(/^### (.+)$/gm, '<h3 style="color:#0d47a1;font-weight:bold;margin:16px 0 8px">$1</h3>')
     .replace(/^## (.+)$/gm, '<h2 style="color:#1a73e8;font-weight:bold;margin:20px 0 10px;border-bottom:2px solid #e8f0fe;padding-bottom:6px">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="color:#0d47a1;font-weight:bold;font-size:1.4em;margin:24px 0 12px">$1</h1>')
+    .replace(/^# (.+)$/gm, '<h1 style="color:#0d47a1;font-weight:bold;font-size:1.4em;margin:24px 0 12px">$1</h1>');
+
+  // Step 3: inline styles
+  s = s
     .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0d47a1">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code style="background:#e8f0fe;padding:2px 6px;border-radius:4px;color:#1a73e8;font-family:monospace">$1</code>')
-    .replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:8px">$1</li>')
-    .replace(/(<li.*<\/li>\n?)+/g, '<ul style="margin:12px 0;padding-left:24px;list-style:disc">$&</ul>')
-    .replace(/\n\n/g, '</p><p style="margin:12px 0;line-height:1.7">')
-    .replace(/^(?!<[h|u|l|p])(.+)$/gm, '<p style="margin:12px 0;line-height:1.7">$1</p>')
-    .replace(/<p[^>]*><\/p>/g, '');
+    .replace(/`(.+?)`/g, '<code style="background:#e8f0fe;padding:2px 6px;border-radius:4px;color:#1a73e8;font-family:monospace">$1</code>');
+
+  // Step 4: list items → wrap consecutive <li> in <ul>
+  s = s.replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:8px">$1</li>');
+  s = s.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul style="margin:12px 0;padding-left:24px;list-style:disc">$1</ul>');
+
+  // Step 5: split on blank lines to build paragraphs, skip lines already HTML
+  const blocks = s.split(/\n{2,}/);
+  const wrapped = blocks.map(block => {
+    const trimmed = block.trim();
+    if (!trimmed) return '';
+    // Already an HTML block element — don't wrap
+    if (/^<(h[1-6]|ul|ol|li|div|blockquote)/.test(trimmed)) return trimmed;
+    // Wrap plain text (may contain <br/> for single line breaks)
+    const inner = trimmed.replace(/\n/g, '<br/>');
+    return `<p style="margin:10px 0;line-height:1.75">${inner}</p>`;
+  });
+
+  const result = wrapped.filter(Boolean).join('\n');
+  console.log('[mdToHtml] converted (300):', result.slice(0, 300));
+  return result;
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -207,14 +231,22 @@ export default function CourseDetailPage() {
     setExDone(next);
     goToPhase(id, "quiz");
 
+    const exArr = Array.from(next);
+    console.log('[submitExercise] saving exercises_submitted:', exArr);
+
+    // Save exercises_submitted FIRST (critical)
+    const { error: err1 } = await supabase.from("user_courses").update({
+      exercises_submitted: exArr,
+    }).eq("id", courseId);
+    if (err1) console.error('[submitExercise] CRITICAL save error:', err1);
+    else console.log('[submitExercise] exercises_submitted saved OK');
+
+    // Save modules_progress separately (non-critical)
     const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "exercise_done" };
     setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
-
-    const { error } = await supabase.from("user_courses").update({
-      exercises_submitted: Array.from(next),
-      modules_progress: updatedProgress,
-    }).eq("id", courseId);
-    if (error) console.error("Save exercise error:", error);
+    supabase.from("user_courses").update({ modules_progress: updatedProgress })
+      .eq("id", courseId)
+      .then(({ error: e }) => { if (e) console.warn('[submitExercise] modules_progress not saved:', e.message); });
   }
 
   function pickAnswer(mid: string, qi: number, oi: number) {
@@ -238,15 +270,27 @@ export default function CourseDetailPage() {
       setQuizPassed(nextPassed);
       goToPhase(id, "result");
 
+      const passedArr = Array.from(nextPassed);
+      console.log('[submitModQuiz] saving quiz_passed:', passedArr, 'courseId:', courseId);
+
+      // Save quiz_passed + modules_done FIRST (critical columns — always exist)
+      const { error: err1 } = await supabase.from("user_courses").update({
+        quiz_passed: passedArr,
+        modules_done: passedArr,
+      }).eq("id", courseId);
+
+      if (err1) {
+        console.error('[submitModQuiz] CRITICAL save error:', err1);
+      } else {
+        console.log('[submitModQuiz] quiz_passed saved OK:', passedArr.length, 'modules');
+      }
+
+      // Save modules_progress separately (column may not exist yet — non-critical)
       const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "passed" };
       setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
-
-      const { error } = await supabase.from("user_courses").update({
-        quiz_passed: Array.from(nextPassed),
-        modules_done: Array.from(nextPassed),
-        modules_progress: updatedProgress,
-      }).eq("id", courseId);
-      if (error) console.error("Save quiz error:", error);
+      supabase.from("user_courses").update({ modules_progress: updatedProgress })
+        .eq("id", courseId)
+        .then(({ error: e }) => { if (e) console.warn('[submitModQuiz] modules_progress not saved:', e.message); });
     }
     // On failure: stay in "quiz" phase, isSubmitted=true shows score + retry
   }

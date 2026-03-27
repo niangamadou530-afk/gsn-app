@@ -57,12 +57,19 @@ export default function TestPage() {
     }
 
     // No saved questions → check if all modules are done
-    // Read from all 3 sources to be robust against partial saves
-    const passedCount = (data.quiz_passed ?? []).length;
-    const doneCount = (data.modules_done ?? []).length;
+    const passedArr: string[] = data.quiz_passed ?? [];
+    const doneArr: string[] = data.modules_done ?? [];
     const progressMap: Record<string, string> = data.modules_progress ?? {};
+    const passedCount = passedArr.length;
+    const doneCount = doneArr.length;
     const progressPassed = Object.values(progressMap).filter((v) => v === "passed").length;
     const effectiveDone = Math.max(passedCount, doneCount, progressPassed);
+
+    console.log('[TestPage] totalMods:', totalMods,
+      '| quiz_passed:', passedArr,
+      '| modules_done:', doneArr,
+      '| modules_progress passed:', progressPassed,
+      '| effectiveDone:', effectiveDone);
 
     if (effectiveDone < totalMods && totalMods > 0) {
       setBlocked(true);
