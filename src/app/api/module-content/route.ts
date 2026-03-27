@@ -23,12 +23,12 @@ Semaine thématique: "${weekTitle}"
 Niveau: ${level ?? "tous niveaux"}
 Résumé: ${description ?? ""}
 
-Réponds UNIQUEMENT avec ce JSON valide (sans texte autour, sans markdown):
+Réponds UNIQUEMENT avec ce JSON valide (sans texte autour):
 {
   "sections": [
     {
       "title": "Titre de la sous-section",
-      "content": "Contenu pédagogique détaillé. Utilise le markdown dans le contenu : **texte important** pour les termes clés, \`concept\` pour les mots techniques, ## Sous-titre pour les sous-parties, - item pour les listes. Minimum 200 mots par section."
+      "content": "Retourne uniquement du HTML valide dans ce champ. Utilise <h2 style='color:#1a73e8;font-weight:bold;margin:16px 0 8px'> pour les titres de sous-parties. Utilise <span style='color:#0d47a1;font-weight:bold'> pour les mots et concepts importants. Utilise <ul style='margin:12px 0;padding-left:20px;list-style:disc'><li style='margin:4px 0'> pour les listes. Utilise <p style='margin:10px 0;line-height:1.8'> pour les paragraphes. Utilise <code style='background:#e8f0fe;padding:2px 6px;border-radius:4px;color:#1a73e8;font-family:monospace'> pour les termes techniques. N'utilise JAMAIS ## * ** - pour le formatage. Varie la structure entre les sections. Minimum 200 mots par section."
     }
   ],
   "quiz": [
@@ -43,7 +43,7 @@ Réponds UNIQUEMENT avec ce JSON valide (sans texte autour, sans markdown):
 
 Règles strictes:
 - Exactement 5 sous-sections dans "sections"
-- Chaque sous-section: minimum 200 mots avec du markdown (**gras**, \`code\`, - listes, ## titres)
+- Chaque sous-section: minimum 200 mots en HTML valide (pas de markdown)
 - Exactement 5 questions dans "quiz"
 - Les questions doivent tester la compréhension, pas la mémorisation
 - answer = index (0 à 3) de la bonne réponse

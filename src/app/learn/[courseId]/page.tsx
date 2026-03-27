@@ -43,45 +43,6 @@ function isAccessible(id: string, allIds: string[], passed: Set<string>): boolea
   return passed.has(allIds[idx - 1]);
 }
 
-// Markdown → HTML
-function mdToHtml(text: string): string {
-  // Step 1: normalize line endings (Windows \r\n → \n)
-  let s = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-  console.log('[mdToHtml] raw (200):', s.slice(0, 200));
-
-  // Step 2: headings — must run BEFORE paragraph logic
-  s = s
-    .replace(/^### (.+)$/gm, '<h3 style="color:#0d47a1;font-weight:bold;margin:16px 0 8px">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 style="color:#1a73e8;font-weight:bold;margin:20px 0 10px;border-bottom:2px solid #e8f0fe;padding-bottom:6px">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 style="color:#0d47a1;font-weight:bold;font-size:1.4em;margin:24px 0 12px">$1</h1>');
-
-  // Step 3: inline styles
-  s = s
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#0d47a1">$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code style="background:#e8f0fe;padding:2px 6px;border-radius:4px;color:#1a73e8;font-family:monospace">$1</code>');
-
-  // Step 4: list items → wrap consecutive <li> in <ul>
-  s = s.replace(/^- (.+)$/gm, '<li style="margin:4px 0;padding-left:8px">$1</li>');
-  s = s.replace(/((?:<li[^>]*>.*<\/li>\n?)+)/g, '<ul style="margin:12px 0;padding-left:24px;list-style:disc">$1</ul>');
-
-  // Step 5: split on blank lines to build paragraphs, skip lines already HTML
-  const blocks = s.split(/\n{2,}/);
-  const wrapped = blocks.map(block => {
-    const trimmed = block.trim();
-    if (!trimmed) return '';
-    // Already an HTML block element — don't wrap
-    if (/^<(h[1-6]|ul|ol|li|div|blockquote)/.test(trimmed)) return trimmed;
-    // Wrap plain text (may contain <br/> for single line breaks)
-    const inner = trimmed.replace(/\n/g, '<br/>');
-    return `<p style="margin:10px 0;line-height:1.75">${inner}</p>`;
-  });
-
-  const result = wrapped.filter(Boolean).join('\n');
-  console.log('[mdToHtml] converted (300):', result.slice(0, 300));
-  return result;
-}
 
 // ── Component ────────────────────────────────────────────────
 
@@ -459,7 +420,7 @@ export default function CourseDetailPage() {
                                     {content.sections.map((sec, si) => (
                                       <div key={si} className="border-l-4 border-primary/30 pl-4">
                                         <h4 className="font-bold text-primary mb-2 text-sm">{sec.title}</h4>
-                                        <div className="text-sm text-on-surface leading-relaxed" dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }} />
+                                        <div className="text-sm text-on-surface leading-relaxed" dangerouslySetInnerHTML={{ __html: sec.content }} />
                                       </div>
                                     ))}
                                   </div>

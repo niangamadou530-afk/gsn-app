@@ -29,6 +29,7 @@ const DOMAIN_ICONS: Record<string, string> = {
 };
 
 function getDomainIcon(domain: string): string {
+  if (!domain) return "workspace_premium";
   for (const key of Object.keys(DOMAIN_ICONS)) {
     if (domain.toLowerCase().includes(key.toLowerCase())) return DOMAIN_ICONS[key];
   }
@@ -47,13 +48,20 @@ export default function ScorePage() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    const { data: sessionData, error } = await supabase.auth.getSession();
-    if (error || !sessionData.session) { router.replace("/login"); return; }
-    const { data } = await supabase.from("users").select("score, skills")
-      .eq("id", sessionData.session.user.id).single();
-    setScore(data?.score ?? 0);
-    setSkills(Array.isArray(data?.skills) ? data.skills : []);
-    setLoading(false);
+    try {
+      const { data: sessionData, error } = await supabase.auth.getSession();
+      if (error || !sessionData?.session) { router.replace("/login"); return; }
+      const { data } = await supabase.from("users").select("score, skills")
+        .eq("id", sessionData.session.user.id).single();
+      setScore(typeof data?.score === "number" ? data.score : 0);
+      const rawSkills = Array.isArray(data?.skills) ? data.skills : [];
+      // Guard against malformed skill objects
+      setSkills(rawSkills.filter((s: any) => s && typeof s === "object"));
+    } catch (e) {
+      console.error("[ScorePage] load error:", e);
+    } finally {
+      setLoading(false);
+    }
   }
 
   const eligible = score >= CREDIT_THRESHOLD;
@@ -190,7 +198,7 @@ export default function ScorePage() {
                     <span className="text-2xl font-black" style={{ color: `${skillColor(i)}30` }}>{skill.score}%</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-on-background">{skill.domain}</h3>
+                    <h3 className="font-bold text-sm text-on-surface">{skill.domain ?? "Formation"}</h3>
                     {skill.level && <p className="text-xs text-on-surface-variant mt-0.5">{skill.level}</p>}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
