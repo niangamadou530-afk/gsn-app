@@ -22,6 +22,7 @@ export default function TestPage() {
   const [saving, setSaving] = useState(false);
   const [blocked, setBlocked] = useState(false);
   const [blockedMsg, setBlockedMsg] = useState("");
+  const [currentQ, setCurrentQ] = useState(0);
 
   useEffect(() => { init(); }, [courseId]);
 
@@ -44,10 +45,8 @@ export default function TestPage() {
       : [];
     const totalMods = weeks.reduce((n: number, w: any) => n + w.modules.length, 0);
 
-    // If saved questions exist → load them directly (never regenerate)
     if (data.quiz_questions && Array.isArray(data.quiz_questions) && data.quiz_questions.length > 0) {
       setQuestions(data.quiz_questions);
-      // If already taken, show stored result
       if (data.test_score !== null && data.test_score !== undefined) {
         setScore(data.test_score);
         setSubmitted(true);
@@ -56,7 +55,6 @@ export default function TestPage() {
       return;
     }
 
-    // No saved questions → check if all modules are done
     const passedArr: string[] = data.quiz_passed ?? [];
     const doneArr: string[] = data.modules_done ?? [];
     const progressMap: Record<string, string> = data.modules_progress ?? {};
@@ -78,7 +76,6 @@ export default function TestPage() {
       return;
     }
 
-    // All modules done → generate questions
     setGenerating(true);
     setLoading(false);
     try {
@@ -92,7 +89,6 @@ export default function TestPage() {
       const qs: Question[] = quiz.questions ?? [];
       setQuestions(qs);
 
-      // Save questions to DB (never regenerate again)
       await supabase
         .from("user_courses")
         .update({ quiz_questions: qs })
@@ -136,7 +132,6 @@ export default function TestPage() {
         }),
       }).eq("id", courseId);
 
-      // Only award points + skill on FIRST certification
       if (!alreadyCertified && pct >= 70) {
         const { data: authData } = await supabase.auth.getUser();
         if (authData.user) {
@@ -180,137 +175,220 @@ export default function TestPage() {
     setSubmitted(false);
     setAnswers({});
     setScore(0);
+    setCurrentQ(0);
   }
 
-  // ── Render ──────────────────────────────────────────────
+  // ── Loading states ──────────────────────────────────────────
 
   if (loading) return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
     </div>
   );
 
   if (blocked) return (
-    <div className="max-w-md mx-auto mt-24 p-8 text-center bg-white rounded-xl shadow border border-yellow-200">
-      <div className="text-4xl mb-4">🔒</div>
-      <h2 className="font-bold text-lg text-gray-800 mb-2">Test verrouillé</h2>
-      <p className="text-gray-500 text-sm mb-6">{blockedMsg}</p>
-      <Link href={`/learn/${courseId}`} className="inline-block rounded-lg bg-[#1a73e8] text-white px-6 py-3 font-semibold hover:opacity-90">
-        Retourner au cours
-      </Link>
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6">
+      <div className="bg-surface-container-lowest rounded-3xl p-8 max-w-sm w-full text-center shadow-xl">
+        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5">
+          <span className="material-symbols-outlined text-4xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+        </div>
+        <h2 className="text-xl font-bold text-on-surface mb-2">Test verrouillé</h2>
+        <p className="text-on-surface-variant text-sm mb-6 leading-relaxed">{blockedMsg}</p>
+        <Link href={`/learn/${courseId}`} className="block w-full py-3.5 bg-primary text-on-primary font-bold rounded-xl text-center shadow-lg shadow-primary/20 active:scale-95 transition-all">
+          Retourner au cours
+        </Link>
+      </div>
     </div>
   );
 
   if (generating) return (
-    <div className="flex flex-col h-screen items-center justify-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
-      <p className="text-blue-600 font-medium">L&apos;IA génère ton test de certification…</p>
-      <p className="text-xs text-gray-400">Une seule génération — le test sera sauvegardé</p>
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
+      <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+      <div className="text-center">
+        <p className="text-primary font-bold text-lg">L&apos;IA génère ton test…</p>
+        <p className="text-on-surface-variant text-sm mt-1">Une seule génération — le test sera sauvegardé</p>
+      </div>
+      <div className="fixed -bottom-24 -right-24 w-64 h-64 bg-primary-container/10 rounded-full blur-[100px] pointer-events-none" />
     </div>
   );
 
   if (error) return (
-    <div className="max-w-md mx-auto mt-24 p-6 text-center">
-      <p className="text-red-500 mb-4">{error}</p>
-      <Link href={`/learn/${courseId}`} className="text-blue-600 hover:underline">← Retour au parcours</Link>
+    <div className="min-h-screen bg-surface flex items-center justify-center p-6">
+      <div className="text-center space-y-4">
+        <span className="material-symbols-outlined text-4xl text-error block">error</span>
+        <p className="text-on-surface-variant text-sm">{error}</p>
+        <Link href={`/learn/${courseId}`} className="text-primary font-bold hover:underline">← Retour au parcours</Link>
+      </div>
     </div>
   );
 
   const correctCount = questions.filter(q => answers[q.id] === q.answer).length;
+  const answeredCount = Object.keys(answers).length;
+  const progressPct = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+  const q = questions[currentQ];
 
   return (
-    <main className="min-h-screen bg-[#f4f8ff] pb-24">
-      <div className="max-w-3xl mx-auto p-6">
+    <main className="min-h-screen bg-surface text-on-surface pb-24">
 
-        {/* Header */}
-        <div className="mb-6">
-          <Link href={`/learn/${courseId}`} className="text-sm text-blue-600 hover:underline">← Retour au parcours</Link>
-          <h1 className="text-2xl font-bold text-[#1a73e8] mt-2">Test final certifié</h1>
-          <p className="text-sm text-gray-500">{course?.title} · {questions.length} questions · Score minimum 70%</p>
+      {/* Top bar */}
+      <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 py-4">
+        <Link href={`/learn/${courseId}`} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-on-surface">arrow_back</span>
+        </Link>
+        <span className="text-base font-bold text-primary">Test Final</span>
+        <span className="text-sm font-bold text-on-surface-variant">{answeredCount}/{questions.length}</span>
+      </header>
+
+      <div className="pt-24 px-6 max-w-2xl mx-auto">
+
+        {/* Progress bar */}
+        <div className="mb-8">
+          <div className="flex justify-between items-end mb-3">
+            <div>
+              <p className="text-on-surface-variant font-medium text-xs tracking-wide uppercase mb-1">Certification</p>
+              <p className="text-xl font-extrabold text-on-surface">{course?.title?.split("—")[0]?.trim()}</p>
+            </div>
+            {!submitted && (
+              <span className="text-primary font-bold text-sm">Q{currentQ + 1} / {questions.length}</span>
+            )}
+          </div>
+          <div className="h-3 w-full bg-surface-container-highest rounded-full overflow-hidden">
+            <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${submitted ? 100 : progressPct}%` }} />
+          </div>
+          <p className="text-xs text-on-surface-variant mt-1.5">Score minimum 70% · Certificat GSN</p>
         </div>
 
-        {/* Result banner */}
+        {/* Result overlay */}
         {submitted && (
-          <div className={`rounded-xl p-6 mb-6 text-center border-2 ${score >= 70 ? "bg-green-50 border-green-300" : "bg-red-50 border-red-200"}`}>
-            <div className={`text-5xl font-black mb-1 ${score >= 70 ? "text-green-600" : "text-red-500"}`}>{score}%</div>
-            <p className="font-bold text-lg mb-1">{score >= 70 ? "Félicitations ! 🎉" : "Pas encore…"}</p>
-            <p className="text-sm text-gray-600 mb-4">
-              {score >= 70
-                ? `${correctCount} / ${questions.length} bonnes réponses. Certificat GSN débloqué !`
-                : `${correctCount} / ${questions.length} bonnes réponses. Il faut 70% pour valider.`}
-            </p>
-            <div className="flex flex-wrap gap-3 justify-center">
-              {(score >= 70 || course?.certificate_id) ? (
-                <>
-                  <Link href={`/learn/${courseId}/certificate`} className="rounded-lg bg-[#1a73e8] text-white px-6 py-2.5 font-semibold hover:opacity-90">
-                    Voir mon certificat →
+          <div className="fixed inset-0 z-[60] bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6">
+            <div className="bg-surface-container-lowest w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
+              <div className="h-48 bg-gradient-to-br from-primary to-primary-container flex items-center justify-center relative">
+                <div className="w-32 h-32 rounded-full bg-white/10 backdrop-blur-md border-4 border-white/30 flex flex-col items-center justify-center text-on-primary">
+                  <span className="text-4xl font-extrabold">{score}%</span>
+                  <span className="text-[10px] font-bold tracking-widest uppercase opacity-80">Score</span>
+                </div>
+              </div>
+              <div className="p-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-tertiary-fixed mb-4">
+                  <span className="material-symbols-outlined text-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    {score >= 70 ? "stars" : "replay"}
+                  </span>
+                </div>
+                <h3 className="text-2xl font-extrabold text-on-surface mb-2">
+                  {score >= 70 ? "Félicitations !" : "Pas encore…"}
+                </h3>
+                <p className="text-on-surface-variant mb-2">
+                  {score >= 70
+                    ? `${correctCount} / ${questions.length} bonnes réponses. Vous êtes certifié !`
+                    : `${correctCount} / ${questions.length} bonnes réponses. Il faut 70%.`}
+                </p>
+                {saving && (
+                  <p className="text-xs text-on-surface-variant mb-4">Enregistrement en cours…</p>
+                )}
+                <div className="space-y-3 mt-6">
+                  {(score >= 70 || course?.certificate_id) && (
+                    <Link href={`/learn/${courseId}/certificate`}
+                      className="flex w-full py-4 bg-primary text-on-primary font-bold rounded-xl items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
+                      <span className="material-symbols-outlined">workspace_premium</span>
+                      Voir mon certificat
+                    </Link>
+                  )}
+                  <button onClick={retry}
+                    className="w-full py-4 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
+                    Refaire le test
+                  </button>
+                </div>
+                {(score >= 70 || course?.certificate_id) && (
+                  <Link href="/score" className="inline-block mt-6 text-primary font-bold text-sm underline underline-offset-4 decoration-primary/30">
+                    Voir mon Skill Passport
                   </Link>
-                  <Link href="/score" className="rounded-lg border border-blue-200 text-blue-600 px-6 py-2.5 font-semibold hover:bg-blue-50">
-                    Skill Passport
-                  </Link>
-                </>
-              ) : null}
-              <button onClick={retry} className="rounded-lg border border-gray-200 text-gray-600 px-6 py-2.5 font-semibold hover:bg-gray-50">
-                Réessayer
-              </button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {!submitted && (
-          <p className="text-sm text-gray-500 mb-4">{Object.keys(answers).length} / {questions.length} réponses</p>
-        )}
-
-        {/* Questions */}
-        <div className="space-y-5">
-          {questions.map((q, qi) => {
-            const userAns = answers[q.id];
-            const isCorrect = submitted && userAns === q.answer;
-            const isWrong = submitted && userAns !== undefined && userAns !== q.answer;
-
-            return (
-              <div key={q.id} className={`bg-white rounded-xl p-5 shadow border ${isCorrect ? "border-green-300" : isWrong ? "border-red-200" : "border-blue-100"}`}>
-                <p className="font-semibold mb-3 text-sm leading-relaxed">
-                  <span className="text-blue-600 font-bold">Q{qi + 1}. </span>{q.question}
-                </p>
-                <div className="space-y-2">
-                  {q.options.map((opt, oi) => {
-                    let cls = "w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors ";
-                    if (!submitted) {
-                      cls += userAns === oi
-                        ? "border-blue-500 bg-blue-50 font-semibold"
-                        : "border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer";
-                    } else {
-                      if (oi === q.answer) cls += "border-green-500 bg-green-50 text-green-800 font-semibold";
-                      else if (userAns === oi) cls += "border-red-300 bg-red-50 text-red-700";
-                      else cls += "border-gray-100 text-gray-400";
-                    }
-                    return (
-                      <button key={oi} className={cls} onClick={() => pick(q.id, oi)} disabled={submitted}>
-                        <span className="font-bold mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
-                      </button>
-                    );
-                  })}
-                </div>
-                {submitted && q.explanation && (
-                  <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5 leading-relaxed">
-                    💡 {q.explanation}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Submit */}
+        {/* Question navigation dots */}
         {!submitted && questions.length > 0 && (
-          <button
-            onClick={submit}
-            disabled={saving}
-            className="w-full mt-8 py-4 bg-[#1a73e8] text-white rounded-xl font-bold text-lg hover:opacity-90 disabled:opacity-50"
-          >
-            {saving ? "Enregistrement…" : `Soumettre mes ${questions.length} réponses`}
-          </button>
+          <>
+            <div className="flex gap-1 mb-6 flex-wrap">
+              {questions.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentQ(i)}
+                  className={`h-2 rounded-full transition-all ${i === currentQ ? "w-6 bg-primary" : answers[questions[i].id] !== undefined ? "w-2 bg-primary/50" : "w-2 bg-surface-container-highest"}`}
+                />
+              ))}
+            </div>
+
+            {/* Question card */}
+            <section className="mb-6">
+              <div className="bg-surface-container-low rounded-2xl p-6 mb-5 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <span className="material-symbols-outlined text-6xl">quiz</span>
+                </div>
+                <p className="text-lg font-semibold text-on-surface leading-relaxed relative z-10">
+                  {q?.question}
+                </p>
+              </div>
+
+              {/* Options */}
+              <div className="space-y-3">
+                {q?.options.map((opt, oi) => {
+                  const userAns = answers[q.id];
+                  const isSelected = userAns === oi;
+                  return (
+                    <button
+                      key={oi}
+                      onClick={() => pick(q.id, oi)}
+                      className={`w-full flex items-center p-4 rounded-xl border-l-4 text-left transition-all shadow-sm active:scale-[0.98] ${
+                        isSelected
+                          ? "border-primary bg-primary/5 shadow-md"
+                          : "border-transparent bg-surface-container-lowest hover:border-primary/30"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-4 font-bold text-sm shrink-0 transition-colors ${
+                        isSelected ? "bg-primary text-on-primary" : "bg-surface-container text-on-surface-variant"
+                      }`}>
+                        {String.fromCharCode(65 + oi)}
+                      </div>
+                      <span className={`font-medium text-sm ${isSelected ? "text-on-surface font-semibold" : "text-on-surface"}`}>{opt}</span>
+                      {isSelected && (
+                        <span className="material-symbols-outlined ml-auto text-primary">check_circle</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Navigation */}
+            <div className="flex justify-between items-center mt-8">
+              <button
+                onClick={() => setCurrentQ(q => Math.max(0, q - 1))}
+                disabled={currentQ === 0}
+                className="px-6 py-3 text-on-surface-variant font-semibold hover:bg-surface-container rounded-xl transition-colors disabled:opacity-30"
+              >
+                Précédent
+              </button>
+              {currentQ < questions.length - 1 ? (
+                <button
+                  onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}
+                  className="px-8 py-3.5 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
+                >
+                  Suivant
+                </button>
+              ) : (
+                <button
+                  onClick={submit}
+                  disabled={saving || answeredCount < questions.length}
+                  className="px-8 py-3.5 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                  {saving ? "Enregistrement…" : `Valider (${answeredCount}/${questions.length})`}
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
     </main>

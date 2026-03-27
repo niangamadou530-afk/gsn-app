@@ -306,8 +306,8 @@ export default function CourseDetailPage() {
   // ── Render ────────────────────────────────────────────────
 
   if (loading) return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
     </div>
   );
   if (!course) return null;
@@ -320,49 +320,63 @@ export default function CourseDetailPage() {
   const pct = totalMods > 0 ? Math.round((passedCount / totalMods) * 100) : 0;
 
   return (
-    <main className="min-h-screen bg-[#f4f8ff] text-[#1f2937] pb-28">
-      <div className="max-w-3xl mx-auto p-6">
+    <main className="min-h-screen bg-surface text-on-surface pb-32">
+
+      {/* Top bar */}
+      <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 py-4">
+        <Link href="/learn" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
+          <span className="material-symbols-outlined text-on-surface">arrow_back</span>
+        </Link>
+        <span className="text-base font-bold text-primary truncate max-w-[160px]">{course.title.split("—")[0].trim()}</span>
+        <span className="text-sm font-bold text-primary">{pct}%</span>
+      </header>
+
+      <div className="pt-24 px-6 max-w-2xl mx-auto space-y-6">
 
         {/* ── Header ── */}
-        <div className="mb-6">
-          <Link href="/learn" className="text-sm text-blue-600 hover:underline">← Mes parcours</Link>
-          <h1 className="text-2xl font-bold text-[#1a73e8] mt-2">{course.title}</h1>
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1 bg-gray-200 h-2 rounded-full overflow-hidden">
-              <div className="bg-blue-600 h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+        <div className="space-y-3">
+          <h1 className="text-xl font-extrabold text-on-surface leading-snug">{course.title}</h1>
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs font-semibold">
+              <span className="text-on-surface-variant">{passedCount} / {totalMods} modules validés</span>
+              <span className="text-primary">{pct}%</span>
             </div>
-            <span className="text-sm font-bold text-blue-600 w-10 text-right">{pct}%</span>
+            <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+              <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+            </div>
           </div>
-          <p className="text-xs text-gray-400 mt-1">{passedCount} / {totalMods} modules validés</p>
           {course.completed && (
-            <div className="mt-3 inline-flex items-center gap-2 bg-green-100 text-green-700 rounded-full px-4 py-1.5 text-sm font-semibold">
-              🏆 Certifié · {course.test_score}%
-              <Link href={`/learn/${courseId}/certificate`} className="underline ml-1">Voir le certificat</Link>
-            </div>
+            <Link href={`/learn/${courseId}/certificate`}
+              className="inline-flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed rounded-full px-4 py-1.5 text-xs font-bold">
+              <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+              Certifié · {course.test_score}% · Voir le certificat
+            </Link>
           )}
         </div>
 
         {/* ── Weeks ── */}
         <div className="space-y-3">
           {weeks.map((w, wi) => (
-            <div key={wi} className="bg-white rounded-xl shadow border border-blue-100 overflow-hidden">
+            <div key={wi} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
 
               {/* Week header */}
               <button
                 onClick={() => setOpenWeek(openWeek === wi ? -1 : wi)}
-                className="w-full p-4 flex items-start justify-between text-left hover:bg-blue-50 transition-colors gap-4"
+                className="w-full p-5 flex items-start justify-between text-left hover:bg-surface-container-low transition-colors gap-4"
               >
                 <div>
-                  <span className="text-xs font-bold text-blue-400 uppercase tracking-widest">Semaine {w.week}</span>
-                  <p className="font-bold text-[#1a73e8] leading-snug">{w.title}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{w.objective}</p>
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Semaine {w.week}</span>
+                  <p className="font-bold text-on-surface leading-snug mt-0.5">{w.title}</p>
+                  <p className="text-xs text-on-surface-variant mt-1">{w.objective}</p>
                 </div>
-                <span className="text-gray-400 shrink-0 mt-1">{openWeek === wi ? "▲" : "▼"}</span>
+                <span className="material-symbols-outlined text-on-surface-variant shrink-0 mt-1">
+                  {openWeek === wi ? "expand_less" : "expand_more"}
+                </span>
               </button>
 
               {/* Modules */}
               {openWeek === wi && (
-                <div className="border-t border-gray-50 divide-y divide-gray-50">
+                <div className="border-t border-outline-variant/10 divide-y divide-outline-variant/10">
                   {w.modules.map((m, mi) => {
                     const id = modId(w, mi, m);
                     const accessible = isAccessible(id, allIds, quizPassed);
@@ -378,31 +392,40 @@ export default function CourseDetailPage() {
                     const ytFallback = ytFallbackSet.has(id);
 
                     return (
-                      <div key={mi} className={`${isPassed ? "bg-green-50" : !accessible ? "bg-gray-50 opacity-60" : ""}`}>
+                      <div key={mi} className={`${isPassed ? "bg-emerald-50/50" : !accessible ? "opacity-50" : ""}`}>
 
                         {/* Module title row */}
                         <button
                           onClick={() => accessible && toggleMod(id, m, w)}
                           disabled={!accessible}
-                          className={`w-full p-4 flex items-center gap-3 text-left transition-colors ${accessible ? "hover:bg-blue-50 cursor-pointer" : "cursor-not-allowed"}`}
+                          className={`w-full p-4 flex items-center gap-3 text-left transition-colors ${accessible ? "hover:bg-surface-container-low cursor-pointer" : "cursor-not-allowed"}`}
                         >
-                          <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${isPassed ? "bg-green-500 text-white" : !accessible ? "bg-gray-300 text-gray-500" : "bg-blue-100 text-blue-600"}`}>
-                            {!accessible ? "🔒" : isPassed ? "✓" : mi + 1}
+                          <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${isPassed ? "bg-emerald-500 text-white" : !accessible ? "bg-surface-container text-outline" : "bg-primary/10 text-primary"}`}>
+                            {!accessible
+                              ? <span className="material-symbols-outlined text-[16px]">lock</span>
+                              : isPassed
+                              ? <span className="material-symbols-outlined text-[16px]">check</span>
+                              : <span className="text-xs font-bold">{mi + 1}</span>
+                            }
                           </div>
                           <div className="flex-1">
-                            <p className="font-semibold text-sm">{m.title}</p>
-                            {!accessible && <p className="text-xs text-gray-400 mt-0.5">Valide le module précédent pour débloquer</p>}
-                            {isPassed && <p className="text-xs text-green-600 mt-0.5">Quiz validé ✓</p>}
+                            <p className="font-semibold text-sm text-on-surface">{m.title}</p>
+                            {!accessible && <p className="text-xs text-on-surface-variant mt-0.5">Valide le module précédent pour débloquer</p>}
+                            {isPassed && <p className="text-xs text-emerald-600 mt-0.5 font-medium">Quiz validé ✓</p>}
                           </div>
-                          {accessible && <span className="text-gray-400 text-xs shrink-0">{isOpen ? "▲" : "▼"}</span>}
+                          {accessible && (
+                            <span className="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">
+                              {isOpen ? "expand_less" : "expand_more"}
+                            </span>
+                          )}
                         </button>
 
                         {/* Module detail panel */}
                         {isOpen && (
-                          <div className="px-4 pb-6 border-t border-blue-50 pt-4 space-y-5">
+                          <div className="px-4 pb-6 border-t border-outline-variant/10 pt-4 space-y-5">
 
                             {/* Phase tabs */}
-                            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                            <div className="flex gap-1 bg-surface-container p-1 rounded-xl">
                               {(["content", "exercise", "quiz", "result"] as ModPhase[]).map((p) => {
                                 const labels: Record<ModPhase, string> = { content: "Cours", exercise: "Exercice", quiz: "Quiz", result: "Résultat" };
                                 const isActive = phase === p;
@@ -415,7 +438,7 @@ export default function CourseDetailPage() {
                                     key={p}
                                     disabled={isDisabled}
                                     onClick={() => !isDisabled && goToPhase(id, p)}
-                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${isActive ? "bg-white text-[#1a73e8] shadow-sm" : isDisabled ? "text-gray-300 cursor-default" : "text-gray-500 hover:text-gray-700"}`}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${isActive ? "bg-surface-container-lowest text-primary shadow-sm" : isDisabled ? "text-outline/40 cursor-default" : "text-on-surface-variant hover:text-on-surface"}`}
                                   >
                                     {labels[p]}
                                   </button>
@@ -427,29 +450,29 @@ export default function CourseDetailPage() {
                             {phase === "content" && (
                               <>
                                 {isLoadingContent ? (
-                                  <div className="flex items-center gap-3 text-blue-600">
-                                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600" />
+                                  <div className="flex items-center gap-3 text-primary">
+                                    <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
                                     <span className="text-sm">Chargement du contenu détaillé…</span>
                                   </div>
                                 ) : content?.sections ? (
                                   <div className="space-y-5">
                                     {content.sections.map((sec, si) => (
-                                      <div key={si} className="border-l-4 border-blue-200 pl-4">
-                                        <h4 className="font-bold text-[#1a73e8] mb-2 text-sm">{sec.title}</h4>
-                                        <div dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }} />
+                                      <div key={si} className="border-l-4 border-primary/30 pl-4">
+                                        <h4 className="font-bold text-primary mb-2 text-sm">{sec.title}</h4>
+                                        <div className="text-sm text-on-surface leading-relaxed" dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }} />
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-gray-700 leading-relaxed">{m.description}</p>
+                                  <p className="text-sm text-on-surface leading-relaxed">{m.description}</p>
                                 )}
 
                                 {/* YouTube */}
                                 {m.keywords?.length > 0 && (
                                   <div>
-                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Ressources vidéo</p>
+                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">Ressources vidéo</p>
                                     {ytLoading.has(id) ? (
-                                      <p className="text-sm text-gray-400">Chargement des vidéos…</p>
+                                      <p className="text-sm text-on-surface-variant">Chargement des vidéos…</p>
                                     ) : yt[id]?.length > 0 && !ytFallback ? (
                                       <div className="space-y-3">
                                         {yt[id].map((v, vi) => (
@@ -463,7 +486,7 @@ export default function CourseDetailPage() {
                                                 allowFullScreen
                                               />
                                             </div>
-                                            <p className="text-xs text-gray-400 px-3 py-2 bg-gray-50">{v.title}</p>
+                                            <p className="text-xs text-on-surface-variant px-3 py-2 bg-surface-container-low">{v.title}</p>
                                           </div>
                                         ))}
                                       </div>
@@ -474,7 +497,7 @@ export default function CourseDetailPage() {
                                             href={`https://www.youtube.com/results?search_query=${encodeURIComponent(kw)}`}
                                             target="_blank" rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100">
-                                            ▶ {kw}
+                                            <span className="material-symbols-outlined text-[14px]">play_arrow</span>{kw}
                                           </a>
                                         ))}
                                       </div>
@@ -484,9 +507,9 @@ export default function CourseDetailPage() {
 
                                 <button
                                   onClick={() => goToPhase(id, "exercise")}
-                                  className="w-full py-3 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90"
+                                  className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
                                 >
-                                  J&apos;ai lu ce module → Passer à l&apos;exercice
+                                  J&apos;ai lu ce module — Passer à l&apos;exercice
                                 </button>
                               </>
                             )}
@@ -494,20 +517,20 @@ export default function CourseDetailPage() {
                             {/* ─── PHASE: EXERCISE ─── */}
                             {phase === "exercise" && (
                               <div className="space-y-4">
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                                  <p className="text-xs font-bold text-yellow-700 uppercase mb-2">Exercice pratique</p>
-                                  <p className="text-sm text-yellow-900 font-medium leading-relaxed">
+                                <div className="bg-tertiary-fixed/30 rounded-xl p-4">
+                                  <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2">Exercice pratique</p>
+                                  <p className="text-sm text-on-surface font-medium leading-relaxed">
                                     {m.exercises || "Applique les concepts du module dans un exercice pratique. Décris ta démarche, les étapes que tu as suivies et ce que tu as appris."}
                                   </p>
                                 </div>
                                 <div>
-                                  <label className="text-xs font-bold text-gray-500 uppercase mb-1.5 block">Ta réponse</label>
+                                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">Ta réponse</label>
                                   <textarea
                                     value={exText[id] ?? ""}
                                     onChange={e => setExText(prev => ({ ...prev, [id]: e.target.value }))}
                                     rows={5}
                                     placeholder="Décris ta démarche, ce que tu as fait, ce que tu as appris…"
-                                    className="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-blue-400 outline-none resize-none"
+                                    className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl p-3 text-sm text-on-surface focus:border-primary outline-none resize-none transition-colors"
                                   />
                                 </div>
 
@@ -525,30 +548,34 @@ export default function CourseDetailPage() {
                                   />
                                   <label
                                     htmlFor={`file-${id}`}
-                                    className="inline-flex items-center gap-2 px-3 py-2 border border-dashed border-blue-300 rounded-lg text-sm text-blue-600 cursor-pointer hover:bg-blue-50"
+                                    className="inline-flex items-center gap-2 px-3 py-2 border-2 border-dashed border-outline-variant rounded-xl text-sm text-primary cursor-pointer hover:bg-primary/5 transition-colors"
                                   >
-                                    📎 Joindre un fichier (PDF, image, Word)
+                                    <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                                    Joindre un fichier (PDF, image, Word)
                                   </label>
                                   {exFile[id] && (
-                                    <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
-                                      ✓ {exFile[id]!.name}
+                                    <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1.5">
+                                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                      {exFile[id]!.name}
                                       <button
                                         onClick={() => setExFile(prev => ({ ...prev, [id]: null }))}
-                                        className="text-gray-400 hover:text-red-400 ml-1"
-                                      >✕</button>
+                                        className="text-outline hover:text-error ml-1"
+                                      >
+                                        <span className="material-symbols-outlined text-[14px]">close</span>
+                                      </button>
                                     </p>
                                   )}
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-3">
                                   <button onClick={() => goToPhase(id, "content")}
-                                    className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50">
+                                    className="flex-1 py-3 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container transition-colors">
                                     ← Relire le cours
                                   </button>
                                   <button
                                     onClick={() => submitExercise(id)}
                                     disabled={!(exText[id] ?? "").trim() && !exFile[id]}
-                                    className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
+                                    className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all"
                                   >
                                     Valider l&apos;exercice →
                                   </button>
@@ -570,41 +597,39 @@ export default function CourseDetailPage() {
                                 <div className="space-y-4">
                                   {/* Progress dots */}
                                   <div className="flex items-center justify-between">
-                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wide">Quiz · 60% requis</p>
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Quiz · 60% requis</p>
                                     <div className="flex gap-1">
                                       {quiz.map((_, i) => (
                                         <button
                                           key={i}
                                           onClick={() => setQIdx(prev => ({ ...prev, [id]: i }))}
-                                          className={`h-2 rounded-full transition-all ${i === curQIdx ? "w-5 bg-blue-600" : ans[i] !== undefined ? "w-2 bg-blue-300" : "w-2 bg-gray-300"}`}
+                                          className={`h-2 rounded-full transition-all ${i === curQIdx ? "w-5 bg-primary" : ans[i] !== undefined ? "w-2 bg-primary/40" : "w-2 bg-surface-container-highest"}`}
                                         />
                                       ))}
                                     </div>
-                                    <span className="text-xs text-gray-400">{curQIdx + 1}/{totalQ}</span>
+                                    <span className="text-xs text-on-surface-variant">{curQIdx + 1}/{totalQ}</span>
                                   </div>
 
                                   {/* Current question */}
-                                  <div className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
-                                    <p className="font-semibold text-sm mb-3 leading-relaxed">
-                                      <span className="text-blue-600 font-bold">Q{curQIdx + 1}. </span>{q.question}
+                                  <div className="bg-surface-container-low rounded-xl p-4">
+                                    <p className="font-semibold text-sm mb-3 leading-relaxed text-on-surface">
+                                      <span className="text-primary font-bold">Q{curQIdx + 1}. </span>{q.question}
                                     </p>
                                     <div className="space-y-2">
                                       {q.options.map((opt, oi) => {
-                                        let cls = "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ";
+                                        let cls = "w-full text-left px-3 py-2.5 rounded-xl border-l-4 text-sm transition-colors ";
                                         if (!isSubmitted) {
                                           cls += userAns === oi
-                                            ? "border-blue-500 bg-blue-50 font-semibold"
-                                            : "border-gray-200 hover:border-blue-300 hover:bg-blue-50";
+                                            ? "border-primary bg-primary/5 font-semibold text-on-surface"
+                                            : "border-transparent bg-surface-container-lowest hover:border-primary/30 text-on-surface";
                                         } else if (quizPassed) {
-                                          // Show correct/wrong only if passed
-                                          if (oi === q.answer) cls += "border-green-500 bg-green-50 text-green-800 font-semibold";
-                                          else if (userAns === oi) cls += "border-red-300 bg-red-50 text-red-700";
-                                          else cls += "border-gray-100 text-gray-400";
+                                          if (oi === q.answer) cls += "border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold";
+                                          else if (userAns === oi) cls += "border-red-400 bg-red-50 text-red-700";
+                                          else cls += "border-transparent bg-surface-container-lowest text-outline";
                                         } else {
-                                          // Failed: just show selected, no correct/wrong
                                           cls += userAns === oi
-                                            ? "border-blue-300 bg-blue-50"
-                                            : "border-gray-100 text-gray-400";
+                                            ? "border-primary/50 bg-primary/5 text-on-surface"
+                                            : "border-transparent bg-surface-container-lowest text-outline";
                                         }
                                         return (
                                           <button key={oi} className={cls} onClick={() => pickAnswer(id, curQIdx, oi)} disabled={isSubmitted}>
@@ -613,9 +638,11 @@ export default function CourseDetailPage() {
                                         );
                                       })}
                                     </div>
-                                    {/* Explanations only on pass */}
                                     {isSubmitted && quizPassed && q.explanation && (
-                                      <p className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-2">💡 {q.explanation}</p>
+                                      <p className="mt-3 text-xs text-on-surface-variant bg-surface-container rounded-lg p-2.5 leading-relaxed">
+                                        <span className="material-symbols-outlined text-[14px] align-middle mr-1">lightbulb</span>
+                                        {q.explanation}
+                                      </p>
                                     )}
                                   </div>
 
@@ -625,14 +652,14 @@ export default function CourseDetailPage() {
                                       <button
                                         onClick={() => setQIdx(prev => ({ ...prev, [id]: Math.max(0, curQIdx - 1) }))}
                                         disabled={curQIdx === 0}
-                                        className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-30"
+                                        className="flex-1 py-2.5 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container disabled:opacity-30 transition-colors"
                                       >
                                         ← Précédente
                                       </button>
                                       {curQIdx < totalQ - 1 ? (
                                         <button
                                           onClick={() => setQIdx(prev => ({ ...prev, [id]: curQIdx + 1 }))}
-                                          className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100"
+                                          className="flex-1 py-2.5 bg-surface-container text-primary rounded-xl text-sm font-bold hover:bg-surface-container-high transition-colors"
                                         >
                                           Suivante →
                                         </button>
@@ -640,7 +667,7 @@ export default function CourseDetailPage() {
                                         <button
                                           onClick={() => submitModQuiz(id, quiz)}
                                           disabled={answeredCount < totalQ}
-                                          className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
+                                          className="flex-1 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all"
                                         >
                                           Valider {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
                                         </button>
@@ -650,16 +677,17 @@ export default function CourseDetailPage() {
 
                                   {/* Result banner after submit */}
                                   {isSubmitted && (
-                                    <div className={`rounded-xl p-4 text-center ${quizPassed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
-                                      <p className={`text-2xl font-black mb-1 ${quizPassed ? "text-green-600" : "text-red-500"}`}>{scorePct}%</p>
+                                    <div className={`rounded-xl p-4 text-center ${quizPassed ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
+                                      <p className={`text-2xl font-black mb-1 ${quizPassed ? "text-emerald-600" : "text-red-500"}`}>{scorePct}%</p>
                                       <p className="font-semibold text-sm mb-1">
                                         {quizPassed ? "Quiz réussi ✓" : "Quiz échoué ✗"}
                                       </p>
-                                      <p className="text-xs text-gray-500 mb-3">
+                                      <p className="text-xs text-on-surface-variant mb-3">
                                         {correct}/{totalQ} bonnes réponses · {quizPassed ? "Module suivant débloqué" : "60% minimum requis"}
                                       </p>
                                       {!quizPassed && (
-                                        <button onClick={() => retryModQuiz(id)} className="rounded-lg bg-[#1a73e8] text-white px-5 py-2 text-sm font-semibold hover:opacity-90">
+                                        <button onClick={() => retryModQuiz(id)}
+                                          className="rounded-xl bg-primary text-on-primary px-5 py-2.5 text-sm font-bold shadow-md shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
                                           Réessayer
                                         </button>
                                       )}
@@ -672,16 +700,18 @@ export default function CourseDetailPage() {
                             {/* ─── PHASE: RESULT (passed) ─── */}
                             {phase === "result" && (
                               <div className="space-y-4">
-                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                                  <div className="text-3xl mb-2">✅</div>
-                                  <p className="font-bold text-green-700">Module validé</p>
-                                  <p className="text-xs text-gray-500 mt-1">Quiz réussi ✓ · Module suivant débloqué</p>
-                                  <button onClick={() => retryModQuiz(id)} className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline">
+                                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
+                                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <span className="material-symbols-outlined text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                                  </div>
+                                  <p className="font-bold text-emerald-700">Module validé</p>
+                                  <p className="text-xs text-on-surface-variant mt-1">Quiz réussi · Module suivant débloqué</p>
+                                  <button onClick={() => retryModQuiz(id)} className="mt-3 text-xs text-on-surface-variant hover:text-on-surface underline">
                                     Repasser le quiz
                                   </button>
                                 </div>
                                 <button onClick={() => goToPhase(id, "content")}
-                                  className="w-full py-2.5 border border-blue-200 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50">
+                                  className="w-full py-3 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container transition-colors">
                                   Relire le cours
                                 </button>
                               </div>
@@ -698,29 +728,47 @@ export default function CourseDetailPage() {
         </div>
 
         {/* ── Final test CTA ── */}
-        <div className="mt-8 bg-white rounded-xl p-6 shadow border border-blue-100 text-center">
-          <p className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-1">Certification</p>
-          <h3 className="font-bold text-lg text-[#1a73e8] mb-1">Test final certifié</h3>
-          <p className="text-sm text-gray-500 mb-2">20 questions · Score minimum 70% · Certificat GSN</p>
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm text-center space-y-3">
+          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Certification</p>
+          <h3 className="font-extrabold text-lg text-on-surface">Test final certifié</h3>
+          <p className="text-sm text-on-surface-variant">20 questions · Score minimum 70% · Certificat GSN</p>
           {passedCount < totalMods && totalMods > 0 && (
-            <p className="text-xs text-yellow-600 bg-yellow-50 rounded-lg px-3 py-2 mb-4 inline-block">
-              {passedCount}/{totalMods} modules validés — complète tous les modules pour accéder au test
-            </p>
+            <div className="inline-flex items-center gap-2 bg-tertiary-fixed/40 text-tertiary rounded-xl px-4 py-2 text-xs font-bold">
+              <span className="material-symbols-outlined text-[16px]">info</span>
+              {passedCount}/{totalMods} modules validés — complète tous les modules d&apos;abord
+            </div>
           )}
-          <Link href={`/learn/${courseId}/test`} className="inline-block rounded-lg bg-[#1a73e8] text-white px-8 py-3 font-semibold hover:opacity-90">
-            Passer le test →
-          </Link>
+          <div className="pt-1">
+            <Link href={`/learn/${courseId}/test`}
+              className="inline-block bg-primary text-on-primary px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
+              Passer le test →
+            </Link>
+          </div>
         </div>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-blue-100 shadow-[0_-4px_20px_rgba(26,115,232,0.08)]">
-        <div className="max-w-4xl mx-auto grid grid-cols-5 text-sm">
-          <Link href="/dashboard" className="py-3 text-center text-gray-600">Accueil</Link>
-          <Link href="/learn" className="py-3 text-center text-[#1a73e8] font-semibold">Apprendre</Link>
-          <Link href="/missions" className="py-3 text-center text-gray-600">Missions</Link>
-          <Link href="/wallet" className="py-3 text-center text-gray-600">Wallet</Link>
-          <Link href="/score" className="py-3 text-center text-gray-600">Score</Link>
-        </div>
+      {/* Bottom nav */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
+        <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">home</span>
+          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+        </Link>
+        <Link href="/learn" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+        </Link>
+        <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">assignment</span>
+          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+        </Link>
+        <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">account_balance_wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+        </Link>
+        <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">stars</span>
+          <span className="text-[10px] font-medium mt-0.5">Score</span>
+        </Link>
       </nav>
     </main>
   );
