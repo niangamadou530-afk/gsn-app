@@ -25,7 +25,7 @@ export default function CertificatePage() {
     ]);
 
     if (courseRes.error || !courseRes.data) { router.replace(`/learn/${courseId}/test`); return; }
-    if (!courseRes.data.completed) { router.replace(`/learn/${courseId}/test`); return; }
+    if (!courseRes.data.certificate_id) { router.replace(`/learn/${courseId}/test`); return; }
 
     setCourse(courseRes.data);
     setUserName(profileRes.data?.name ?? "Apprenant");

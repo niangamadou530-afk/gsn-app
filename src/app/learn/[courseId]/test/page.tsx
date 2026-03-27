@@ -17,8 +17,11 @@ export default function TestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockedMsg, setBlockedMsg] = useState("");
 
   useEffect(() => { init(); }, [courseId]);
 
@@ -36,11 +39,39 @@ export default function TestPage() {
     if (error || !data) { router.replace("/learn"); return; }
     setCourse(data);
 
-    try {
-      const weeks = Array.isArray(data.modules) && data.modules[0]?.week !== undefined
-        ? data.modules
-        : [];
+    const weeks = Array.isArray(data.modules) && data.modules[0]?.week !== undefined
+      ? data.modules
+      : [];
+    const totalMods = weeks.reduce((n: number, w: any) => n + w.modules.length, 0);
 
+    // If saved questions exist → load them directly (never regenerate)
+    if (data.quiz_questions && Array.isArray(data.quiz_questions) && data.quiz_questions.length > 0) {
+      setQuestions(data.quiz_questions);
+      // If already taken, show stored result
+      if (data.test_score !== null && data.test_score !== undefined) {
+        setScore(data.test_score);
+        setSubmitted(true);
+      }
+      setLoading(false);
+      return;
+    }
+
+    // No saved questions → check if all modules are done
+    const passedCount = (data.quiz_passed ?? []).length;
+    const doneCount = (data.modules_done ?? []).length;
+    const effectiveDone = Math.max(passedCount, doneCount);
+
+    if (effectiveDone < totalMods && totalMods > 0) {
+      setBlocked(true);
+      setBlockedMsg(`Complète tous les modules du cours avant de passer le test. (${effectiveDone}/${totalMods} modules terminés)`);
+      setLoading(false);
+      return;
+    }
+
+    // All modules done → generate questions
+    setGenerating(true);
+    setLoading(false);
+    try {
       const res = await fetch("/api/quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,11 +79,18 @@ export default function TestPage() {
       });
       const quiz = await res.json();
       if (!res.ok) throw new Error(quiz.error);
-      setQuestions(quiz.questions ?? []);
+      const qs: Question[] = quiz.questions ?? [];
+      setQuestions(qs);
+
+      // Save questions to DB (never regenerate again)
+      await supabase
+        .from("user_courses")
+        .update({ quiz_questions: qs })
+        .eq("id", courseId);
     } catch (e: any) {
       setError("Impossible de générer le test : " + e.message);
     } finally {
-      setLoading(false);
+      setGenerating(false);
     }
   }
 
@@ -63,7 +101,7 @@ export default function TestPage() {
 
   async function submit() {
     if (Object.keys(answers).length < questions.length) {
-      alert("Réponds à toutes les questions avant de soumettre.");
+      alert(`Réponds à toutes les ${questions.length} questions avant de soumettre.`);
       return;
     }
 
@@ -71,46 +109,51 @@ export default function TestPage() {
     const pct = Math.round((correct / questions.length) * 100);
     setScore(pct);
     setSubmitted(true);
-
     setSaving(true);
+
     try {
-      const certId = `GSN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      const alreadyCertified = course?.completed && course?.certificate_id;
+      const certId = alreadyCertified
+        ? course.certificate_id
+        : `GSN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      await supabase
-        .from("user_courses")
-        .update({
-          test_score: pct,
-          ...(pct >= 70 && {
-            completed: true,
-            certificate_id: certId,
-            completed_at: new Date().toISOString(),
-          }),
-        })
-        .eq("id", courseId);
+      await supabase.from("user_courses").update({
+        test_score: pct,
+        ...(!alreadyCertified && pct >= 70 && {
+          completed: true,
+          certificate_id: certId,
+          completed_at: new Date().toISOString(),
+        }),
+      }).eq("id", courseId);
 
-      if (pct >= 70) {
-        const { data: auth } = await supabase.auth.getUser();
-        if (auth.user) {
+      // Only award points + skill on FIRST certification
+      if (!alreadyCertified && pct >= 70) {
+        const { data: authData } = await supabase.auth.getUser();
+        if (authData.user) {
           const { data: profile } = await supabase
             .from("users")
             .select("score, skills")
-            .eq("id", auth.user.id)
+            .eq("id", authData.user.id)
             .single();
 
+          const weeksCount = Array.isArray(course?.modules) ? course.modules.length : 0;
+          const domain = (course?.title ?? "Formation").split("—")[0].trim();
+
           const newSkill = {
-            domain: course?.title ?? "Formation",
+            domain,
+            title: course?.title ?? "Formation",
             score: pct,
             date: new Date().toISOString().split("T")[0],
             cert_id: certId,
+            weeks: weeksCount,
           };
 
-          await supabase
-            .from("users")
-            .update({
-              score: (profile?.score ?? 0) + 20,
-              skills: [...(Array.isArray(profile?.skills) ? profile.skills : []), newSkill],
-            })
-            .eq("id", auth.user.id);
+          await supabase.from("users").update({
+            score: (profile?.score ?? 0) + 5,
+            skills: [...(Array.isArray(profile?.skills) ? profile.skills : []), newSkill],
+          }).eq("id", authData.user.id);
+
+          setCourse((prev: any) => ({ ...prev, completed: true, certificate_id: certId }));
         }
       }
     } catch (e) {
@@ -126,10 +169,30 @@ export default function TestPage() {
     setScore(0);
   }
 
+  // ── Render ──────────────────────────────────────────────
+
   if (loading) return (
+    <div className="flex h-screen items-center justify-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+    </div>
+  );
+
+  if (blocked) return (
+    <div className="max-w-md mx-auto mt-24 p-8 text-center bg-white rounded-xl shadow border border-yellow-200">
+      <div className="text-4xl mb-4">🔒</div>
+      <h2 className="font-bold text-lg text-gray-800 mb-2">Test verrouillé</h2>
+      <p className="text-gray-500 text-sm mb-6">{blockedMsg}</p>
+      <Link href={`/learn/${courseId}`} className="inline-block rounded-lg bg-[#1a73e8] text-white px-6 py-3 font-semibold hover:opacity-90">
+        Retourner au cours
+      </Link>
+    </div>
+  );
+
+  if (generating) return (
     <div className="flex flex-col h-screen items-center justify-center space-y-4">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       <p className="text-blue-600 font-medium">L&apos;IA génère ton test de certification…</p>
+      <p className="text-xs text-gray-400">Une seule génération — le test sera sauvegardé</p>
     </div>
   );
 
@@ -140,6 +203,8 @@ export default function TestPage() {
     </div>
   );
 
+  const correctCount = questions.filter(q => answers[q.id] === q.answer).length;
+
   return (
     <main className="min-h-screen bg-[#f4f8ff] pb-24">
       <div className="max-w-3xl mx-auto p-6">
@@ -148,7 +213,7 @@ export default function TestPage() {
         <div className="mb-6">
           <Link href={`/learn/${courseId}`} className="text-sm text-blue-600 hover:underline">← Retour au parcours</Link>
           <h1 className="text-2xl font-bold text-[#1a73e8] mt-2">Test final certifié</h1>
-          <p className="text-sm text-gray-500">{course?.title} · 20 questions · Score minimum 70%</p>
+          <p className="text-sm text-gray-500">{course?.title} · {questions.length} questions · Score minimum 70%</p>
         </div>
 
         {/* Result banner */}
@@ -158,11 +223,11 @@ export default function TestPage() {
             <p className="font-bold text-lg mb-1">{score >= 70 ? "Félicitations ! 🎉" : "Pas encore…"}</p>
             <p className="text-sm text-gray-600 mb-4">
               {score >= 70
-                ? `Tu as répondu correctement à ${questions.filter(q => answers[q.id] === q.answer).length} / ${questions.length} questions. Certificat GSN débloqué !`
-                : `${questions.filter(q => answers[q.id] === q.answer).length} / ${questions.length} bonnes réponses. Il faut 70% pour valider.`}
+                ? `${correctCount} / ${questions.length} bonnes réponses. Certificat GSN débloqué !`
+                : `${correctCount} / ${questions.length} bonnes réponses. Il faut 70% pour valider.`}
             </p>
             <div className="flex flex-wrap gap-3 justify-center">
-              {score >= 70 ? (
+              {(score >= 70 || course?.certificate_id) ? (
                 <>
                   <Link href={`/learn/${courseId}/certificate`} className="rounded-lg bg-[#1a73e8] text-white px-6 py-2.5 font-semibold hover:opacity-90">
                     Voir mon certificat →
@@ -171,16 +236,10 @@ export default function TestPage() {
                     Skill Passport
                   </Link>
                 </>
-              ) : (
-                <>
-                  <button onClick={retry} className="rounded-lg bg-[#1a73e8] text-white px-6 py-2.5 font-semibold hover:opacity-90">
-                    Réessayer
-                  </button>
-                  <Link href={`/learn/${courseId}`} className="rounded-lg border border-blue-200 text-blue-600 px-6 py-2.5 font-semibold hover:bg-blue-50">
-                    Revoir le cours
-                  </Link>
-                </>
-              )}
+              ) : null}
+              <button onClick={retry} className="rounded-lg border border-gray-200 text-gray-600 px-6 py-2.5 font-semibold hover:bg-gray-50">
+                Réessayer
+              </button>
             </div>
           </div>
         )}
@@ -197,12 +256,9 @@ export default function TestPage() {
             const isWrong = submitted && userAns !== undefined && userAns !== q.answer;
 
             return (
-              <div
-                key={q.id}
-                className={`bg-white rounded-xl p-5 shadow border ${isCorrect ? "border-green-300" : isWrong ? "border-red-200" : "border-blue-100"}`}
-              >
-                <p className="font-semibold mb-3 text-sm">
-                  <span className="text-blue-600 font-bold">Q{qi + 1}.</span> {q.question}
+              <div key={q.id} className={`bg-white rounded-xl p-5 shadow border ${isCorrect ? "border-green-300" : isWrong ? "border-red-200" : "border-blue-100"}`}>
+                <p className="font-semibold mb-3 text-sm leading-relaxed">
+                  <span className="text-blue-600 font-bold">Q{qi + 1}. </span>{q.question}
                 </p>
                 <div className="space-y-2">
                   {q.options.map((opt, oi) => {
@@ -224,7 +280,7 @@ export default function TestPage() {
                   })}
                 </div>
                 {submitted && q.explanation && (
-                  <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5">
+                  <p className="mt-3 text-xs text-gray-500 bg-gray-50 rounded-lg p-2.5 leading-relaxed">
                     💡 {q.explanation}
                   </p>
                 )}
@@ -240,7 +296,7 @@ export default function TestPage() {
             disabled={saving}
             className="w-full mt-8 py-4 bg-[#1a73e8] text-white rounded-xl font-bold text-lg hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? "Enregistrement…" : "Soumettre mes réponses"}
+            {saving ? "Enregistrement…" : `Soumettre mes ${questions.length} réponses`}
           </button>
         )}
       </div>
