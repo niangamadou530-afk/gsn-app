@@ -13,7 +13,7 @@ type ModContent = { sections: Section[]; quiz: QuizQ[] };
 type Module = {
   id: string; title: string; description: string;
   keywords: string[]; exercises: string;
-  quiz: QuizQ | QuizQ[]; // original 1 or array from content
+  quiz: QuizQ | QuizQ[];
   content?: ModContent;
 };
 type Week = { week: number; title: string; objective: string; modules: Module[] };
@@ -33,13 +33,43 @@ function modId(w: Week, mi: number, m: Module): string {
 }
 
 function flatIds(weeks: Week[]): string[] {
-  return weeks.flatMap((w, _wi) => w.modules.map((m, mi) => modId(w, mi, m)));
+  return weeks.flatMap((w) => w.modules.map((m, mi) => modId(w, mi, m)));
 }
 
 function isAccessible(id: string, allIds: string[], passed: Set<string>): boolean {
   const idx = allIds.indexOf(id);
   if (idx <= 0) return true;
   return passed.has(allIds[idx - 1]);
+}
+
+// Simple markdown → HTML (bold, code, headings, bullets)
+function mdToHtml(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  let inUl = false;
+
+  for (const raw of lines) {
+    let line = raw
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/`(.+?)`/g, '<code class="bg-blue-50 text-blue-700 px-1 rounded text-xs font-mono">$1</code>');
+
+    if (/^#{1,3} /.test(line)) {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      line = line.replace(/^#{1,3} (.+)$/, '<h4 class="font-bold text-[#1a73e8] mt-4 mb-1 text-sm">$1</h4>');
+      out.push(line);
+    } else if (/^[-*] /.test(line)) {
+      if (!inUl) { out.push('<ul class="list-disc ml-5 space-y-0.5 text-sm text-gray-700">'); inUl = true; }
+      out.push("<li>" + line.replace(/^[-*] /, "") + "</li>");
+    } else if (line.trim() === "") {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      out.push("");
+    } else {
+      if (inUl) { out.push("</ul>"); inUl = false; }
+      out.push('<p class="text-sm text-gray-700 leading-relaxed">' + line + "</p>");
+    }
+  }
+  if (inUl) out.push("</ul>");
+  return out.join("\n");
 }
 
 // ── Component ────────────────────────────────────────────────
@@ -64,7 +94,9 @@ export default function CourseDetailPage() {
   const [mLoading, setMLoading] = useState<Set<string>>(new Set());
   const [yt, setYt] = useState<Record<string, YTVideo[]>>({});
   const [ytLoading, setYtLoading] = useState<Set<string>>(new Set());
-  const [ytFallback, setYtFallback] = useState(false);
+  const [ytFallbackSet, setYtFallbackSet] = useState<Set<string>>(new Set());
+  // Per-module current quiz question index
+  const [qIdx, setQIdx] = useState<Record<string, number>>({});
 
   useEffect(() => { load(); }, [courseId]);
 
@@ -84,7 +116,6 @@ export default function CourseDetailPage() {
     setQuizPassed(passed);
     setExDone(exs);
 
-    // Init phases + cached content
     const initialPhases: Record<string, ModPhase> = {};
     const initialContent: Record<string, ModContent> = {};
     const weeks: Week[] = Array.isArray(data.modules) ? data.modules : [];
@@ -118,7 +149,6 @@ export default function CourseDetailPage() {
 
       setMContent(prev => ({ ...prev, [id]: content }));
 
-      // Persist content into the JSONB
       if (course) {
         const updatedModules = (course.modules as Week[]).map(wk => ({
           ...wk,
@@ -144,12 +174,22 @@ export default function CourseDetailPage() {
       const res = await fetch(`/api/youtube?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       setYt(prev => ({ ...prev, [id]: data.items ?? [] }));
-      if (data.fallback) setYtFallback(true);
-    } catch { setYt(prev => ({ ...prev, [id]: [] })); }
+      if (data.fallback || !data.items?.length) {
+        setYtFallbackSet(prev => new Set([...prev, id]));
+      }
+    } catch {
+      setYt(prev => ({ ...prev, [id]: [] }));
+      setYtFallbackSet(prev => new Set([...prev, id]));
+    }
     finally {
       setYtLoading(prev => { const s = new Set(prev); s.delete(id); return s; });
     }
   }, [yt, ytLoading]);
+
+  function goToPhase(id: string, phase: ModPhase) {
+    setPhases(prev => ({ ...prev, [id]: phase }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function toggleMod(id: string, m: Module, w: Week) {
     if (openMod === id) { setOpenMod(null); return; }
@@ -162,13 +202,13 @@ export default function CourseDetailPage() {
     if (!(exText[id] ?? "").trim()) { alert("Écris ta réponse avant de valider."); return; }
     const next = new Set([...exDone, id]);
     setExDone(next);
-    setPhases(prev => ({ ...prev, [id]: "quiz" }));
+    goToPhase(id, "quiz");
     await supabase.from("user_courses").update({ exercises_submitted: Array.from(next) }).eq("id", courseId);
   }
 
-  function pickAnswer(modId: string, qi: number, oi: number) {
-    if (mSubmitted[modId]) return;
-    setMAnswers(prev => ({ ...prev, [modId]: { ...(prev[modId] ?? {}), [qi]: oi } }));
+  function pickAnswer(mid: string, qi: number, oi: number) {
+    if (mSubmitted[mid]) return;
+    setMAnswers(prev => ({ ...prev, [mid]: { ...(prev[mid] ?? {}), [qi]: oi } }));
   }
 
   async function submitModQuiz(id: string, quiz: QuizQ[]) {
@@ -182,9 +222,9 @@ export default function CourseDetailPage() {
     const pct = Math.round((correct / quiz.length) * 100);
     const passed = pct >= 60;
 
-    setPhases(prev => ({ ...prev, [id]: "result" }));
-
     if (passed) {
+      // Only advance to "result" phase when quiz is passed
+      goToPhase(id, "result");
       const nextPassed = new Set([...quizPassed, id]);
       setQuizPassed(nextPassed);
       await supabase.from("user_courses").update({
@@ -192,12 +232,15 @@ export default function CourseDetailPage() {
         modules_done: Array.from(nextPassed),
       }).eq("id", courseId);
     }
+    // If failed: stay on "quiz" phase with isSubmitted=true (shows score + retry)
   }
 
   function retryModQuiz(id: string) {
     setMSubmitted(prev => ({ ...prev, [id]: false }));
     setMAnswers(prev => ({ ...prev, [id]: {} }));
+    setQIdx(prev => ({ ...prev, [id]: 0 }));
     setPhases(prev => ({ ...prev, [id]: "quiz" }));
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   // ── Render ────────────────────────────────────────────────
@@ -271,6 +314,8 @@ export default function CourseDetailPage() {
                     const quiz: QuizQ[] = content?.quiz ?? (Array.isArray(m.quiz) ? m.quiz : m.quiz ? [m.quiz as QuizQ] : []);
                     const ans = mAnswers[id] ?? {};
                     const isSubmitted = mSubmitted[id] ?? false;
+                    const curQIdx = qIdx[id] ?? 0;
+                    const ytFallback = ytFallbackSet.has(id);
 
                     return (
                       <div key={mi} className={`${isPassed ? "bg-green-50" : !accessible ? "bg-gray-50 opacity-60" : ""}`}>
@@ -296,6 +341,27 @@ export default function CourseDetailPage() {
                         {isOpen && (
                           <div className="px-4 pb-6 border-t border-blue-50 pt-4 space-y-5">
 
+                            {/* Phase tabs (always visible) */}
+                            <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+                              {(["content", "exercise", "quiz", "result"] as ModPhase[]).map((p) => {
+                                const labels: Record<ModPhase, string> = { content: "Cours", exercise: "Exercice", quiz: "Quiz", result: "Résultat" };
+                                const isActive = phase === p;
+                                const isDisabled = (p === "exercise" && phase === "content") ||
+                                  (p === "quiz" && !exDone.has(id) && phase === "content") ||
+                                  (p === "result" && !isPassed);
+                                return (
+                                  <button
+                                    key={p}
+                                    disabled={isDisabled}
+                                    onClick={() => !isDisabled && goToPhase(id, p)}
+                                    className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-colors ${isActive ? "bg-white text-[#1a73e8] shadow-sm" : isDisabled ? "text-gray-300 cursor-default" : "text-gray-500 hover:text-gray-700"}`}
+                                  >
+                                    {labels[p]}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
                             {/* ─── PHASE: CONTENT ─── */}
                             {phase === "content" && (
                               <>
@@ -308,8 +374,11 @@ export default function CourseDetailPage() {
                                   <div className="space-y-5">
                                     {content.sections.map((sec, si) => (
                                       <div key={si} className="border-l-4 border-blue-200 pl-4">
-                                        <h4 className="font-bold text-[#1a73e8] mb-2">{sec.title}</h4>
-                                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{sec.content}</p>
+                                        <h4 className="font-bold text-[#1a73e8] mb-2 text-sm">{sec.title}</h4>
+                                        <div
+                                          className="space-y-1"
+                                          dangerouslySetInnerHTML={{ __html: mdToHtml(sec.content) }}
+                                        />
                                       </div>
                                     ))}
                                   </div>
@@ -354,7 +423,7 @@ export default function CourseDetailPage() {
                                 )}
 
                                 <button
-                                  onClick={() => setPhases(prev => ({ ...prev, [id]: "exercise" }))}
+                                  onClick={() => goToPhase(id, "exercise")}
                                   className="w-full py-3 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90"
                                 >
                                   J&apos;ai lu ce module → Passer à l&apos;exercice
@@ -380,12 +449,13 @@ export default function CourseDetailPage() {
                                   />
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => setPhases(prev => ({ ...prev, [id]: "content" }))}
+                                  <button onClick={() => goToPhase(id, "content")}
                                     className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50">
-                                    ← Relire le module
+                                    ← Relire le cours
                                   </button>
                                   <button onClick={() => submitExercise(id)}
-                                    className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90">
+                                    disabled={!(exText[id] ?? "").trim()}
+                                    className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50">
                                     Valider l&apos;exercice →
                                   </button>
                                 </div>
@@ -393,77 +463,121 @@ export default function CourseDetailPage() {
                             )}
 
                             {/* ─── PHASE: QUIZ ─── */}
-                            {phase === "quiz" && (
-                              <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs font-bold text-blue-600 uppercase tracking-wide">Quiz de validation · {quiz.length} questions · Score minimum 60%</p>
-                                  {!isSubmitted && <p className="text-xs text-gray-400">{Object.keys(ans).length}/{quiz.length} réponses</p>}
-                                </div>
+                            {phase === "quiz" && quiz.length > 0 && (() => {
+                              const q = quiz[curQIdx];
+                              const userAns = ans[curQIdx];
+                              const totalQ = quiz.length;
+                              const answeredCount = Object.keys(ans).length;
+                              const correct = quiz.filter((qq, i) => ans[i] === qq.answer).length;
+                              const scorePct = Math.round((correct / totalQ) * 100);
+                              const passed = scorePct >= 60;
 
-                                {quiz.map((q, qi) => {
-                                  const userAns = ans[qi];
-                                  return (
-                                    <div key={qi} className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
-                                      <p className="font-semibold text-sm mb-3 leading-relaxed">
-                                        <span className="text-blue-600 font-bold">Q{qi + 1}. </span>{q.question}
-                                      </p>
-                                      <div className="space-y-2">
-                                        {q.options.map((opt, oi) => {
-                                          let cls = "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ";
-                                          if (!isSubmitted) {
-                                            cls += userAns === oi ? "border-blue-500 bg-blue-50 font-semibold" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50";
-                                          } else {
-                                            if (oi === q.answer) cls += "border-green-500 bg-green-50 text-green-800 font-semibold";
-                                            else if (userAns === oi) cls += "border-red-300 bg-red-50 text-red-700";
-                                            else cls += "border-gray-100 text-gray-400";
-                                          }
-                                          return (
-                                            <button key={oi} className={cls} onClick={() => pickAnswer(id, qi, oi)} disabled={isSubmitted}>
-                                              <span className="font-bold mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                      {isSubmitted && q.explanation && (
-                                        <p className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-2">💡 {q.explanation}</p>
-                                      )}
+                              return (
+                                <div className="space-y-4">
+                                  {/* Progress dots */}
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wide">Quiz · 60% requis</p>
+                                    <div className="flex gap-1">
+                                      {quiz.map((_, i) => (
+                                        <button
+                                          key={i}
+                                          onClick={() => setQIdx(prev => ({ ...prev, [id]: i }))}
+                                          className={`h-2 rounded-full transition-all ${i === curQIdx ? "w-5 bg-blue-600" : ans[i] !== undefined ? "w-2 bg-blue-300" : "w-2 bg-gray-300"}`}
+                                        />
+                                      ))}
                                     </div>
-                                  );
-                                })}
+                                    <span className="text-xs text-gray-400">{curQIdx + 1}/{totalQ}</span>
+                                  </div>
 
-                                {!isSubmitted ? (
-                                  <button onClick={() => submitModQuiz(id, quiz)}
-                                    className="w-full py-3 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90">
-                                    Valider le quiz
-                                  </button>
-                                ) : (() => {
-                                  const correct = quiz.filter((q, i) => ans[i] === q.answer).length;
-                                  const scorePct = Math.round((correct / quiz.length) * 100);
-                                  const passed = scorePct >= 60;
-                                  return (
+                                  {/* Current question */}
+                                  <div className="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                                    <p className="font-semibold text-sm mb-3 leading-relaxed">
+                                      <span className="text-blue-600 font-bold">Q{curQIdx + 1}. </span>{q.question}
+                                    </p>
+                                    <div className="space-y-2">
+                                      {q.options.map((opt, oi) => {
+                                        let cls = "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors ";
+                                        if (!isSubmitted) {
+                                          cls += userAns === oi ? "border-blue-500 bg-blue-50 font-semibold" : "border-gray-200 hover:border-blue-300 hover:bg-blue-50";
+                                        } else {
+                                          if (oi === q.answer) cls += "border-green-500 bg-green-50 text-green-800 font-semibold";
+                                          else if (userAns === oi) cls += "border-red-300 bg-red-50 text-red-700";
+                                          else cls += "border-gray-100 text-gray-400";
+                                        }
+                                        return (
+                                          <button key={oi} className={cls} onClick={() => pickAnswer(id, curQIdx, oi)} disabled={isSubmitted}>
+                                            <span className="font-bold mr-2">{String.fromCharCode(65 + oi)}.</span>{opt}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    {isSubmitted && q.explanation && (
+                                      <p className="mt-2 text-xs text-gray-500 bg-gray-50 rounded-lg p-2">💡 {q.explanation}</p>
+                                    )}
+                                  </div>
+
+                                  {/* Navigation */}
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => setQIdx(prev => ({ ...prev, [id]: Math.max(0, curQIdx - 1) }))}
+                                      disabled={curQIdx === 0}
+                                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-30"
+                                    >
+                                      ← Précédente
+                                    </button>
+                                    {curQIdx < totalQ - 1 ? (
+                                      <button
+                                        onClick={() => setQIdx(prev => ({ ...prev, [id]: curQIdx + 1 }))}
+                                        className="flex-1 py-2.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-100"
+                                      >
+                                        Suivante →
+                                      </button>
+                                    ) : !isSubmitted ? (
+                                      <button
+                                        onClick={() => submitModQuiz(id, quiz)}
+                                        disabled={answeredCount < totalQ}
+                                        className="flex-1 py-2.5 bg-[#1a73e8] text-white rounded-lg font-semibold text-sm hover:opacity-90 disabled:opacity-50"
+                                      >
+                                        Valider le quiz {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
+                                      </button>
+                                    ) : null}
+                                  </div>
+
+                                  {/* Result after submit */}
+                                  {isSubmitted && (
                                     <div className={`rounded-xl p-4 text-center ${passed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}`}>
                                       <p className={`text-2xl font-black mb-1 ${passed ? "text-green-600" : "text-red-500"}`}>{scorePct}%</p>
-                                      <p className="font-semibold text-sm mb-1">{passed ? "Module validé ! ✓" : "Score insuffisant"}</p>
-                                      <p className="text-xs text-gray-500 mb-3">{correct}/{quiz.length} bonnes réponses · {passed ? "Module suivant débloqué" : "60% requis pour valider"}</p>
+                                      <p className="font-semibold text-sm mb-1">
+                                        {passed ? "Quiz réussi ✓" : "Quiz échoué ✗"}
+                                      </p>
+                                      <p className="text-xs text-gray-500 mb-3">
+                                        {correct}/{totalQ} bonnes réponses · {passed ? "Module suivant débloqué" : "60% minimum requis"}
+                                      </p>
                                       {!passed && (
                                         <button onClick={() => retryModQuiz(id)} className="rounded-lg bg-[#1a73e8] text-white px-5 py-2 text-sm font-semibold hover:opacity-90">
                                           Réessayer le quiz
                                         </button>
                                       )}
                                     </div>
-                                  );
-                                })()}
-                              </div>
-                            )}
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* ─── PHASE: RESULT (passed) ─── */}
                             {phase === "result" && (
-                              <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-                                <div className="text-3xl mb-2">✅</div>
-                                <p className="font-bold text-green-700">Module validé</p>
-                                <p className="text-xs text-gray-500 mt-1">Quiz réussi · Module suivant débloqué</p>
-                                <button onClick={() => retryModQuiz(id)} className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline">
-                                  Repasser le quiz
+                              <div className="space-y-4">
+                                <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+                                  <div className="text-3xl mb-2">✅</div>
+                                  <p className="font-bold text-green-700">Module validé</p>
+                                  <p className="text-xs text-gray-500 mt-1">Quiz réussi ✓ · Module suivant débloqué</p>
+                                  <button onClick={() => retryModQuiz(id)} className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline">
+                                    Repasser le quiz
+                                  </button>
+                                </div>
+                                <button onClick={() => goToPhase(id, "content")}
+                                  className="w-full py-2.5 border border-blue-200 text-blue-600 rounded-lg text-sm font-semibold hover:bg-blue-50">
+                                  Relire le cours
                                 </button>
                               </div>
                             )}

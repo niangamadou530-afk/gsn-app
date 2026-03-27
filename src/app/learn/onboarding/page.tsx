@@ -16,7 +16,7 @@ const STEPS = [
   { id: "domain",  question: "Quel domaine t'intéresse ?" },
   { id: "level",   question: "Quel est ton niveau actuel ?",   options: ["Débutant", "Intermédiaire", "Avancé"] },
   { id: "goal",    question: "Quel est ton objectif ?",        options: ["Premier emploi", "Freelance", "Reconversion"] },
-  { id: "weeks",   question: "Sur combien de semaines ?",      options: ["4 semaines", "8 semaines", "12 semaines", "16 semaines"] },
+  { id: "weeks",   question: "Sur combien de semaines ?",      options: ["2 semaines", "4 semaines", "8 semaines", "12 semaines", "16 semaines"] },
 ];
 
 export default function OnboardingPage() {
@@ -114,7 +114,7 @@ Règles : exactement ${weeksNum} semaines, 3 modules par semaine, index answer (
         .from("user_courses")
         .insert({
           user_id: user.id,
-          title: `${final.domain} — ${final.weeks}`,
+          title: `${final.domain} — ${final.level} — ${final.weeks}`,
           modules: weeks,
         })
         .select("id")

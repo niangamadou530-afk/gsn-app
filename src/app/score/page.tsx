@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type Skill = { domain: string; title?: string; score: number; date: string; cert_id: string; weeks?: number };
+type Skill = { domain: string; title?: string; score: number; date: string; cert_id: string; weeks?: number; level?: string };
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "—";
@@ -143,6 +143,7 @@ export default function ScorePage() {
                         <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                           <span className="text-xs text-gray-400">📅 {formatDate(skill.date)}</span>
                           {skill.weeks && <span className="text-xs text-gray-400">⏱ {skill.weeks} semaine{skill.weeks > 1 ? "s" : ""}</span>}
+                          {skill.level && <span className="text-xs text-gray-400">📊 {skill.level}</span>}
                         </div>
                         <p className="font-mono text-xs text-gray-400 mt-1">{skill.cert_id}</p>
                       </div>

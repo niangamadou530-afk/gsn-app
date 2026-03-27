@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     url.searchParams.set("maxResults", "3");
     url.searchParams.set("relevanceLanguage", "fr");
     url.searchParams.set("safeSearch", "strict");
+    url.searchParams.set("videoEmbeddable", "true");
 
     const res = await fetch(url.toString());
     const data = await res.json();

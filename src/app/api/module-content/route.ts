@@ -28,7 +28,7 @@ Réponds UNIQUEMENT avec ce JSON valide (sans texte autour, sans markdown):
   "sections": [
     {
       "title": "Titre de la sous-section",
-      "content": "Contenu pédagogique détaillé de cette sous-section. Minimum 200 mots. Explique les concepts, donne des exemples concrets, des analogies et des cas pratiques. Utilise un langage clair et accessible au niveau indiqué."
+      "content": "Contenu pédagogique détaillé. Utilise le markdown dans le contenu : **texte important** pour les termes clés, \`concept\` pour les mots techniques, ## Sous-titre pour les sous-parties, - item pour les listes. Minimum 200 mots par section."
     }
   ],
   "quiz": [
@@ -43,7 +43,7 @@ Réponds UNIQUEMENT avec ce JSON valide (sans texte autour, sans markdown):
 
 Règles strictes:
 - Exactement 5 sous-sections dans "sections"
-- Chaque sous-section: minimum 200 mots de contenu pédagogique réel
+- Chaque sous-section: minimum 200 mots avec du markdown (**gras**, \`code\`, - listes, ## titres)
 - Exactement 5 questions dans "quiz"
 - Les questions doivent tester la compréhension, pas la mémorisation
 - answer = index (0 à 3) de la bonne réponse

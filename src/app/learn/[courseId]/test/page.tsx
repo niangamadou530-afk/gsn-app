@@ -137,7 +137,9 @@ export default function TestPage() {
             .single();
 
           const weeksCount = Array.isArray(course?.modules) ? course.modules.length : 0;
-          const domain = (course?.title ?? "Formation").split("—")[0].trim();
+          const titleParts = (course?.title ?? "Formation").split("—").map((s: string) => s.trim());
+          const domain = titleParts[0];
+          const level = titleParts.length >= 3 ? titleParts[1] : undefined;
 
           const newSkill = {
             domain,
@@ -146,6 +148,7 @@ export default function TestPage() {
             date: new Date().toISOString().split("T")[0],
             cert_id: certId,
             weeks: weeksCount,
+            ...(level && { level }),
           };
 
           await supabase.from("users").update({
