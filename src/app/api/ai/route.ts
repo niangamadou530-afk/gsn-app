@@ -25,8 +25,13 @@ export async function POST(req: Request) {
     const groq = new Groq({ apiKey });
 
     const completion = await groq.chat.completions.create({
-      messages: [{ role: "user", content: message }],
+      messages: [
+        { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans texte, sans markdown." },
+        { role: "user", content: message },
+      ],
       model: "llama-3.3-70b-versatile",
+      max_tokens: 4096,
+      temperature: 0.2,
     });
 
     const reply = completion.choices[0]?.message?.content ?? "";

@@ -1,130 +1,206 @@
 "use client";
 import { useState } from "react";
-import { supabase } from "@/lib/supabase"; 
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 
+const DOMAINS = [
+  "Développement Web",
+  "Design GFX",
+  "Marketing Digital",
+  "Maintenance Info",
+  "Agriculture",
+  "Autre",
+];
+
 const STEPS = [
-  {
-    id: "domain",
-    question: "Quel domaine t'intéresse ?",
-    options: ["Développement Web", "Design GFX", "Marketing Digital", "Maintenance Info", "Agriculture"],
-  },
-  {
-    id: "level",
-    question: "Quel est ton niveau actuel ?",
-    options: ["Débutant", "Intermédiaire", "Avancé"],
-  },
-  {
-    id: "goal",
-    question: "Quel est ton objectif ?",
-    options: ["Premier emploi", "Freelance", "Reconversion"],
-  },
+  { id: "domain",  question: "Quel domaine t'intéresse ?" },
+  { id: "level",   question: "Quel est ton niveau actuel ?",   options: ["Débutant", "Intermédiaire", "Avancé"] },
+  { id: "goal",    question: "Quel est ton objectif ?",        options: ["Premier emploi", "Freelance", "Reconversion"] },
+  { id: "weeks",   question: "Sur combien de semaines ?",      options: ["4 semaines", "8 semaines", "12 semaines", "16 semaines"] },
 ];
 
 export default function OnboardingPage() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState({ domain: "", level: "", goal: "" });
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({ domain: "", level: "", goal: "", weeks: "" });
+  const [customDomain, setCustomDomain] = useState("");
+  const [showCustom, setShowCustom] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSelect = (value: string) => {
-    const key = STEPS[currentStep].id;
-    const newAnswers = { ...answers, [key]: value };
-    setAnswers(newAnswers);
+  function pickOption(value: string) {
+    const key = STEPS[step].id as keyof typeof answers;
 
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      generatePath(newAnswers);
+    if (key === "domain" && value === "Autre") {
+      setShowCustom(true);
+      return;
     }
-  };
 
-  const generatePath = async (finalAnswers: any) => {
+    const next = { ...answers, [key]: value };
+    setAnswers(next);
+    setShowCustom(false);
+
+    if (step < STEPS.length - 1) {
+      setStep(step + 1);
+    } else {
+      generatePath(next);
+    }
+  }
+
+  function confirmCustomDomain() {
+    const domain = customDomain.trim();
+    if (!domain) return;
+    pickOption(domain);
+  }
+
+  async function generatePath(final: typeof answers) {
     setLoading(true);
     try {
-      // 1. Appel à l'API (Groq)
-      const response = await fetch("/api/ai", {
+      const weeksNum = parseInt(final.weeks);
+
+      const prompt = `Génère un parcours de formation de ${weeksNum} semaines.
+
+Profil: domaine="${final.domain}", niveau="${final.level}", objectif="${final.goal}"
+
+Réponds UNIQUEMENT avec un tableau JSON (sans texte autour) :
+[
+  {
+    "week": 1,
+    "title": "Titre de la semaine",
+    "objective": "Objectif principal",
+    "modules": [
+      {
+        "id": "w1m1",
+        "title": "Titre du module",
+        "description": "Description détaillée en 3 à 4 phrases expliquant les concepts et leur utilité pratique.",
+        "keywords": ["terme YouTube 1", "terme YouTube 2", "terme YouTube 3"],
+        "exercises": "Exercice pratique : description concrète de l'exercice.",
+        "quiz": {
+          "question": "Question de validation ?",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "answer": 0
+        }
+      }
+    ]
+  }
+]
+
+Règles : exactement ${weeksNum} semaines, 3 modules par semaine, index answer (0-3), tout en français.`;
+
+      const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: `Génère un parcours de formation de 3 modules précis pour un profil : ${JSON.stringify(finalAnswers)}. 
-          Réponds uniquement avec un tableau JSON sans texte autour : [{"title": "Nom du module", "description": "Contenu"}]`,
-        }),
+        body: JSON.stringify({ message: prompt }),
       });
 
-      const data = await response.json();
-      
-      if (!response.ok) throw new Error(data.error || "Erreur API");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur API");
 
-      // 2. Nettoyage de la réponse IA (pour éviter le crash du JSON.parse)
-      let modules;
+      let weeks: any[];
       try {
-        const cleanReply = data.reply.replace(/```json|```/g, "").trim();
-        modules = JSON.parse(cleanReply);
+        const cleaned = data.reply.replace(/```json|```/g, "").trim();
+        const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+        if (!arrMatch) throw new Error("Pas de tableau JSON");
+        weeks = JSON.parse(arrMatch[0]);
+        if (!Array.isArray(weeks) || !weeks[0]?.modules) throw new Error("Structure invalide");
       } catch (e) {
-        console.error("L'IA n'a pas envoyé de JSON valide:", data.reply);
-        throw new Error("Format de réponse IA invalide");
+        console.error("Parse error:", data.reply?.slice(0, 200));
+        throw new Error("La réponse IA n'est pas au bon format");
       }
 
-      // 3. Sauvegarde dans Supabase
       const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        alert("Tu dois être connecté !");
-        router.push("/login");
-        return;
-      }
+      if (!user) { router.push("/login"); return; }
 
-      const { error: insertError } = await supabase.from("user_courses").insert({
-        user_id: user.id,
-        title: `Parcours ${finalAnswers.domain}`,
-        modules: modules,
-      });
+      const { data: inserted, error: insertError } = await supabase
+        .from("user_courses")
+        .insert({
+          user_id: user.id,
+          title: `${final.domain} — ${final.weeks}`,
+          modules: weeks,
+        })
+        .select("id")
+        .single();
 
       if (insertError) throw insertError;
 
-      // 4. Succès -> Redirection vers la page Learn
-      router.push("/learn");
+      router.push(`/learn/${inserted.id}`);
 
-    } catch (error: any) {
-      console.error("Erreur complète:", error);
-      alert("Erreur : " + (error.message || "Impossible de générer le parcours"));
+    } catch (err: any) {
+      console.error(err);
+      alert("Erreur : " + (err.message || "Impossible de générer le parcours"));
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  if (loading) return (
-    <div className="flex flex-col h-screen items-center justify-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      <p className="text-blue-600 font-medium">L'IA de GSN prépare ton parcours... 🚀</p>
-    </div>
-  );
+  if (loading) {
+    return (
+      <div className="flex flex-col h-screen items-center justify-center space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <p className="text-blue-600 font-semibold">L&apos;IA prépare ton parcours…</p>
+        <p className="text-sm text-gray-400">Cela peut prendre 30 à 60 secondes</p>
+      </div>
+    );
+  }
+
+  const currentStep = STEPS[step];
+  const options = currentStep.id === "domain" ? DOMAINS : (currentStep as any).options as string[];
+  const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
     <div className="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow-lg border border-blue-100">
+      {/* Header */}
       <div className="mb-8">
-        <span className="text-sm font-bold text-blue-600 uppercase tracking-widest">GSN Learn</span>
-        <h1 className="text-2xl font-bold mt-2">{STEPS[currentStep].question}</h1>
-        <div className="w-full bg-gray-200 h-1 mt-4 rounded-full overflow-hidden">
-           <div 
-             className="bg-blue-600 h-1 transition-all duration-500" 
-             style={{ width: `${((currentStep + 1) / 3) * 100}%` }}
-           ></div>
+        <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">GSN Learn</span>
+        <h1 className="text-2xl font-bold mt-2">{currentStep.question}</h1>
+        <div className="w-full bg-gray-200 h-1.5 mt-4 rounded-full overflow-hidden">
+          <div
+            className="bg-blue-600 h-1.5 transition-all duration-500 rounded-full"
+            style={{ width: `${progress}%` }}
+          />
         </div>
+        <p className="text-xs text-gray-400 mt-1.5">Étape {step + 1} / {STEPS.length}</p>
       </div>
 
-      <div className="space-y-3">
-        {STEPS[currentStep].options.map((option) => (
+      {/* Custom domain input */}
+      {showCustom ? (
+        <div className="space-y-3">
+          <input
+            type="text"
+            value={customDomain}
+            onChange={(e) => setCustomDomain(e.target.value)}
+            placeholder="Ex : Comptabilité, Photographie, Couture…"
+            className="w-full p-4 border-2 border-blue-300 rounded-lg outline-none focus:border-blue-500 font-medium"
+            autoFocus
+            onKeyDown={(e) => e.key === "Enter" && confirmCustomDomain()}
+          />
           <button
-            key={option}
-            onClick={() => handleSelect(option)}
-            className="w-full p-4 text-left border-2 border-gray-100 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all font-medium active:scale-95"
+            onClick={confirmCustomDomain}
+            disabled={!customDomain.trim()}
+            className="w-full p-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50"
           >
-            {option}
+            Continuer →
           </button>
-        ))}
-      </div>
+          <button
+            onClick={() => setShowCustom(false)}
+            className="w-full text-sm text-gray-400 hover:text-gray-600 py-2"
+          >
+            ← Retour
+          </button>
+        </div>
+      ) : (
+        /* Options list */
+        <div className="space-y-3">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => pickOption(opt)}
+              className="w-full p-4 text-left border-2 border-gray-100 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all font-medium active:scale-95"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
