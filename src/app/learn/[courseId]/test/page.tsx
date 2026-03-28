@@ -258,53 +258,95 @@ export default function TestPage() {
           <p className="text-xs text-on-surface-variant mt-1.5">Score minimum 70% · Certificat GSN</p>
         </div>
 
-        {/* Result overlay */}
+        {/* Results — shown after submission */}
         {submitted && (
-          <div className="fixed inset-0 z-[60] bg-on-surface/40 backdrop-blur-md flex items-center justify-center p-6">
-            <div className="bg-surface-container-lowest w-full max-w-md rounded-3xl overflow-hidden shadow-2xl">
-              <div className="h-48 bg-gradient-to-br from-primary to-primary-container flex items-center justify-center relative">
-                <div className="w-32 h-32 rounded-full bg-white/10 backdrop-blur-md border-4 border-white/30 flex flex-col items-center justify-center text-on-primary">
-                  <span className="text-4xl font-extrabold">{score}%</span>
-                  <span className="text-[10px] font-bold tracking-widest uppercase opacity-80">Score</span>
-                </div>
+          <div className="space-y-6 mb-8">
+
+            {/* Score card */}
+            <div className="bg-gradient-to-br from-primary to-primary-container rounded-3xl p-8 text-center text-on-primary shadow-xl shadow-primary/20">
+              <div className="w-28 h-28 rounded-full bg-white/15 border-4 border-white/25 flex flex-col items-center justify-center mx-auto mb-5">
+                <span className="text-5xl font-extrabold">{score}%</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase opacity-70 mt-1">Score</span>
               </div>
-              <div className="p-8 text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-tertiary-fixed mb-4">
-                  <span className="material-symbols-outlined text-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                    {score >= 70 ? "stars" : "replay"}
-                  </span>
-                </div>
-                <h3 className="text-2xl font-extrabold text-on-surface mb-2">
-                  {score >= 70 ? "Félicitations !" : "Pas encore…"}
-                </h3>
-                <p className="text-on-surface-variant mb-2">
-                  {score >= 70
-                    ? `${correctCount} / ${questions.length} bonnes réponses. Vous êtes certifié !`
-                    : `${correctCount} / ${questions.length} bonnes réponses. Il faut 70%.`}
-                </p>
-                {saving && (
-                  <p className="text-xs text-on-surface-variant mb-4">Enregistrement en cours…</p>
-                )}
-                <div className="space-y-3 mt-6">
-                  {(score >= 70 || course?.certificate_id) && (
-                    <Link href={`/learn/${courseId}/certificate`}
-                      className="flex w-full py-4 bg-primary text-on-primary font-bold rounded-xl items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
-                      <span className="material-symbols-outlined">workspace_premium</span>
-                      Voir mon certificat
-                    </Link>
-                  )}
-                  <button onClick={retry}
-                    className="w-full py-4 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
-                    Refaire le test
-                  </button>
-                </div>
-                {(score >= 70 || course?.certificate_id) && (
-                  <Link href="/score" className="inline-block mt-6 text-primary font-bold text-sm underline underline-offset-4 decoration-primary/30">
-                    Voir mon Skill Passport
-                  </Link>
-                )}
-              </div>
+              <h3 className="text-2xl font-extrabold mb-1">{score >= 70 ? "Félicitations !" : "Pas encore…"}</h3>
+              <p className="text-sm opacity-80">
+                {correctCount}/{questions.length} bonnes réponses · {score >= 70 ? "Vous êtes certifié !" : "Minimum requis : 70%"}
+              </p>
+              {saving && <p className="text-xs opacity-60 mt-2 animate-pulse">Enregistrement en cours…</p>}
             </div>
+
+            {/* Action buttons */}
+            <div className="space-y-3">
+              {(score >= 70 || course?.certificate_id) && (
+                <Link href={`/learn/${courseId}/certificate`}
+                  className="flex w-full py-4 bg-primary text-on-primary font-bold rounded-xl items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
+                  <span className="material-symbols-outlined">workspace_premium</span>
+                  Voir mon certificat
+                </Link>
+              )}
+              {(score >= 70 || course?.certificate_id) && (
+                <Link href="/score"
+                  className="flex w-full py-4 bg-surface-container-low text-primary border-2 border-primary/20 font-bold rounded-xl items-center justify-center gap-2 hover:bg-primary/5 active:scale-95 transition-all">
+                  <span className="material-symbols-outlined">stars</span>
+                  Voir mon Skill Passport
+                </Link>
+              )}
+              {!course?.certificate_id && (
+                <button onClick={retry}
+                  className="w-full py-4 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
+                  Refaire le test
+                </button>
+              )}
+            </div>
+
+            {/* Questions review — always shown when answers available */}
+            {Object.keys(answers).length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-base font-bold text-on-surface pt-2">Révision des réponses</h3>
+                {questions.map((q, qi) => {
+                  const userAns = answers[q.id];
+                  const isCorrect = userAns === q.answer;
+                  return (
+                    <div key={q.id} className={`rounded-2xl overflow-hidden border-l-4 ${isCorrect ? "border-emerald-500" : "border-red-400"}`}>
+                      <div className={`px-5 py-4 flex items-start gap-3 ${isCorrect ? "bg-emerald-50" : "bg-red-50"}`}>
+                        <span className={`material-symbols-outlined text-[20px] shrink-0 mt-0.5 ${isCorrect ? "text-emerald-600" : "text-red-500"}`}
+                          style={{ fontVariationSettings: "'FILL' 1" }}>
+                          {isCorrect ? "check_circle" : "cancel"}
+                        </span>
+                        <p className="font-semibold text-on-surface text-sm leading-relaxed">{qi + 1}. {q.question}</p>
+                      </div>
+                      <div className="bg-surface-container-lowest px-5 py-3 space-y-2">
+                        {q.options.map((opt, oi) => {
+                          const isUser = userAns === oi;
+                          const isRight = q.answer === oi;
+                          return (
+                            <div key={oi} className={`flex items-center gap-3 p-2.5 rounded-xl text-sm ${
+                              isRight ? "bg-emerald-100 text-emerald-800 font-medium" :
+                              isUser ? "bg-red-100 text-red-700" : "text-on-surface-variant"
+                            }`}>
+                              <div className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-bold shrink-0 ${
+                                isRight ? "bg-emerald-500 text-white" :
+                                isUser ? "bg-red-400 text-white" : "bg-surface-container text-on-surface-variant"
+                              }`}>
+                                {String.fromCharCode(65 + oi)}
+                              </div>
+                              <span className="flex-1">{opt}</span>
+                              {isRight && <span className="material-symbols-outlined text-[16px] text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>}
+                              {isUser && !isRight && <span className="material-symbols-outlined text-[16px] text-red-500" style={{ fontVariationSettings: "'FILL' 1" }}>cancel</span>}
+                            </div>
+                          );
+                        })}
+                        {q.explanation && (
+                          <p className="text-xs text-on-surface-variant italic pt-2 pl-1 border-t border-outline-variant/20 mt-1">
+                            💡 {q.explanation}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

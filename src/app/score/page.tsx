@@ -51,8 +51,9 @@ export default function ScorePage() {
     try {
       const { data: sessionData, error } = await supabase.auth.getSession();
       if (error || !sessionData?.session) { router.replace("/login"); return; }
-      const { data } = await supabase.from("users").select("score, skills")
+      const { data, error: dbErr } = await supabase.from("users").select("score, skills")
         .eq("id", sessionData.session.user.id).single();
+      console.log('[ScorePage] skills from DB:', data?.skills, '| score:', data?.score, '| dbErr:', dbErr);
       setScore(typeof data?.score === "number" ? data.score : 0);
       const rawSkills = Array.isArray(data?.skills) ? data.skills : [];
       // Guard against malformed skill objects
@@ -166,9 +167,6 @@ export default function ScorePage() {
         <section className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold tracking-tight text-on-surface">Skill Passport</h2>
-            <Link href="/learn/onboarding" className="text-primary text-xs font-bold hover:underline">
-              + Obtenir une certif
-            </Link>
           </div>
 
           {loading ? null : skills.length === 0 ? (
