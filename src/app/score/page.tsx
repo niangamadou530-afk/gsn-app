@@ -93,7 +93,7 @@ export default function ScorePage() {
 
       {/* Top bar */}
       <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 flex justify-between items-center px-6 py-4">
-        <img src="/images/gsn-logo-transparent.png" alt="GSN" style={{width:"140px", height:"auto"}} />
+        <img src="/images/gsn-logo-transparent.png" alt="GSN" style={{width:"140px", height:"auto", background:"transparent", mixBlendMode:"multiply"}} />
         <Link href="/learn/onboarding" className="p-2 rounded-full hover:bg-surface-container transition-colors">
           <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
         </Link>
