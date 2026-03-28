@@ -73,20 +73,30 @@ export default function CourseDetailPage() {
   useEffect(() => { load(); }, [courseId]);
 
   async function load() {
+    console.log("=== LOAD START ===");
+    console.log("courseId:", courseId);
+
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { router.replace("/login"); return; }
+    console.log("userId:", auth.user.id);
 
     const { data, error } = await supabase
       .from("user_courses").select("*")
       .eq("id", courseId).eq("user_id", auth.user.id).single();
 
+    console.log("raw supabase data:", data);
+    console.log("supabase error:", error);
+
     if (error || !data) { router.replace("/learn"); return; }
+
+    console.log("modules_done from DB:", data?.modules_done);
+    console.log("quiz_passed from DB:", data?.quiz_passed);
+    console.log("modules_progress from DB:", data?.modules_progress);
+    console.log("exercises_submitted from DB:", data?.exercises_submitted);
 
     setCourse(data as Course);
 
     // ── Rebuild progression from ALL available DB sources ──────────────
-    // quiz_passed and modules_done should always be in sync (both saved together),
-    // but we merge them as backup in case one was missed.
     const quizPassedArr: string[] = Array.isArray(data.quiz_passed) ? data.quiz_passed : [];
     const modulesDoneArr: string[] = Array.isArray(data.modules_done) ? data.modules_done : [];
     const exsArr: string[] = Array.isArray(data.exercises_submitted) ? data.exercises_submitted : [];
@@ -107,16 +117,16 @@ export default function CourseDetailPage() {
       ...Object.entries(progress).filter(([, v]) => v === "exercise_done").map(([k]) => k),
     ]);
 
-    console.log('[CourseLoad] quiz_passed:', quizPassedArr, '| modules_done:', modulesDoneArr,
-      '| progress:', progress, '| final passed:', [...passed]);
-
     const initialPhases: Record<string, ModPhase> = {};
     const initialContent: Record<string, ModContent> = {};
     const weeks: Week[] = Array.isArray(data.modules) ? data.modules : [];
 
+    // Compute ALL module IDs from current modules structure
+    const allComputedIds: string[] = [];
     weeks.forEach((w: Week) => {
       w.modules.forEach((m: Module, mi: number) => {
         const id = modId(w, mi, m);
+        allComputedIds.push(id);
         if (passed.has(id)) {
           initialPhases[id] = "result";
         } else if (exs.has(id)) {
@@ -127,6 +137,14 @@ export default function CourseDetailPage() {
         if (m.content) initialContent[id] = m.content;
       });
     });
+
+    console.log("=== STATE AFTER LOAD ===");
+    console.log("all computed module IDs:", allComputedIds);
+    console.log("passed Set (merged):", [...passed]);
+    console.log("exs Set:", [...exs]);
+    console.log("moduleStates (phases):", initialPhases);
+    console.log("IDs in modules_done NOT in computed:", modulesDoneArr.filter(id => !allComputedIds.includes(id)));
+    console.log("IDs in computed that ARE passed:", allComputedIds.filter(id => passed.has(id)));
 
     // Set ALL state together after computing everything
     setQuizPassed(new Set(passed));
