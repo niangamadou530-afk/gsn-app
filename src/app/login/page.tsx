@@ -36,7 +36,7 @@ export default function LoginPage() {
         {/* Header */}
         <header className="flex flex-col items-center space-y-4">
           <div className="text-center">
-            <img src="/images/gsn-logo.png" alt="GSN Global Skills Network" style={{width:"200px", height:"auto"}} className="mx-auto mb-3" />
+            <img src="/images/gsn-logo-transparent.png" alt="GSN Global Skills Network" style={{width:"200px", height:"auto"}} className="mx-auto mb-3" />
             <p className="text-on-surface-variant font-medium tracking-wide">Apprends, travaille, gagne</p>
           </div>
         </header>
