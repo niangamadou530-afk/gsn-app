@@ -93,10 +93,7 @@ export default function CertificatePage() {
 
               {/* Logo */}
               <div className="mb-8 flex flex-col items-center">
-                <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary-container flex items-center justify-center rounded-xl mb-3 shadow-lg shadow-primary/20">
-                  <span className="text-on-primary font-black text-xl tracking-tighter">GSN</span>
-                </div>
-                <span className="text-on-surface-variant text-xs tracking-[0.3em] font-semibold uppercase">Global Skills Network</span>
+                <img src="/images/gsn-logo.png" alt="GSN Global Skills Network" style={{width:"220px", height:"auto"}} className="mb-2" />
               </div>
 
               {/* Title */}

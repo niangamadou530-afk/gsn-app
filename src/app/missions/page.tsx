@@ -72,7 +72,7 @@ export default function MissionsPage() {
       {/* Top bar */}
       <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
+          <img src="/images/gsn-logo.png" alt="GSN" style={{width:"140px", height:"auto"}} />
         </div>
         <Link href="/score" className="p-2 rounded-full hover:bg-surface-container transition-colors">
           <span className="material-symbols-outlined text-on-surface-variant">stars</span>
