@@ -52,6 +52,7 @@ export default function CourseDetailPage() {
 
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string>("");
   const [quizPassed, setQuizPassed] = useState<Set<string>>(new Set());
   const [exDone, setExDone] = useState<Set<string>>(new Set());
 
@@ -79,6 +80,7 @@ export default function CourseDetailPage() {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { router.replace("/login"); return; }
     console.log("userId:", auth.user.id);
+    setUserId(auth.user.id);
 
     const { data, error } = await supabase
       .from("user_courses").select("*")
@@ -231,18 +233,19 @@ export default function CourseDetailPage() {
     const exArr = Array.from(next);
     console.log('[submitExercise] saving exercises_submitted:', exArr);
 
-    // Save exercises_submitted FIRST (critical)
-    const { error: err1 } = await supabase.from("user_courses").update({
+    // Save exercises_submitted with user_id filter for RLS
+    const { data: saveData, error: err1 } = await supabase.from("user_courses").update({
       exercises_submitted: exArr,
-    }).eq("id", courseId);
-    if (err1) console.error('[submitExercise] CRITICAL save error:', err1);
-    else console.log('[submitExercise] exercises_submitted saved OK');
+    }).eq("id", courseId).eq("user_id", userId).select();
+    console.log('[submitExercise] SAVE RESULT:', saveData, 'ERROR:', err1);
+    if (err1) console.error('[submitExercise] CRITICAL save error:', err1.message, err1.code);
+    else console.log('[submitExercise] exercises_submitted saved OK — rows affected:', saveData?.length);
 
     // Save modules_progress separately (non-critical)
     const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "exercise_done" };
     setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
     supabase.from("user_courses").update({ modules_progress: updatedProgress })
-      .eq("id", courseId)
+      .eq("id", courseId).eq("user_id", userId)
       .then(({ error: e }) => { if (e) console.warn('[submitExercise] modules_progress not saved:', e.message); });
   }
 
@@ -268,25 +271,27 @@ export default function CourseDetailPage() {
       goToPhase(id, "result");
 
       const passedArr = Array.from(nextPassed);
-      console.log('[submitModQuiz] saving quiz_passed:', passedArr, 'courseId:', courseId);
+      console.log('[submitModQuiz] saving — courseId:', courseId, 'userId:', userId, 'passedArr:', passedArr);
 
-      // Save quiz_passed + modules_done FIRST (critical columns — always exist)
-      const { error: err1 } = await supabase.from("user_courses").update({
+      // Save quiz_passed + modules_done with user_id filter for RLS
+      const { data: saveData, error: err1 } = await supabase.from("user_courses").update({
         quiz_passed: passedArr,
         modules_done: passedArr,
-      }).eq("id", courseId);
+      }).eq("id", courseId).eq("user_id", userId).select();
+
+      console.log("SAVE RESULT:", saveData, "ERROR:", err1);
 
       if (err1) {
-        console.error('[submitModQuiz] CRITICAL save error:', err1);
+        console.error('[submitModQuiz] CRITICAL save error:', err1.message, err1.code, err1.details);
       } else {
-        console.log('[submitModQuiz] quiz_passed saved OK:', passedArr.length, 'modules');
+        console.log('[submitModQuiz] quiz_passed saved OK — rows affected:', saveData?.length);
       }
 
       // Save modules_progress separately (column may not exist yet — non-critical)
       const updatedProgress = { ...(course?.modules_progress ?? {}), [id]: "passed" };
       setCourse(prev => prev ? { ...prev, modules_progress: updatedProgress } : prev);
       supabase.from("user_courses").update({ modules_progress: updatedProgress })
-        .eq("id", courseId)
+        .eq("id", courseId).eq("user_id", userId)
         .then(({ error: e }) => { if (e) console.warn('[submitModQuiz] modules_progress not saved:', e.message); });
     }
     // On failure: stay in "quiz" phase, isSubmitted=true shows score + retry
