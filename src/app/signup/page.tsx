@@ -54,7 +54,7 @@ export default function SignupPage() {
 
       {/* Top bar */}
       <header className="w-full flex justify-between items-center px-6 py-5">
-        <img src="/images/gsn-logo.jpg" alt="GSN" style={{width:"140px", height:"auto", background:"transparent", mixBlendMode:"multiply"}} />
+        <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
         <Link href="/login" className="text-primary text-sm font-bold hover:underline">
           Se connecter
         </Link>
@@ -64,7 +64,9 @@ export default function SignupPage() {
 
         {/* Branding */}
         <div className="mb-10">
-          <img src="/images/gsn-logo.jpg" alt="GSN Global Skills Network" style={{width:"140px", height:"auto", background:"transparent", mixBlendMode:"multiply"}} className="mb-6" />
+          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
+            <span className="text-on-primary font-black text-xl">GSN</span>
+          </div>
           <h1 className="text-[2.2rem] font-extrabold tracking-tight text-on-background leading-tight mb-2">
             Crée ton<br /><span className="text-primary">compte GSN</span>
           </h1>
