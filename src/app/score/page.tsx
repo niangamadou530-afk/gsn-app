@@ -5,7 +5,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type Skill = { domain: string; title?: string; score: number; date: string; cert_id: string; weeks?: number; level?: string };
+type Skill = { domain: string; title?: string; score: number | string; date?: string; cert_id: string; weeks?: number; level?: string };
+
+// Old records may have score="2026-03-27" (a date string) and no date field
+function skillScore(s: Skill): string {
+  if (typeof s.score === "number") return `${s.score}%`;
+  return "—";
+}
+function skillDate(s: Skill): string {
+  if (s.date) return formatDate(s.date);
+  // fallback: old records stored date in the score field
+  if (typeof s.score === "string" && s.score.includes("-")) return formatDate(s.score);
+  return "—";
+}
+// Strip trailing "— X semaines" or similar from domain
+function cleanDomain(domain: string): string {
+  if (!domain) return "Formation";
+  return domain.split(/\s*[—–-]\s*/)[0].trim() || domain;
+}
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return "—";
@@ -191,18 +208,18 @@ export default function ScorePage() {
                       className="w-10 h-10 rounded-xl flex items-center justify-center"
                       style={{ backgroundColor: `${skillColor(i)}15`, color: skillColor(i) }}
                     >
-                      <span className="material-symbols-outlined text-[20px]">{getDomainIcon(skill.domain)}</span>
+                      <span className="material-symbols-outlined text-[20px]">{getDomainIcon(cleanDomain(skill.domain))}</span>
                     </div>
-                    <span className="text-2xl font-black" style={{ color: `${skillColor(i)}30` }}>{skill.score}%</span>
+                    <span className="text-2xl font-black" style={{ color: `${skillColor(i)}` }}>{skillScore(skill)}</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-sm text-on-surface">{skill.domain ?? "Formation"}</h3>
+                    <h3 className="font-bold text-sm text-on-surface">{cleanDomain(skill.domain)}</h3>
                     {skill.level && <p className="text-xs text-on-surface-variant mt-0.5">{skill.level}</p>}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     <span className="text-xs text-on-surface-variant flex items-center gap-1">
                       <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                      {formatDate(skill.date)}
+                      {skillDate(skill)}
                     </span>
                     {skill.weeks && (
                       <span className="text-xs text-on-surface-variant flex items-center gap-1">

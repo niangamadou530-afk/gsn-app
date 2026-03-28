@@ -142,13 +142,13 @@ export default function TestPage() {
             .single();
 
           const weeksCount = Array.isArray(course?.modules) ? course.modules.length : 0;
-          const titleParts = (course?.title ?? "Formation").split("—").map((s: string) => s.trim());
-          const domain = titleParts[0];
-          const level = titleParts.length >= 3 ? titleParts[1] : undefined;
+          // Split on em-dash or regular dash; domain = first part, level = last part (if 3+ parts)
+          const titleParts = (course?.title ?? "Formation").split(/\s*[—–-]\s*/).map((s: string) => s.trim()).filter(Boolean);
+          const domain = titleParts[0] ?? "Formation";
+          const level = titleParts.length >= 3 ? titleParts[titleParts.length - 1] : undefined;
 
           const newSkill = {
             domain,
-            title: course?.title ?? "Formation",
             score: pct,
             date: new Date().toISOString().split("T")[0],
             cert_id: certId,
@@ -156,10 +156,13 @@ export default function TestPage() {
             ...(level && { level }),
           };
 
-          await supabase.from("users").update({
+          console.log('[submit] saving skill:', newSkill, 'userId:', authData.user.id);
+          const { error: skillErr } = await supabase.from("users").update({
             score: (profile?.score ?? 0) + 5,
             skills: [...(Array.isArray(profile?.skills) ? profile.skills : []), newSkill],
           }).eq("id", authData.user.id);
+          if (skillErr) console.error('[submit] users.update error:', skillErr.message, skillErr.code);
+          else console.log('[submit] skill saved OK');
 
           setCourse((prev: any) => ({ ...prev, completed: true, certificate_id: certId }));
         }
