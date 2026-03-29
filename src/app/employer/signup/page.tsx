@@ -21,11 +21,12 @@ export default function EmployerSignupPage() {
       const { data: authData, error: authErr } = await supabase.auth.signUp({ email, password });
       if (authErr || !authData.user) { setError(authErr?.message ?? "Erreur lors de la création du compte."); return; }
 
-      const { error: empErr } = await supabase.from("employers").insert({
+      const { data: empData, error: empErr } = await supabase.from("employers").insert({
         auth_id: authData.user.id,
         email,
         company_name: company,
-      });
+      }).select();
+      console.log("INSERT RESULT:", empData, "ERROR:", empErr);
       if (empErr) { setError("Compte créé mais profil non sauvegardé : " + empErr.message); return; }
 
       router.push("/employer/dashboard");
