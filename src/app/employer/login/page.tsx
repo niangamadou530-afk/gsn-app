@@ -21,11 +21,21 @@ export default function EmployerLoginPage() {
       const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr || !authData.user) { setError("Email ou mot de passe incorrect."); return; }
 
-      const { data: employer, error: empErr } = await supabase
-        .from("employers").select("id").eq("auth_id", authData.user.id).single();
       console.log("AUTH USER ID:", authData.user.id);
-      console.log("EMPLOYER LOOKUP:", employer, "ERROR:", empErr);
-      if (empErr || !employer) { setError("Aucun compte employeur associé à cet email."); return; }
+
+      const { data: emp, error: empErr } = await supabase
+        .from("employers").select("*").eq("auth_id", authData.user.id).single();
+      console.log("EMPLOYER FOUND:", emp, "ERROR:", empErr);
+
+      let employer = emp;
+      if (!employer) {
+        const { data: empByEmail } = await supabase
+          .from("employers").select("*").eq("email", authData.user.email).single();
+        console.log("EMPLOYER BY EMAIL:", empByEmail);
+        employer = empByEmail;
+      }
+
+      if (!employer) { setError("Aucun compte employeur associé à cet email."); return; }
 
       router.push("/employer/dashboard");
     } catch {
