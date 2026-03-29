@@ -44,14 +44,14 @@ export default function MissionCandidatesPage() {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) { router.replace("/employer/login"); return; }
 
-      const { data: emp } = await supabase.from("employers").select("id").eq("id", auth.user.id).single();
+      const { data: emp } = await supabase.from("employers").select("id").eq("auth_id", auth.user.id).single();
       if (!emp) { router.replace("/employer/login"); return; }
 
       const { data: m, error: mErr } = await supabase
         .from("employer_missions")
         .select("*")
         .eq("id", missionId)
-        .eq("employer_id", auth.user.id)
+        .eq("employer_id", emp.id)
         .single();
       if (mErr || !m) { router.replace("/employer/dashboard"); return; }
       setMission(m);

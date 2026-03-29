@@ -30,14 +30,14 @@ export default function EmployerDashboard() {
       if (!auth.user) { router.replace("/employer/login"); return; }
 
       const { data: emp, error: empErr } = await supabase
-        .from("employers").select("*").eq("id", auth.user.id).single();
+        .from("employers").select("*").eq("auth_id", auth.user.id).single();
       if (empErr || !emp) { router.replace("/employer/login"); return; }
       setEmployer(emp);
 
       const { data: missionData } = await supabase
         .from("employer_missions")
         .select("*")
-        .eq("employer_id", auth.user.id)
+        .eq("employer_id", emp.id)
         .order("created_at", { ascending: false });
       setMissions(missionData ?? []);
 

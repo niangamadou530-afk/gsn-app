@@ -22,7 +22,7 @@ export default function EmployerSignupPage() {
       if (authErr || !authData.user) { setError(authErr?.message ?? "Erreur lors de la création du compte."); return; }
 
       const { error: empErr } = await supabase.from("employers").insert({
-        id: authData.user.id,
+        auth_id: authData.user.id,
         email,
         company_name: company,
       });

@@ -22,7 +22,7 @@ export default function EmployerLoginPage() {
       if (authErr || !authData.user) { setError("Email ou mot de passe incorrect."); return; }
 
       const { data: employer, error: empErr } = await supabase
-        .from("employers").select("id").eq("id", authData.user.id).single();
+        .from("employers").select("id").eq("auth_id", authData.user.id).single();
       if (empErr || !employer) { setError("Aucun compte employeur associé à cet email."); return; }
 
       router.push("/employer/dashboard");
