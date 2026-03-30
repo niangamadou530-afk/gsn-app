@@ -21,16 +21,17 @@ export default function EmployerSignupPage() {
       const { error: authErr } = await supabase.auth.signUp({ email, password });
       if (authErr) { setError(authErr.message); return; }
 
-      // signInWithPassword pour obtenir le vrai auth.uid() (évite le décalage d'ID lié à la confirmation email)
+      // signInWithPassword pour obtenir le vrai auth.uid()
       const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+      console.log("[signup] signIn user.id:", loginData?.user?.id, "loginErr:", loginErr?.message);
       if (loginErr || !loginData.user) { setError("Compte créé, mais connexion automatique échouée. Connecte-toi manuellement."); return; }
 
-      const { error: empErr } = await supabase.from("employers").insert({
+      const { data: insertData, error: empErr } = await supabase.from("employers").insert({
         auth_id: loginData.user.id,
         email,
         company_name: company,
-      });
-      if (empErr) { setError("Compte créé mais profil non sauvegardé : " + empErr.message); return; }
+      }).select();
+      console.log("[signup] insert result:", insertData, "error:", empErr?.message, empErr?.code);
 
       router.push("/employer/dashboard");
     } catch {

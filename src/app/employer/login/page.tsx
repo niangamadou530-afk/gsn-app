@@ -21,13 +21,17 @@ export default function EmployerLoginPage() {
       const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
       if (authErr || !authData.user) { setError("Email ou mot de passe incorrect."); return; }
 
-      const { data: emps } = await supabase
+      console.log("[login] auth user id:", authData.user.id, "email:", authData.user.email);
+
+      const { data: emps, error: empsErr } = await supabase
         .from("employers").select("*").eq("auth_id", authData.user.id).limit(1);
+      console.log("[login] by auth_id:", emps, "err:", empsErr?.message);
       let emp = emps?.[0] ?? null;
 
       if (!emp) {
-        const { data: empsByEmail } = await supabase
+        const { data: empsByEmail, error: emailErr } = await supabase
           .from("employers").select("*").eq("email", authData.user.email).limit(1);
+        console.log("[login] by email:", empsByEmail, "err:", emailErr?.message);
         const empByEmail = empsByEmail?.[0] ?? null;
 
         if (empByEmail) {
