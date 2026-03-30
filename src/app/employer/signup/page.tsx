@@ -18,16 +18,33 @@ export default function EmployerSignupPage() {
     setError("");
     setLoading(true);
     try {
-      const { error: authErr } = await supabase.auth.signUp({ email, password });
-      if (authErr) { setError(authErr.message); return; }
+      // Tenter login d'abord — si le compte existe déjà dans auth.users
+      let userId: string | null = null;
+      const { data: tryLogin } = await supabase.auth.signInWithPassword({ email, password });
+      if (tryLogin?.user) {
+        userId = tryLogin.user.id;
+        console.log("[signup] existing auth user found:", userId);
+      } else {
+        // Nouveau compte
+        const { data: signUpData, error: authErr } = await supabase.auth.signUp({ email, password });
+        console.log("[signup] signUp result:", signUpData?.user?.id, "err:", authErr?.message);
+        if (authErr || !signUpData?.user) { setError(authErr?.message ?? "Erreur lors de la création du compte."); return; }
 
-      // signInWithPassword pour obtenir le vrai auth.uid()
-      const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
-      console.log("[signup] signIn user.id:", loginData?.user?.id, "loginErr:", loginErr?.message);
-      if (loginErr || !loginData.user) { setError("Compte créé, mais connexion automatique échouée. Connecte-toi manuellement."); return; }
+        const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+        console.log("[signup] signIn after signUp:", loginData?.user?.id, "err:", loginErr?.message);
+        if (loginErr || !loginData?.user) { setError("Compte créé, reconnecte-toi manuellement."); return; }
+        userId = loginData.user.id;
+      }
+
+      // Vérifier si un profil employeur existe déjà
+      const { data: existing } = await supabase.from("employers").select("id").eq("auth_id", userId).limit(1);
+      if (existing && existing.length > 0) {
+        router.push("/employer/dashboard");
+        return;
+      }
 
       const { data: insertData, error: empErr } = await supabase.from("employers").insert({
-        auth_id: loginData.user.id,
+        auth_id: userId,
         email,
         company_name: company,
       }).select();
