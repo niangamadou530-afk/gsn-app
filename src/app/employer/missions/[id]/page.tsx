@@ -44,7 +44,8 @@ export default function MissionCandidatesPage() {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) { router.replace("/employer/login"); return; }
 
-      const { data: emp } = await supabase.from("employers").select("id").eq("auth_id", auth.user.id).single();
+      const { data: emps } = await supabase.from("employers").select("id").eq("auth_id", auth.user.id).limit(1);
+      const emp = emps?.[0] ?? null;
       if (!emp) { router.replace("/employer/login"); return; }
 
       const { data: m, error: mErr } = await supabase

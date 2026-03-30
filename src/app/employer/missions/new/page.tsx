@@ -32,7 +32,8 @@ export default function NewMissionPage() {
     async function checkAuth() {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) { router.replace("/employer/login"); return; }
-      const { data: emp } = await supabase.from("employers").select("id").eq("auth_id", auth.user.id).single();
+      const { data: emps } = await supabase.from("employers").select("id").eq("auth_id", auth.user.id).limit(1);
+      const emp = emps?.[0] ?? null;
       if (!emp) { router.replace("/employer/login"); return; }
       setEmployerId(emp.id);
     }
