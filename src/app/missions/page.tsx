@@ -6,14 +6,18 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Mission = {
-  id: string | number;
+  id: string;
   title: string;
-  description: string;
-  reward: number;
+  description: string | null;
+  domain: string | null;
+  budget_fcfa: number;
+  duration_type: string;
+  min_gsn_score: number;
+  status: string;
+  created_at: string;
 };
 
-const FILTERS = ["Pour toi", "Courtes", "Longues", "Freelance", "Emplois"];
-const SCORE_THRESHOLD = 40;
+const FILTERS = ["Tous", "Court terme", "Long terme", "Freelance"];
 
 export default function MissionsPage() {
   const router = useRouter();
@@ -22,83 +26,87 @@ export default function MissionsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [userScore, setUserScore] = useState(0);
-  const [activeFilter, setActiveFilter] = useState("Pour toi");
+  const [activeFilter, setActiveFilter] = useState("Tous");
+  const [applied, setApplied] = useState<Set<string>>(new Set());
 
-  useEffect(() => { checkSessionAndLoad(); }, []);
+  useEffect(() => { load(); }, []);
 
-  async function checkSessionAndLoad() {
+  async function load() {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !sessionData.session) { router.replace("/login"); return; }
 
-    setUserId(sessionData.session.user.id);
     const uid = sessionData.session.user.id;
+    setUserId(uid);
 
-    const { data: profileData } = await supabase
-      .from("users").select("score").eq("id", uid).single();
-    if (profileData) setUserScore(profileData.score ?? 0);
+    const { data: profile } = await supabase.from("users").select("score").eq("id", uid).single();
+    setUserScore(profile?.score ?? 0);
 
     const { data, error } = await supabase
-      .from("missions").select("id, title, description, reward").order("id", { ascending: false });
+      .from("employer_missions")
+      .select("*")
+      .eq("status", "active")
+      .order("created_at", { ascending: false });
     if (error) setErrorMessage(error.message);
     else setMissions((data ?? []) as Mission[]);
+
+    const { data: apps } = await supabase
+      .from("applications").select("mission_id").eq("user_id", uid);
+    setApplied(new Set((apps ?? []).map((a: { mission_id: string }) => a.mission_id)));
+
     setLoading(false);
   }
 
-  function getMatchPercentage(reward: number) {
-    const scoreFactor = Math.min(40, Math.max(0, userScore * 0.8));
-    const rewardFactor = Math.min(35, Math.max(0, reward * 0.2));
-    return Math.min(99, Math.round(25 + scoreFactor + rewardFactor));
-  }
-
-  async function handleApply(missionId: string | number) {
+  async function handleApply(missionId: string) {
     if (!userId) return;
     const { error } = await supabase.from("applications").insert({ user_id: userId, mission_id: missionId });
     if (error) { setErrorMessage(error.message); return; }
-    alert("Candidature envoyée avec succès !");
+    setApplied(prev => new Set([...prev, missionId]));
   }
 
-  const isUnlocked = userScore >= SCORE_THRESHOLD;
+  function durationLabel(type: string) {
+    if (type === "short") return "Court terme";
+    if (type === "long") return "Long terme";
+    return "Freelance";
+  }
 
-  const displayedMissions = (() => {
-    if (activeFilter === "Pour toi") return missions.filter(m => userScore > 50 ? m.reward > 100 : m.reward <= 100);
-    if (activeFilter === "Courtes") return missions.filter(m => m.reward <= 50);
-    if (activeFilter === "Longues") return missions.filter(m => m.reward > 100);
-    return missions;
-  })();
+  function durationIcon(type: string) {
+    if (type === "short") return "schedule";
+    if (type === "long") return "calendar_month";
+    return "laptop_mac";
+  }
+
+  const displayedMissions = missions.filter(m => {
+    if (activeFilter === "Court terme") return m.duration_type === "short";
+    if (activeFilter === "Long terme") return m.duration_type === "long";
+    if (activeFilter === "Freelance") return m.duration_type === "freelance";
+    return true;
+  });
+
+  const isUnlocked = userScore >= 40;
 
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-32">
 
       {/* Top bar */}
       <header className="fixed top-0 w-full z-50 glass-nav shadow-sm shadow-blue-900/5 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
-        </div>
+        <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
         <Link href="/score" className="p-2 rounded-full hover:bg-surface-container transition-colors">
           <span className="material-symbols-outlined text-on-surface-variant">stars</span>
         </Link>
       </header>
 
-      <main className="pt-24 px-6 max-w-2xl mx-auto">
+      <div className="pt-24 px-6 max-w-2xl mx-auto">
 
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tight text-on-background mb-2">Missions</h1>
-          <p className="text-on-surface-variant text-sm">Trouvez des opportunités qui matchent vos talents.</p>
+        <div className="mb-6">
+          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-1">Missions</h1>
+          <p className="text-on-surface-variant text-sm">Opportunités publiées par des employeurs GSN.</p>
         </div>
 
-        {/* Filter pills */}
-        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-8 -mx-6 px-6">
-          {FILTERS.map((f) => (
-            <button
-              key={f}
-              onClick={() => setActiveFilter(f)}
-              className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                activeFilter === f
-                  ? "bg-primary text-on-primary shadow-md shadow-primary/20"
-                  : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high"
-              }`}
-            >
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 -mx-6 px-6">
+          {FILTERS.map(f => (
+            <button key={f} onClick={() => setActiveFilter(f)}
+              className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${activeFilter === f ? "bg-primary text-on-primary shadow-md shadow-primary/20" : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high"}`}>
               {f}
             </button>
           ))}
@@ -110,43 +118,70 @@ export default function MissionsPage() {
           </div>
         ) : (
           <div className="relative">
-            {/* Mission cards */}
             <div className={`space-y-4 ${!isUnlocked ? "filter blur-sm select-none pointer-events-none opacity-40" : ""}`}>
-              {(isUnlocked ? displayedMissions : missions.slice(0, 2)).map((mission) => {
-                const match = getMatchPercentage(mission.reward);
-                return (
-                  <div key={mission.id} className="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/10 shadow-sm">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                          <span className="material-symbols-outlined text-primary">business</span>
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-base leading-tight text-on-background">{mission.title}</h3>
-                          <p className="text-on-surface-variant text-sm mt-0.5">{mission.description}</p>
-                        </div>
-                      </div>
-                      <span className={`shrink-0 px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${match >= 90 ? "bg-tertiary-fixed text-on-tertiary-fixed" : "bg-surface-container-highest text-on-surface-variant"}`}>
-                        {match}% Match
-                      </span>
+              {(isUnlocked ? displayedMissions : displayedMissions.slice(0, 2)).map(mission => (
+                <div key={mission.id} className="bg-surface-container-lowest rounded-2xl p-5 shadow-[0_4px_16px_rgba(25,28,35,0.06)]">
+                  {/* Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>{durationIcon(mission.duration_type)}</span>
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-outline-variant/10">
-                      <span className="text-primary font-bold text-lg">{mission.reward.toLocaleString("fr-FR")} pts</span>
-                      <button
-                        onClick={() => handleApply(mission.id)}
-                        className="bg-primary text-on-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:opacity-90 active:scale-95 transition-all"
-                      >
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-base leading-tight text-on-surface">{mission.title}</h3>
+                      {mission.domain && <p className="text-on-surface-variant text-sm mt-0.5">{mission.domain}</p>}
+                    </div>
+                    <span className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+                      {durationLabel(mission.duration_type)}
+                    </span>
+                  </div>
+
+                  {/* Description */}
+                  {mission.description && (
+                    <p className="text-sm text-on-surface-variant leading-relaxed mb-4 line-clamp-2">{mission.description}</p>
+                  )}
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {mission.budget_fcfa > 0 && (
+                      <span className="flex items-center gap-1 text-xs bg-surface-container-low text-on-surface-variant font-medium px-2.5 py-1 rounded-full">
+                        <span className="material-symbols-outlined text-[13px]">payments</span>
+                        {mission.budget_fcfa.toLocaleString("fr-FR")} FCFA
+                      </span>
+                    )}
+                    {mission.min_gsn_score > 0 && (
+                      <span className="flex items-center gap-1 text-xs bg-surface-container-low text-on-surface-variant font-medium px-2.5 py-1 rounded-full">
+                        <span className="material-symbols-outlined text-[13px]">verified</span>
+                        Score min. {mission.min_gsn_score}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Action */}
+                  <div className="pt-3 border-t border-outline-variant/10">
+                    {applied.has(mission.id) ? (
+                      <div className="flex items-center gap-1.5 text-sm text-primary font-semibold">
+                        <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                        Candidature envoyée
+                      </div>
+                    ) : userScore < mission.min_gsn_score ? (
+                      <div className="flex items-center gap-1.5 text-sm text-outline font-medium">
+                        <span className="material-symbols-outlined text-[18px]">lock</span>
+                        Score {mission.min_gsn_score}% requis (vous avez {userScore}%)
+                      </div>
+                    ) : (
+                      <button onClick={() => handleApply(mission.id)}
+                        className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
                         Postuler
                       </button>
-                    </div>
+                    )}
                   </div>
-                );
-              })}
+                </div>
+              ))}
 
               {isUnlocked && displayedMissions.length === 0 && (
-                <div className="text-center py-10 text-on-surface-variant">
-                  <span className="material-symbols-outlined text-4xl mb-3 block">search_off</span>
-                  Aucune mission pour ce filtre.
+                <div className="text-center py-16 text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[48px] mb-3 block text-outline-variant">search_off</span>
+                  <p className="font-medium">Aucune mission active pour ce filtre.</p>
                 </div>
               )}
             </div>
@@ -160,13 +195,11 @@ export default function MissionsPage() {
                   </div>
                   <h2 className="text-xl font-bold mb-2 text-on-surface">Missions verrouillées</h2>
                   <p className="text-on-surface-variant text-sm mb-6">
-                    Atteignez un score de <span className="text-primary font-bold">{SCORE_THRESHOLD} points</span> pour accéder aux missions.
-                    <br/><span className="font-semibold text-on-surface">Score actuel : {userScore} pts</span>
+                    Atteignez un score de <span className="text-primary font-bold">40%</span> pour accéder aux missions.
+                    <br /><span className="font-semibold text-on-surface">Score actuel : {userScore}%</span>
                   </p>
-                  <Link
-                    href="/learn/onboarding"
-                    className="block w-full bg-primary text-on-primary font-bold py-3.5 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-all text-center"
-                  >
+                  <Link href="/learn/onboarding"
+                    className="block w-full bg-primary text-on-primary font-bold py-3.5 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-all text-center">
                     Améliorer mon score
                   </Link>
                 </div>
@@ -176,7 +209,7 @@ export default function MissionsPage() {
         )}
 
         {errorMessage && <p className="text-error text-sm mt-4">{errorMessage}</p>}
-      </main>
+      </div>
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
