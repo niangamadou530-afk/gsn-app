@@ -49,6 +49,8 @@ export default function EmployerSignupPage() {
         company_name: company,
       }).select();
       console.log("[signup] insert result:", insertData, "error:", empErr?.message, empErr?.code);
+      if (empErr) { setError("Erreur profil : " + empErr.message + " (code: " + empErr.code + ")"); return; }
+      if (!insertData || insertData.length === 0) { setError("Insert silencieux — aucune ligne créée. Vérifie les permissions Supabase."); return; }
 
       router.push("/employer/dashboard");
     } catch {
