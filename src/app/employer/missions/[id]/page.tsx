@@ -59,20 +59,8 @@ export default function MissionCandidatesPage() {
 
       const { data: apps } = await supabase
         .from("applications")
-        .select(`
-          id,
-          user_id,
-          status,
-          applied_at,
-          users (
-            id,
-            name,
-            score,
-            skills
-          )
-        `)
-        .eq("mission_id", missionId)
-        .order("applied_at", { ascending: false });
+        .select("*, users(id, name, score, skills)")
+        .eq("mission_id", params.id);
 
       if (apps && apps.length > 0) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
