@@ -61,26 +61,32 @@ export default function OnboardingPage() {
     setLoading(true);
     try {
       const weeksNum = parseInt(final.weeks);
-      const prompt = `Génère un parcours de formation de ${weeksNum} semaines.\n\nProfil: domaine="${final.domain}", niveau="${final.level}", objectif="${final.goal}"\n\nRéponds UNIQUEMENT avec un tableau JSON (sans texte autour) :\n[\n  {\n    "week": 1,\n    "title": "Titre de la semaine",\n    "objective": "Objectif principal",\n    "modules": [\n      {\n        "id": "w1m1",\n        "title": "Titre du module",\n        "description": "Description détaillée en 3 à 4 phrases expliquant les concepts et leur utilité pratique.",\n        "keywords": ["terme YouTube 1", "terme YouTube 2", "terme YouTube 3"],\n        "exercises": "Exercice pratique : description concrète de l'exercice.",\n        "quiz": {\n          "question": "Question de validation ?",\n          "options": ["Option A", "Option B", "Option C", "Option D"],\n          "answer": 0\n        }\n      }\n    ]\n  }\n]\n\nRègles : exactement ${weeksNum} semaines, 3 modules par semaine, index answer (0-3), tout en français.`;
+      const BATCH = 4;
 
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Erreur API");
+      async function fetchBatch(batchSize: number, startWeek: number): Promise<any[]> {
+        const prompt = `Génère un parcours de formation pour les semaines ${startWeek} à ${startWeek + batchSize - 1} (${batchSize} semaines).\n\nProfil: domaine="${final.domain}", niveau="${final.level}", objectif="${final.goal}"\n\nRéponds UNIQUEMENT avec un tableau JSON (sans texte autour) :\n[\n  {\n    "week": ${startWeek},\n    "title": "Titre de la semaine",\n    "objective": "Objectif principal",\n    "modules": [\n      {\n        "id": "w${startWeek}m1",\n        "title": "Titre du module",\n        "description": "Description détaillée en 3 à 4 phrases expliquant les concepts et leur utilité pratique.",\n        "keywords": ["terme YouTube 1", "terme YouTube 2", "terme YouTube 3"],\n        "exercises": "Exercice pratique : description concrète de l'exercice.",\n        "quiz": {\n          "question": "Question de validation ?",\n          "options": ["Option A", "Option B", "Option C", "Option D"],\n          "answer": 0\n        }\n      }\n    ]\n  }\n]\n\nRègles : exactement ${batchSize} semaines (semaines ${startWeek} à ${startWeek + batchSize - 1}), 3 modules par semaine, index answer (0-3), tout en français.`;
 
-      let weeks: any[];
-      try {
+        const res = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: prompt }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Erreur API");
+
         const cleaned = data.reply.replace(/```json|```/g, "").trim();
         const arrMatch = cleaned.match(/\[[\s\S]*\]/);
         if (!arrMatch) throw new Error("Pas de tableau JSON");
-        weeks = JSON.parse(arrMatch[0]);
-        if (!Array.isArray(weeks) || !weeks[0]?.modules) throw new Error("Structure invalide");
-      } catch (e) {
-        console.error("Parse error:", data.reply?.slice(0, 200));
-        throw new Error("La réponse IA n'est pas au bon format");
+        const batch = JSON.parse(arrMatch[0]);
+        if (!Array.isArray(batch) || !batch[0]?.modules) throw new Error("Structure invalide");
+        return batch;
+      }
+
+      let allWeeks: any[] = [];
+      for (let start = 1; start <= weeksNum; start += BATCH) {
+        const batchSize = Math.min(BATCH, weeksNum - start + 1);
+        const batch = await fetchBatch(batchSize, start);
+        allWeeks = [...allWeeks, ...batch];
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -91,7 +97,7 @@ export default function OnboardingPage() {
         .insert({
           user_id: user.id,
           title: `${final.domain} — ${final.level} — ${final.weeks}`,
-          modules: weeks,
+          modules: allWeeks,
         })
         .select("id")
         .single();

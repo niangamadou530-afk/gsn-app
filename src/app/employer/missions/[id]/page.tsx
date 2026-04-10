@@ -59,23 +59,34 @@ export default function MissionCandidatesPage() {
 
       const { data: apps } = await supabase
         .from("applications")
-        .select("id, user_id, status, applied_at")
+        .select(`
+          id,
+          user_id,
+          status,
+          applied_at,
+          users (
+            id,
+            name,
+            score,
+            skills
+          )
+        `)
         .eq("mission_id", missionId)
         .order("applied_at", { ascending: false });
 
       if (apps && apps.length > 0) {
-        const userIds = apps.map((a: Candidate) => a.user_id);
-        const { data: users } = await supabase
-          .from("users")
-          .select("id, name, score, skills")
-          .in("id", userIds);
-
-        const userMap: Record<string, Candidate["user"]> = {};
-        (users ?? []).forEach((u: { id: string; name: string; score: number; skills: { domain: string; score: number; date: string }[] }) => {
-          userMap[u.id] = { name: u.name, score: u.score, skills: u.skills ?? [] };
-        });
-
-        setCandidates(apps.map((a: Candidate) => ({ ...a, user: userMap[a.user_id] })));
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setCandidates(apps.map((a: any) => ({
+          id: a.id,
+          user_id: a.user_id,
+          status: a.status,
+          applied_at: a.applied_at,
+          user: a.users ? {
+            name: a.users.name,
+            score: a.users.score,
+            skills: a.users.skills ?? [],
+          } : undefined,
+        })));
       } else {
         setCandidates([]);
       }

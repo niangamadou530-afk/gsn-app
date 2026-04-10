@@ -24,6 +24,11 @@ export default function DashboardPage() {
     checkSessionAndLoad();
   }, []);
 
+  async function handleSignout() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
+
   async function checkSessionAndLoad() {
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
@@ -83,6 +88,9 @@ export default function DashboardPage() {
           <Link href="/score" className="p-2 rounded-full hover:bg-surface-container transition-colors">
             <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
           </Link>
+          <button onClick={handleSignout} className="p-2 rounded-full hover:bg-surface-container transition-colors" title="Se déconnecter">
+            <span className="material-symbols-outlined text-on-surface-variant">logout</span>
+          </button>
           <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
             <span className="text-on-primary text-sm font-bold">{firstName.charAt(0).toUpperCase()}</span>
           </div>

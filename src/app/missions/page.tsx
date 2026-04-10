@@ -28,6 +28,7 @@ export default function MissionsPage() {
   const [userScore, setUserScore] = useState(0);
   const [activeFilter, setActiveFilter] = useState("Tous");
   const [applied, setApplied] = useState<Set<string>>(new Set());
+  const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set());
 
   useEffect(() => { load(); }, []);
 
@@ -56,6 +57,15 @@ export default function MissionsPage() {
     setLoading(false);
   }
 
+  function toggleDesc(missionId: string) {
+    setExpandedDescs(prev => {
+      const next = new Set(prev);
+      if (next.has(missionId)) next.delete(missionId);
+      else next.add(missionId);
+      return next;
+    });
+  }
+
   async function handleApply(missionId: string) {
     if (!userId) return;
     const { error } = await supabase.from("applications").insert({ user_id: userId, mission_id: missionId });
@@ -82,7 +92,7 @@ export default function MissionsPage() {
     return true;
   });
 
-  const isUnlocked = userScore >= 40;
+  const isUnlocked = userScore >= 5;
 
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-32">
@@ -137,7 +147,20 @@ export default function MissionsPage() {
 
                   {/* Description */}
                   {mission.description && (
-                    <p className="text-sm text-on-surface-variant leading-relaxed mb-4 line-clamp-2">{mission.description}</p>
+                    <div className="text-sm text-on-surface-variant leading-relaxed mb-4">
+                      {expandedDescs.has(mission.id)
+                        ? mission.description
+                        : mission.description.length > 100
+                          ? mission.description.slice(0, 100) + "…"
+                          : mission.description}
+                      {mission.description.length > 100 && (
+                        <button
+                          onClick={() => toggleDesc(mission.id)}
+                          className="text-primary font-semibold ml-1 hover:underline">
+                          {expandedDescs.has(mission.id) ? "Voir moins" : "Voir plus"}
+                        </button>
+                      )}
+                    </div>
                   )}
 
                   {/* Tags */}
@@ -195,7 +218,7 @@ export default function MissionsPage() {
                   </div>
                   <h2 className="text-xl font-bold mb-2 text-on-surface">Missions verrouillées</h2>
                   <p className="text-on-surface-variant text-sm mb-6">
-                    Atteignez un score de <span className="text-primary font-bold">40%</span> pour accéder aux missions.
+                    Atteignez un score de <span className="text-primary font-bold">5%</span> pour accéder aux missions.
                     <br /><span className="font-semibold text-on-surface">Score actuel : {userScore}%</span>
                   </p>
                   <Link href="/learn/onboarding"

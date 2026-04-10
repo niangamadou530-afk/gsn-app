@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         { role: "user", content: message },
       ],
       model: "llama-3.3-70b-versatile",
-      max_tokens: 4096,
+      max_tokens: 8000,
       temperature: 0.2,
     });
 

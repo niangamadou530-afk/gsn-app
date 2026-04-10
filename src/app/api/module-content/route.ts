@@ -58,7 +58,7 @@ Règles strictes:
         { role: "user", content: prompt },
       ],
       model: "llama-3.3-70b-versatile",
-      max_tokens: 4096,
+      max_tokens: 8000,
       temperature: 0.3,
     });
 
