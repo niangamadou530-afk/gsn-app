@@ -17,6 +17,15 @@ type Mission = {
   created_at: string;
 };
 
+type Skill = {
+  domain: string;
+  score: number;
+  date: string;
+  weeks?: number;
+  cert_id?: string;
+  level?: string;
+};
+
 type Candidate = {
   id: string;
   user_id: string;
@@ -25,7 +34,7 @@ type Candidate = {
   user?: {
     name: string;
     score: number;
-    skills: { domain: string; score: number; date: string }[];
+    skills: Skill[];
   };
 };
 
@@ -102,6 +111,19 @@ export default function MissionCandidatesPage() {
     if (type === "short") return "Court terme";
     if (type === "long") return "Long terme";
     return "Freelance";
+  }
+
+  function gsnLevel(score: number) {
+    if (score >= 75) return { label: "Premium", color: "text-yellow-600", bg: "bg-yellow-50" };
+    if (score >= 50) return { label: "Medium", color: "text-blue-600", bg: "bg-blue-50" };
+    if (score >= 20) return { label: "Small", color: "text-green-600", bg: "bg-green-50" };
+    return { label: "Débutant", color: "text-outline", bg: "bg-surface-container-low" };
+  }
+
+  function formatDateFr(dateStr: string) {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
   }
 
   function statusColor(s: string) {
@@ -194,18 +216,31 @@ export default function MissionCandidatesPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {candidates.map(c => (
-                <div key={c.id} className="bg-surface-container-lowest rounded-2xl p-5 shadow-[0_4px_16px_rgba(25,28,35,0.06)]">
+              {candidates.map(c => {
+                const level = gsnLevel(c.user?.score ?? 0);
+                const skills: Skill[] = c.user?.skills ?? [];
+                return (
+                <div key={c.id} className="bg-surface-container-lowest rounded-2xl p-5 shadow-[0_4px_16px_rgba(25,28,35,0.06)] space-y-4">
+
+                  {/* Header candidat */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                      <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
                       </div>
                       <div>
                         <p className="font-bold text-on-surface">{c.user?.name ?? "Talent GSN"}</p>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="material-symbols-outlined text-primary text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                          <span className="text-xs text-on-surface-variant font-semibold">Score GSN : {c.user?.score ?? 0}%</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-primary text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                            <span className="text-xs text-on-surface-variant font-semibold">{c.user?.score ?? 0}% GSN</span>
+                          </div>
+                          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${level.bg} ${level.color}`}>
+                            {level.label}
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant font-medium">
+                            {skills.length} certification{skills.length !== 1 ? "s" : ""}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -214,20 +249,45 @@ export default function MissionCandidatesPage() {
                     </span>
                   </div>
 
-                  {/* Skills */}
-                  {c.user?.skills && c.user.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-outline-variant/15">
-                      {c.user.skills.slice(0, 4).map((sk, i) => (
-                        <span key={i} className="text-[11px] bg-surface-container-low text-on-surface-variant font-medium px-2 py-0.5 rounded-full">
-                          {sk.domain} {sk.score}%
-                        </span>
-                      ))}
+                  {/* Skill Passport — certifications complètes */}
+                  {skills.length > 0 && (
+                    <div className="pt-3 border-t border-outline-variant/15 space-y-2">
+                      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wide flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[14px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+                        Skill Passport
+                      </p>
+                      <div className="space-y-2">
+                        {skills.map((sk, i) => (
+                          <div key={i} className="bg-surface-container-low rounded-xl p-3 flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold text-on-surface truncate">{sk.domain}</p>
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
+                                {sk.level && (
+                                  <span className="text-[11px] text-on-surface-variant">{sk.level}</span>
+                                )}
+                                {sk.weeks && (
+                                  <span className="text-[11px] text-on-surface-variant">{sk.weeks} sem.</span>
+                                )}
+                                {sk.date && (
+                                  <span className="text-[11px] text-on-surface-variant">{formatDateFr(sk.date)}</span>
+                                )}
+                                {sk.cert_id && (
+                                  <span className="text-[11px] font-mono text-outline">{sk.cert_id}</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="shrink-0 flex flex-col items-end gap-1">
+                              <span className="text-base font-extrabold text-primary">{sk.score}%</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {/* Actions */}
                   {c.status === "pending" && (
-                    <div className="flex gap-2 mt-3 pt-3 border-t border-outline-variant/15">
+                    <div className="flex gap-2 pt-1">
                       <button onClick={() => updateApplicationStatus(c.id, "accepted")}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary/10 text-primary font-bold text-sm rounded-xl hover:bg-primary/20 transition-colors">
                         <span className="material-symbols-outlined text-[16px]">check_circle</span>
@@ -241,7 +301,8 @@ export default function MissionCandidatesPage() {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
