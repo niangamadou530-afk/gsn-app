@@ -59,7 +59,7 @@ export async function POST(request: Request) {
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide." },
           { role: "user", content: `${JSON_PROMPT(matiere)}\n\nVoici le contenu du cours :\n${text}` },
         ],
-        model: "llama3-8b-8192",
+        model: "llama-3.1-8b-instant",
         max_tokens: 2000,
         temperature: 0.3,
       });

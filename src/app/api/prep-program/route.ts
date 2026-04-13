@@ -156,7 +156,7 @@ Tout en français.`;
         { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown, sans texte autour." },
         { role: "user", content: prompt },
       ],
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
       max_tokens: 2000,
       temperature: 0.3,
     });
