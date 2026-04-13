@@ -17,10 +17,21 @@ export default function LoginPage() {
     event.preventDefault();
     setErrorMessage("");
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) { setErrorMessage(error.message); return; }
-    router.push("/dashboard");
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { setLoading(false); setErrorMessage(error.message); return; }
+    const userId = authData.user?.id;
+    if (userId) {
+      const { data: profile } = await supabase.from("users").select("profile_type").eq("id", userId).single();
+      setLoading(false);
+      if (profile?.profile_type === "eleve") {
+        router.push("/prep/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
+    } else {
+      setLoading(false);
+      router.push("/dashboard");
+    }
   }
 
   return (

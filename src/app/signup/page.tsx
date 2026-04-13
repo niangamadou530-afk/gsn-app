@@ -2,26 +2,27 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+type ProfileType = "eleve" | "professionnel" | "";
+
 export default function SignupPage() {
+  const router = useRouter();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [profileType, setProfileType] = useState<ProfileType>("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
-    setSuccessMessage("");
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    const { data, error } = await supabase.auth.signUp({ email, password });
 
     if (error) {
       setLoading(false);
@@ -36,6 +37,7 @@ export default function SignupPage() {
         id: userId,
         name: fullName,
         score: 0,
+        profile_type: profileType || "professionnel",
       });
 
       if (insertError) {
@@ -46,7 +48,11 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    setSuccessMessage("Compte créé avec succès. Tu peux maintenant te connecter.");
+    if (profileType === "eleve") {
+      router.push("/prep/onboarding");
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   return (
@@ -75,75 +81,136 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-3">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">person</span>
-              <input
-                type="text"
-                placeholder="Nom complet"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
-                required
-              />
+        {/* Step indicator */}
+        <div className="flex items-center gap-2 mb-8">
+          <div className={`flex-1 h-1 rounded-full transition-colors ${step >= 1 ? "bg-primary" : "bg-surface-container"}`} />
+          <div className={`flex-1 h-1 rounded-full transition-colors ${step >= 2 ? "bg-primary" : "bg-surface-container"}`} />
+        </div>
+
+        {/* Step 1 — Profile type */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">Tu es…</h2>
+              <p className="text-on-surface-variant text-sm">Choisis ton profil pour une expérience personnalisée.</p>
             </div>
 
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">mail</span>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
-                required
-              />
+            <div className="space-y-3">
+              <button
+                onClick={() => setProfileType("eleve")}
+                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "eleve" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">🎓</span>
+                  <div>
+                    <p className="font-bold text-on-surface">Élève</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Je prépare mon BFEM ou BAC — accès à GSN PREP</p>
+                  </div>
+                  {profileType === "eleve" && (
+                    <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  )}
+                </div>
+              </button>
+
+              <button
+                onClick={() => setProfileType("professionnel")}
+                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "professionnel" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
+                <div className="flex items-center gap-4">
+                  <span className="text-3xl">👨‍💼</span>
+                  <div>
+                    <p className="font-bold text-on-surface">Professionnel</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Je cherche des missions, formations ou emplois</p>
+                  </div>
+                  {profileType === "professionnel" && (
+                    <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  )}
+                </div>
+              </button>
             </div>
 
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">lock</span>
-              <input
-                type="password"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
-                required
-              />
-            </div>
+            <button
+              disabled={!profileType}
+              onClick={() => setStep(2)}
+              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 mt-2">
+              Continuer
+              <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+            </button>
           </div>
+        )}
 
-          {errorMessage && (
-            <div className="flex items-center gap-2 bg-error/10 text-error rounded-xl px-4 py-3">
-              <span className="material-symbols-outlined text-[18px]">error</span>
-              <p className="text-sm font-medium">{errorMessage}</p>
+        {/* Step 2 — Account details */}
+        {step === 2 && (
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div className="flex items-center gap-2 mb-2">
+              <button type="button" onClick={() => setStep(1)} className="text-outline hover:text-on-surface">
+                <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{profileType === "eleve" ? "🎓" : "👨‍💼"}</span>
+                <span className="text-sm font-semibold text-on-surface-variant">{profileType === "eleve" ? "Élève" : "Professionnel"}</span>
+              </div>
             </div>
-          )}
 
-          {successMessage && (
-            <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 rounded-xl px-4 py-3">
-              <span className="material-symbols-outlined text-[18px]">check_circle</span>
-              <p className="text-sm font-medium">{successMessage}</p>
+            <div className="space-y-3">
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">person</span>
+                <input
+                  type="text"
+                  placeholder="Nom complet"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
+                  required
+                />
+              </div>
+
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">mail</span>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
+                  required
+                />
+              </div>
+
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">lock</span>
+                <input
+                  type="password"
+                  placeholder="Mot de passe"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
+                  required
+                />
+              </div>
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
-          >
-            {loading ? (
-              <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
-            ) : (
-              <>
-                Créer mon compte
-                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-              </>
+            {errorMessage && (
+              <div className="flex items-center gap-2 bg-error/10 text-error rounded-xl px-4 py-3">
+                <span className="material-symbols-outlined text-[18px]">error</span>
+                <p className="text-sm font-medium">{errorMessage}</p>
+              </div>
             )}
-          </button>
-        </form>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
+            >
+              {loading ? (
+                <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  Créer mon compte
+                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
         <p className="text-center text-sm text-on-surface-variant mt-8">
           Déjà inscrit ?{" "}

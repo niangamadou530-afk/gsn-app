@@ -29,6 +29,9 @@ export default function OrientationPage() {
   const [serie, setSerie] = useState("");
   const [levels, setLevels] = useState<Record<string, { level: string; score: number }>>({});
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [uploadDone, setUploadDone] = useState(false);
+  const [uploadError, setUploadError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -51,6 +54,33 @@ export default function OrientationPage() {
   const learnPaths = LEARN_PATHS[serieKey] ?? LEARN_PATHS["BFEM"];
   const lycees = LYCEES_DAKAR;
   const seriesReco = SERIES_RECOMMANDEES[serie] ?? [];
+
+  async function handleReleveUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Non connecté");
+      const ext = file.name.split(".").pop();
+      const path = `bac-releves/${user.id}_${Date.now()}.${ext}`;
+      const { error: storageErr } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
+      if (storageErr) throw storageErr;
+      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(path);
+      const publicUrl = urlData.publicUrl;
+      await supabase.from("users").update({
+        profile_type: "professionnel",
+        bac_releve_url: publicUrl,
+      }).eq("id", user.id);
+      setUploadDone(true);
+      setTimeout(() => router.push("/dashboard"), 2000);
+    } catch (err: unknown) {
+      setUploadError(err instanceof Error ? err.message : "Erreur lors de l'upload");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const mathScore = levels["Maths"]?.score ?? 0;
   const sciScore = (levels["Sciences Naturelles"]?.score ?? levels["Physique-Chimie"]?.score ?? 0);
@@ -157,6 +187,52 @@ export default function OrientationPage() {
               style={{ backgroundColor: "#1a73e8" }}>
               Commencer ma formation sur GSN Learn →
             </Link>
+
+            {/* BAC Relevé upload */}
+            <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3 border border-outline-variant/20">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-[28px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+                <div className="flex-1">
+                  <p className="font-bold text-on-surface text-sm">Tu as ton relevé de notes ?</p>
+                  <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">
+                    Télécharge ton relevé BAC (PDF ou image) pour débloquer le profil <strong>Professionnel</strong> et accéder aux formations GSN Learn, missions et paiements.
+                  </p>
+                </div>
+              </div>
+
+              {uploadDone ? (
+                <div className="flex items-center gap-2 bg-green-50 text-green-700 rounded-xl px-4 py-3">
+                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                  <p className="text-sm font-bold">Relevé envoyé ! Redirection vers le tableau de bord…</p>
+                </div>
+              ) : (
+                <>
+                  <label className={`flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-dashed cursor-pointer transition-all text-sm font-semibold ${uploading ? "opacity-50 pointer-events-none" : "border-outline-variant/40 hover:border-primary text-on-surface-variant hover:text-primary"}`}>
+                    {uploading ? (
+                      <>
+                        <div className="w-4 h-4 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+                        Envoi en cours…
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[18px]">attach_file</span>
+                        Choisir mon relevé (PDF / JPG / PNG)
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="sr-only"
+                      onChange={handleReleveUpload}
+                      disabled={uploading}
+                    />
+                  </label>
+                  {uploadError && (
+                    <p className="text-xs text-red-600 font-medium">{uploadError}</p>
+                  )}
+                </>
+              )}
+            </div>
           </>
         )}
 

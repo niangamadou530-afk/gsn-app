@@ -15,6 +15,7 @@ type QuizQuestion = {
   explanation: string;
   points: number;
   difficulty: "facile" | "moyen" | "difficile";
+  chapter?: string;
 };
 
 const SUBJECTS_BFEM = ["Maths", "Français", "Sciences Physiques", "Sciences Naturelles", "Histoire-Géographie", "Anglais"];
@@ -35,6 +36,7 @@ function SimulateurInner() {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<string[]>([]);
   const [selectedAnswer, setSelectedAnswer] = useState("");
+  const [skippedChapters, setSkippedChapters] = useState<string[]>([]);
   const [timeLeft, setTimeLeft] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -88,6 +90,7 @@ function SimulateurInner() {
       setAnswers([]);
       setCurrent(0);
       setSelectedAnswer("");
+      setSkippedChapters([]);
       setTimeLeft(dureeMin * 60);
       setPhase("exam");
     } catch (e: unknown) {
@@ -109,18 +112,42 @@ function SimulateurInner() {
     }
   }
 
+  function skipQuestion() {
+    const chapter = q?.chapter ?? q?.question?.slice(0, 40) ?? "Chapitre inconnu";
+    if (!skippedChapters.includes(chapter)) {
+      setSkippedChapters(prev => [...prev, chapter]);
+    }
+    // Record as skipped (empty answer)
+    const newAnswers = [...answers, "__SKIPPED__"];
+    setAnswers(newAnswers);
+    setSelectedAnswer("");
+    if (current < questions.length - 1) {
+      setCurrent(c => c + 1);
+    } else {
+      endExam();
+    }
+  }
+
   async function saveResult() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || questions.length === 0) return;
-    const score = Math.round(
+    const answered = answers.filter(a => a !== "__SKIPPED__");
+    const correct = answered.filter((a, i) => {
+      const qi = answers.indexOf(a, i);
+      return a === questions[qi]?.correct_answer;
+    }).length;
+    const scoreVal = Math.round(
       (answers.filter((a, i) => a === questions[i]?.correct_answer).length / questions.length) * 20
     );
+    const chapitresARevoir = skippedChapters.length > 0
+      ? `\nChapitres à réviser en priorité : ${skippedChapters.join(", ")}`
+      : "";
     await supabase.from("prep_results").insert({
       user_id: user.id,
       exam_type: examType,
       subject: matiere,
-      score,
-      feedback: `Examen blanc ${matiere} — Score : ${score}/20`,
+      score: scoreVal,
+      feedback: `Examen blanc ${matiere} — Score : ${scoreVal}/20 (${answers.filter(a => a === "__SKIPPED__").length} questions sautées)${chapitresARevoir}`,
     });
   }
 
@@ -132,7 +159,7 @@ function SimulateurInner() {
 
   function calcScore() {
     if (questions.length === 0) return 0;
-    const correct = answers.filter((a, i) => a === questions[i]?.correct_answer).length;
+    const correct = answers.filter((a, i) => a !== "__SKIPPED__" && a === questions[i]?.correct_answer).length;
     return Math.round((correct / questions.length) * 20);
   }
 
@@ -227,11 +254,12 @@ function SimulateurInner() {
         </div>
 
         <div className="max-w-xl mx-auto px-6 py-6 space-y-5">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${q.difficulty === "facile" ? "bg-green-100 text-green-700" : q.difficulty === "moyen" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
               {q.difficulty}
             </span>
             <span className="text-[10px] text-on-surface-variant font-medium">{q.points} pt{q.points > 1 ? "s" : ""} · {q.type}</span>
+            {q.chapter && <span className="text-[10px] text-outline bg-surface-container px-2 py-0.5 rounded-full">{q.chapter}</span>}
           </div>
 
           <p className="text-lg font-bold text-on-surface leading-snug">{q.question}</p>
@@ -259,6 +287,12 @@ function SimulateurInner() {
             style={{ backgroundColor: "#FF6B00" }}>
             {current < questions.length - 1 ? "Question suivante →" : "Terminer l'examen ✓"}
           </button>
+
+          <button onClick={skipQuestion}
+            className="w-full py-3 rounded-2xl border-2 border-outline-variant/30 font-semibold text-sm text-on-surface-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+            <span className="material-symbols-outlined text-[18px]">skip_next</span>
+            Je n&apos;ai pas encore étudié ce chapitre
+          </button>
         </div>
       </main>
     );
@@ -281,20 +315,42 @@ function SimulateurInner() {
           <p className="text-white/70 text-sm mt-1">{answers.filter((a, i) => a === questions[i]?.correct_answer).length} / {questions.length} bonnes réponses · {totalPoints} pts</p>
         </div>
 
+        {/* Chapitres à réviser */}
+        {skippedChapters.length > 0 && (
+          <div className="rounded-2xl p-4 bg-amber-50 border-l-4 border-amber-400 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600 text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>priority_high</span>
+              <p className="font-bold text-amber-800 text-sm">Chapitres à réviser en priorité</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {skippedChapters.map((ch, i) => (
+                <span key={i} className="text-xs bg-amber-100 text-amber-800 font-semibold px-3 py-1 rounded-full">{ch}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Per-question correction */}
         <div className="space-y-3">
           {questions.map((q, i) => {
             const userAns = answers[i] ?? "";
-            const isCorrect = userAns === q.correct_answer;
+            const isSkipped = userAns === "__SKIPPED__";
+            const isCorrect = !isSkipped && userAns === q.correct_answer;
             return (
-              <div key={q.id} className={`rounded-2xl p-4 shadow-sm border-l-4 ${isCorrect ? "border-green-500 bg-green-50" : "border-red-400 bg-red-50"}`}>
+              <div key={q.id} className={`rounded-2xl p-4 shadow-sm border-l-4 ${isSkipped ? "border-amber-400 bg-amber-50" : isCorrect ? "border-green-500 bg-green-50" : "border-red-400 bg-red-50"}`}>
                 <div className="flex items-start gap-2 mb-2">
-                  <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${isCorrect ? "text-green-600" : "text-red-500"}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                    {isCorrect ? "check_circle" : "cancel"}
+                  <span className={`material-symbols-outlined text-[18px] shrink-0 mt-0.5 ${isSkipped ? "text-amber-500" : isCorrect ? "text-green-600" : "text-red-500"}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                    {isSkipped ? "skip_next" : isCorrect ? "check_circle" : "cancel"}
                   </span>
-                  <p className="text-sm font-bold text-on-surface">{q.question}</p>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-on-surface">{q.question}</p>
+                    {q.chapter && <span className="text-[10px] text-outline">{q.chapter}</span>}
+                  </div>
                 </div>
-                {!isCorrect && (
+                {isSkipped && (
+                  <p className="text-xs text-amber-700 mb-1 ml-6 font-semibold">Non étudié — à réviser en priorité</p>
+                )}
+                {!isSkipped && !isCorrect && (
                   <p className="text-xs text-red-600 mb-1 ml-6">Ta réponse : {userAns || "(vide)"}</p>
                 )}
                 <p className="text-xs text-green-700 font-semibold ml-6">✓ {q.correct_answer}</p>
