@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -22,7 +22,7 @@ const SUBJECTS_BAC  = ["Maths", "Français", "Physique-Chimie", "Sciences Nature
 
 type Phase = "setup" | "loading" | "exam" | "correction";
 
-export default function SimulateurPage() {
+function SimulateurInner() {
   const searchParams = useSearchParams();
   const preMatiere = searchParams.get("matiere") ?? "";
 
@@ -333,4 +333,16 @@ export default function SimulateurPage() {
   );
 
   return null;
+}
+
+export default function SimulateurPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      </div>
+    }>
+      <SimulateurInner />
+    </Suspense>
+  );
 }

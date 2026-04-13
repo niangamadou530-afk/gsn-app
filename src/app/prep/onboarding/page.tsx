@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { saveOffline } from "@/lib/offline";
@@ -49,7 +49,7 @@ type SubjectLevel = { level: "Faible" | "Moyen" | "Fort"; score: number };
 
 /* ─── COMPONENT ─────────────────────────────────────────── */
 
-export default function PrepOnboardingPage() {
+function PrepOnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedExam = searchParams.get("exam");
@@ -478,5 +478,17 @@ Règles :
 
       </div>
     </main>
+  );
+}
+
+export default function PrepOnboardingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      </div>
+    }>
+      <PrepOnboardingInner />
+    </Suspense>
   );
 }
