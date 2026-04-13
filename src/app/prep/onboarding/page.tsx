@@ -125,22 +125,30 @@ function PrepOnboardingInner() {
       const programData = await res.json();
       if (!res.ok) throw new Error(programData.error);
 
-      await supabase.from("prep_students").upsert({
-        user_id: user.id,
+      // Save student profile — select → update or insert
+      const { data: existingStu } = await supabase
+        .from("prep_students").select("id").eq("user_id", user.id).maybeSingle();
+      const stuPayload = {
         exam_type: examType,
         serie: serie || null,
         level_per_subject: subjectLevels,
         country,
         voice_lang: "fr-FR",
         stress_journal: [],
-      }, { onConflict: "user_id" });
+      };
+      const stuResult = existingStu
+        ? await supabase.from("prep_students").update(stuPayload).eq("user_id", user.id)
+        : await supabase.from("prep_students").insert({ user_id: user.id, ...stuPayload });
+      if (stuResult.error) console.error("prep_students error:", stuResult.error.message);
 
-      const { error: progErr } = await supabase.from("prep_programs").upsert({
-        user_id: user.id,
-        program: programData,
-        exam_date: finalExamDate,
-      }, { onConflict: "user_id" });
-      if (progErr) throw progErr;
+      // Save program — select → update or insert
+      const { data: existingProg } = await supabase
+        .from("prep_programs").select("id").eq("user_id", user.id).maybeSingle();
+      const progPayload = { program: programData, exam_date: finalExamDate };
+      const progResult = existingProg
+        ? await supabase.from("prep_programs").update(progPayload).eq("user_id", user.id)
+        : await supabase.from("prep_programs").insert({ user_id: user.id, ...progPayload });
+      if (progResult.error) throw new Error("Sauvegarde programme: " + progResult.error.message);
 
       saveOffline("program_" + user.id, programData);
       saveOffline("student_" + user.id, { country, examType, serie, subjectLevels, examDate: finalExamDate });

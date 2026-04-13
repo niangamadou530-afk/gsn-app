@@ -53,11 +53,20 @@ function getFreqData(examType: string, serie: string): string {
 }
 
 export async function POST(request: Request) {
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
+  console.log("=== PREP PROGRAM START ===");
 
-  const body = await request.json().catch(() => ({}));
-  console.log("BODY REÇU:", JSON.stringify(body));
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    console.log("ERROR: GROQ_API_KEY manquante");
+    return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
+  }
+  console.log("GROQ_API_KEY présente:", apiKey.slice(0, 8) + "...");
+
+  const body = await request.json().catch((e: unknown) => {
+    console.log("Body parse error:", e);
+    return {};
+  });
+  console.log("Body:", JSON.stringify(body));
 
   const examType = body?.examType || body?.exam_type || "BAC";
   const examDate = body?.examDate || body?.exam_date || "2026-06-25";
@@ -75,6 +84,13 @@ export async function POST(request: Request) {
   const daysLeft = body?.daysLeft ?? Math.max(1, Math.ceil(
     (new Date(examDate).getTime() - Date.now()) / 86400000
   ));
+
+  console.log("examType:", examType);
+  console.log("examDate:", examDate);
+  console.log("serie:", serie);
+  console.log("country:", country);
+  console.log("levels:", levels);
+  console.log("daysLeft:", daysLeft);
 
   const freqData = getFreqData(examType, serie);
 
@@ -103,7 +119,7 @@ Retourne UNIQUEMENT ce JSON valide (sans texte autour, sans markdown) :
   "daily_program": [
     {
       "day": 1,
-      "date": "${examDate}",
+      "date": "${new Date().toISOString().slice(0, 10)}",
       "subjects": [
         {
           "name": "Maths",
@@ -132,6 +148,7 @@ Génère exactement ${Math.min(daysLeft, 14)} jours de programme (les 2 premièr
 Chaque jour : 2 à 4 matières, 3 à 5 heures total.
 Tout en français.`;
 
+  console.log("Calling Groq... prompt length:", prompt.length, "chars");
   try {
     const groq = new Groq({ apiKey });
     const completion = await groq.chat.completions.create({
@@ -145,13 +162,33 @@ Tout en français.`;
     });
 
     const raw = completion.choices[0]?.message?.content ?? "";
+    console.log("Groq raw response (first 500 chars):", raw.slice(0, 500));
+    console.log("Groq raw response length:", raw.length);
+    console.log("finish_reason:", completion.choices[0]?.finish_reason);
+
     const cleaned = raw.replace(/```json|```/g, "").trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("Pas de JSON dans la réponse");
+    if (!match) {
+      console.log("ERROR: Pas de JSON dans la réponse. Full raw:", raw);
+      throw new Error("Pas de JSON dans la réponse");
+    }
 
-    const program = JSON.parse(match[0]);
-    if (!Array.isArray(program.daily_program)) throw new Error("Structure invalide");
+    let program;
+    try {
+      program = JSON.parse(match[0]);
+    } catch (parseErr) {
+      console.log("ERROR: JSON.parse failed:", parseErr);
+      console.log("match[0] start:", match[0].slice(0, 300));
+      throw new Error("JSON malformé: " + String(parseErr));
+    }
 
+    if (!Array.isArray(program.daily_program)) {
+      console.log("ERROR: daily_program n'est pas un array. Keys:", Object.keys(program));
+      throw new Error("Structure invalide: daily_program manquant");
+    }
+
+    console.log("SUCCESS: program days:", program.daily_program.length);
+    console.log("=== PREP PROGRAM END ===");
     return NextResponse.json(program);
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : String(error);
