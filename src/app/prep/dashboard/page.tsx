@@ -225,17 +225,17 @@ export default function PrepDashboardPage() {
           </section>
         )}
 
-        {/* Quick access — 6 items */}
+        {/* Toolbox — 6 items */}
         <section className="space-y-3">
-          <h2 className="text-lg font-bold text-on-surface">Accès rapide</h2>
+          <h2 className="text-lg font-bold text-on-surface">Boîte à outils</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { href: "/prep/resumeur",    icon: "auto_stories",    label: "Résumeur",    desc: "Cours → résumé IA",     color: "text-orange-500", bg: "bg-orange-50" },
-              { href: "/prep/flashcards",  icon: "style",           label: "Flashcards",  desc: "Mémorisation active",   color: "text-purple-600", bg: "bg-purple-50" },
-              { href: "/prep/simulateur",  icon: "quiz",            label: "Examen",      desc: "Examen blanc",          color: "text-blue-600",   bg: "bg-blue-50" },
-              { href: "/prep/bibliotheque",icon: "library_books",   label: "Épreuves",    desc: "Corrigés & sujets",     color: "text-primary",    bg: "bg-primary/5" },
-              { href: "/prep/soft-skills", icon: "self_improvement",label: "Stress",      desc: "Méthodes & Pomodoro",   color: "text-red-500",    bg: "bg-red-50" },
-              { href: "/prep/progression", icon: "trending_up",     label: "Progrès",     desc: "Statistiques",          color: "text-green-600",  bg: "bg-green-50" },
+              { href: "/prep/resumeur",    icon: "auto_stories",    label: "Résumeur",          desc: "Cours → résumé IA",     color: "text-orange-500", bg: "bg-orange-50" },
+              { href: "/prep/flashcards",  icon: "style",           label: "Flashcards",        desc: "Mémorisation active",   color: "text-purple-600", bg: "bg-purple-50" },
+              { href: "/prep/soft-skills", icon: "self_improvement",label: "Gestion du stress", desc: "Techniques anti-stress",color: "text-red-500",    bg: "bg-red-50" },
+              { href: "/prep/soft-skills", icon: "schedule",        label: "Gestion du temps",  desc: "Pomodoro & planning",   color: "text-blue-600",   bg: "bg-blue-50" },
+              { href: "/prep/bibliotheque",icon: "library_books",   label: "Épreuves",          desc: "Corrigés & sujets",     color: "text-primary",    bg: "bg-primary/5" },
+              { href: "/prep/dashboard",   icon: "calendar_today",  label: "Planning",          desc: "Mon programme",         color: "text-green-600",  bg: "bg-green-50" },
             ].map(item => (
               <Link key={item.href} href={item.href}
                 className="bg-surface-container-lowest rounded-2xl p-3 shadow-sm hover:shadow-md transition-all active:scale-[0.97] space-y-2">
@@ -299,29 +299,6 @@ export default function PrepDashboardPage() {
 
       </div>
 
-      {/* Bottom nav — 5 items */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur border-t border-outline-variant/20 flex justify-around items-center px-2 pb-6 pt-3">
-        <Link href="/prep/dashboard" className="flex flex-col items-center active:scale-90 transition-transform" style={{ color: "#FF6B00" }}>
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
-        </Link>
-        <Link href="/prep/resumeur" className="flex flex-col items-center text-orange-500 active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">auto_stories</span>
-          <span className="text-[10px] font-medium mt-0.5">Résumeur</span>
-        </Link>
-        <Link href="/prep/flashcards" className="flex flex-col items-center active:scale-90 transition-transform" style={{ color: "#7C3AED" }}>
-          <span className="material-symbols-outlined">style</span>
-          <span className="text-[10px] font-medium mt-0.5">Flashcards</span>
-        </Link>
-        <Link href="/prep/simulateur" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">quiz</span>
-          <span className="text-[10px] font-medium mt-0.5">Examen</span>
-        </Link>
-        <Link href="/prep/progression" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">trending_up</span>
-          <span className="text-[10px] font-medium mt-0.5">Progrès</span>
-        </Link>
-      </nav>
     </main>
   );
 }

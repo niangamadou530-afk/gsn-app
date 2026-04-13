@@ -95,7 +95,12 @@ function SimulateurInner() {
       setPhase("exam");
     } catch (e: unknown) {
       console.error(e);
-      alert("Erreur lors de la génération du quiz.");
+      const msg = e instanceof Error ? e.message : String(e);
+      const isRateLimit = msg.toLowerCase().includes("rate") || msg.toLowerCase().includes("429") || msg.toLowerCase().includes("limit");
+      alert(isRateLimit
+        ? "Limite de requêtes atteinte. Attends 30 secondes et réessaie."
+        : "Erreur lors de la génération du quiz. Vérifie ta connexion et réessaie."
+      );
       setPhase("setup");
     }
   }

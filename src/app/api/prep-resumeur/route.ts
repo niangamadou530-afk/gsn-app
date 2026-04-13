@@ -44,11 +44,12 @@ export async function POST(request: Request) {
     let content: string;
 
     if (fileType === "application/pdf") {
-      // Extract text from PDF
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse");
-      const pdfData = await pdfParse(buffer);
-      const text = pdfData.text?.slice(0, 8000) || "";
+      // Extract readable text from PDF without canvas/DOM dependencies
+      const text = buffer.toString("utf-8")
+        .replace(/[^\x20-\x7E\n]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 3000);
       if (!text.trim()) {
         return NextResponse.json({ error: "Impossible d'extraire le texte du PDF. Essaie une image (JPG/PNG)." }, { status: 422 });
       }
@@ -58,8 +59,8 @@ export async function POST(request: Request) {
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide." },
           { role: "user", content: `${JSON_PROMPT(matiere)}\n\nVoici le contenu du cours :\n${text}` },
         ],
-        model: "llama-3.3-70b-versatile",
-        max_tokens: 3000,
+        model: "llama3-8b-8192",
+        max_tokens: 2000,
         temperature: 0.3,
       });
       content = completion.choices[0]?.message?.content ?? "";
