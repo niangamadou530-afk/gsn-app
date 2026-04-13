@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { loadOffline, saveOffline } from "@/lib/offline";
 
+type ChapterStat = {
+  frequency_score: number;
+  last_appeared: number;
+  probability: string;
+  tip?: string;
+};
+
 type SubjectDay = {
   name: string;
   duration_minutes: number;
@@ -26,6 +33,7 @@ type Program = {
   daily_program: DayProgram[];
   weekly_goals: string[];
   key_advice: string[];
+  chapter_stats?: Record<string, ChapterStat>;
 };
 
 type Student = {
@@ -34,6 +42,12 @@ type Student = {
   level_per_subject: Record<string, { level: string; score: number }>;
   country: string;
 };
+
+function freqIcon(score: number): string {
+  if (score > 15) return "🔥";
+  if (score >= 10) return "⭐";
+  return "📚";
+}
 
 export default function PrepDashboardPage() {
   const router = useRouter();
@@ -44,6 +58,7 @@ export default function PrepDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [doneSubjects, setDoneSubjects] = useState<Set<string>>(new Set());
   const [offline, setOffline] = useState(false);
+  const [expandedTopic, setExpandedTopic] = useState<string | null>(null);
 
   useEffect(() => { load(); }, []);
 
@@ -51,7 +66,6 @@ export default function PrepDashboardPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { router.replace("/login"); return; }
 
-    // Try offline first
     const offlineStudent = loadOffline<Student>("student_" + user.id);
     const offlineProgram = loadOffline<Program>("program_" + user.id);
     if (offlineStudent && offlineProgram) {
@@ -89,9 +103,7 @@ export default function PrepDashboardPage() {
   function todayProgram(): DayProgram | null {
     if (!program) return null;
     const todayStr = new Date().toISOString().slice(0, 10);
-    return program.daily_program.find(d => d.date === todayStr)
-      ?? program.daily_program[0]
-      ?? null;
+    return program.daily_program.find(d => d.date === todayStr) ?? program.daily_program[0] ?? null;
   }
 
   function priorityColor(p: string) {
@@ -109,13 +121,11 @@ export default function PrepDashboardPage() {
   const today = todayProgram();
   const dl = daysLeft();
 
-  if (loading && !student) {
-    return (
-      <main className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-      </main>
-    );
-  }
+  if (loading && !student) return (
+    <main className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    </main>
+  );
 
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-28">
@@ -127,12 +137,8 @@ export default function PrepDashboardPage() {
           <span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: "#FF6B00" }}>PREP</span>
         </div>
         <div className="flex items-center gap-2">
-          {offline && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Hors-ligne</span>
-          )}
-          <Link href="/dashboard" className="text-xs text-on-surface-variant hover:text-on-surface font-medium">
-            ← GSN
-          </Link>
+          {offline && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Hors-ligne</span>}
+          <Link href="/dashboard" className="text-xs text-on-surface-variant hover:text-on-surface font-medium">← GSN</Link>
         </div>
       </header>
 
@@ -142,9 +148,7 @@ export default function PrepDashboardPage() {
         <section className="space-y-3">
           <div>
             <p className="text-sm text-on-surface-variant font-medium">Tableau de bord</p>
-            <h1 className="text-2xl font-extrabold text-on-surface">
-              Bonjour, <span className="text-primary">{userName} 👋</span>
-            </h1>
+            <h1 className="text-2xl font-extrabold text-on-surface">Bonjour, <span className="text-primary">{userName} 👋</span></h1>
           </div>
           <div className="rounded-2xl p-5 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #FF6B00, #FF8C40)" }}>
             <div className="flex items-center justify-between">
@@ -179,16 +183,33 @@ export default function PrepDashboardPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <p className="font-bold text-on-surface">{s.name}</p>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${priorityColor(s.priority)}`}>
-                          {s.priority}
-                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${priorityColor(s.priority)}`}>{s.priority}</span>
                       </div>
                       <p className="text-xs text-on-surface-variant font-medium">{s.duration_minutes} min</p>
                       {s.topics.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-2">
-                          {s.topics.map((t, j) => (
-                            <span key={j} className="text-[11px] bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-full">{t}</span>
-                          ))}
+                          {s.topics.map((t, j) => {
+                            const stat = program?.chapter_stats?.[t];
+                            const icon = stat ? freqIcon(stat.frequency_score) : null;
+                            const isExpanded = expandedTopic === `${i}-${j}`;
+                            return (
+                              <div key={j} className="flex flex-col">
+                                <button
+                                  onClick={() => setExpandedTopic(isExpanded ? null : `${i}-${j}`)}
+                                  className="text-[11px] bg-surface-container-low text-on-surface-variant px-2 py-0.5 rounded-full flex items-center gap-1 hover:bg-surface-container transition-colors">
+                                  {icon && <span>{icon}</span>}
+                                  <span>{t}</span>
+                                  {stat && <span className="text-[9px] text-outline">{stat.frequency_score}x</span>}
+                                </button>
+                                {isExpanded && stat && (
+                                  <div className="mt-1 p-2 bg-amber-50 border border-amber-100 rounded-xl text-[10px] text-amber-900 leading-relaxed max-w-xs">
+                                    <span className="font-bold">{stat.probability}</span> · Dernière fois : {stat.last_appeared}<br />
+                                    {stat.tip && <span className="italic">{stat.tip}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -204,22 +225,26 @@ export default function PrepDashboardPage() {
           </section>
         )}
 
-        {/* Quick access */}
+        {/* Quick access — 6 items */}
         <section className="space-y-3">
           <h2 className="text-lg font-bold text-on-surface">Accès rapide</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { href: "/prep/bibliotheque", icon: "library_books", label: "Bibliothèque", desc: "Épreuves & corrigés", color: "text-primary" },
-              { href: "/prep/simulateur", icon: "quiz", label: "Examen blanc", desc: "Tester mon niveau", color: "text-purple-600" },
-              { href: "/prep/progression", icon: "trending_up", label: "Mon évolution", desc: "Stats & progrès", color: "text-green-600" },
-              { href: "/prep/soft-skills", icon: "self_improvement", label: "Gestion du stress", desc: "Méthodes & conseils", color: "text-orange-600" },
+              { href: "/prep/resumeur",    icon: "auto_stories",    label: "Résumeur",    desc: "Cours → résumé IA",     color: "text-orange-500", bg: "bg-orange-50" },
+              { href: "/prep/flashcards",  icon: "style",           label: "Flashcards",  desc: "Mémorisation active",   color: "text-purple-600", bg: "bg-purple-50" },
+              { href: "/prep/simulateur",  icon: "quiz",            label: "Examen",      desc: "Examen blanc",          color: "text-blue-600",   bg: "bg-blue-50" },
+              { href: "/prep/bibliotheque",icon: "library_books",   label: "Épreuves",    desc: "Corrigés & sujets",     color: "text-primary",    bg: "bg-primary/5" },
+              { href: "/prep/soft-skills", icon: "self_improvement",label: "Stress",      desc: "Méthodes & Pomodoro",   color: "text-red-500",    bg: "bg-red-50" },
+              { href: "/prep/progression", icon: "trending_up",     label: "Progrès",     desc: "Statistiques",          color: "text-green-600",  bg: "bg-green-50" },
             ].map(item => (
               <Link key={item.href} href={item.href}
-                className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.97] space-y-2">
-                <span className={`material-symbols-outlined text-[24px] ${item.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
+                className="bg-surface-container-lowest rounded-2xl p-3 shadow-sm hover:shadow-md transition-all active:scale-[0.97] space-y-2">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.bg}`}>
+                  <span className={`material-symbols-outlined text-[20px] ${item.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
+                </div>
                 <div>
-                  <p className="font-bold text-on-surface text-sm">{item.label}</p>
-                  <p className="text-[11px] text-on-surface-variant">{item.desc}</p>
+                  <p className="font-bold text-on-surface text-xs">{item.label}</p>
+                  <p className="text-[10px] text-on-surface-variant leading-tight">{item.desc}</p>
                 </div>
               </Link>
             ))}
@@ -261,7 +286,7 @@ export default function PrepDashboardPage() {
           </section>
         )}
 
-        {/* Orientation */}
+        {/* Orientation CTA */}
         <Link href="/prep/orientation"
           className="flex items-center gap-3 p-4 rounded-2xl border-2 bg-primary/5 border-primary/20 hover:border-primary transition-colors">
           <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
@@ -274,15 +299,19 @@ export default function PrepDashboardPage() {
 
       </div>
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur border-t border-outline-variant/20 flex justify-around items-center px-4 pb-6 pt-3">
+      {/* Bottom nav — 5 items */}
+      <nav className="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur border-t border-outline-variant/20 flex justify-around items-center px-2 pb-6 pt-3">
         <Link href="/prep/dashboard" className="flex flex-col items-center active:scale-90 transition-transform" style={{ color: "#FF6B00" }}>
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
           <span className="text-[10px] font-medium mt-0.5">Accueil</span>
         </Link>
-        <Link href="/prep/bibliotheque" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">library_books</span>
-          <span className="text-[10px] font-medium mt-0.5">Épreuves</span>
+        <Link href="/prep/resumeur" className="flex flex-col items-center text-orange-500 active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">auto_stories</span>
+          <span className="text-[10px] font-medium mt-0.5">Résumeur</span>
+        </Link>
+        <Link href="/prep/flashcards" className="flex flex-col items-center active:scale-90 transition-transform" style={{ color: "#7C3AED" }}>
+          <span className="material-symbols-outlined">style</span>
+          <span className="text-[10px] font-medium mt-0.5">Flashcards</span>
         </Link>
         <Link href="/prep/simulateur" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">quiz</span>
@@ -291,10 +320,6 @@ export default function PrepDashboardPage() {
         <Link href="/prep/progression" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">trending_up</span>
           <span className="text-[10px] font-medium mt-0.5">Progrès</span>
-        </Link>
-        <Link href="/prep/soft-skills" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">self_improvement</span>
-          <span className="text-[10px] font-medium mt-0.5">Méthodes</span>
         </Link>
       </nav>
     </main>

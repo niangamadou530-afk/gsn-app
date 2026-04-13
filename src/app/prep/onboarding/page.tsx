@@ -8,15 +8,15 @@ import { saveOffline } from "@/lib/offline";
 /* ─── DATA ─────────────────────────────────────────────── */
 
 const COUNTRIES = [
-  { code: "SN", name: "Sénégal",      flag: "🇸🇳", bfemName: "BFEM", bacName: "BAC" },
-  { code: "CI", name: "Côte d'Ivoire",flag: "🇨🇮", bfemName: "BEPC", bacName: "BAC" },
-  { code: "ML", name: "Mali",          flag: "🇲🇱", bfemName: "BEPC", bacName: "BAC" },
-  { code: "BF", name: "Burkina Faso", flag: "🇧🇫", bfemName: "BEPC", bacName: "BAC" },
-  { code: "GN", name: "Guinée",        flag: "🇬🇳", bfemName: "BEPC", bacName: "BAC" },
-  { code: "TG", name: "Togo",          flag: "🇹🇬", bfemName: "BEPC", bacName: "BAC" },
-  { code: "BJ", name: "Bénin",         flag: "🇧🇯", bfemName: "BEPC", bacName: "BAC" },
-  { code: "CM", name: "Cameroun",      flag: "🇨🇲", bfemName: "BEPC", bacName: "BAC" },
-  { code: "OTHER", name: "Autre pays", flag: "🌍", bfemName: "BFEM/BEPC", bacName: "BAC" },
+  { code: "SN", name: "Sénégal",       flag: "🇸🇳" },
+  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮" },
+  { code: "ML", name: "Mali",           flag: "🇲🇱" },
+  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫" },
+  { code: "GN", name: "Guinée",         flag: "🇬🇳" },
+  { code: "TG", name: "Togo",           flag: "🇹🇬" },
+  { code: "BJ", name: "Bénin",          flag: "🇧🇯" },
+  { code: "CM", name: "Cameroun",       flag: "🇨🇲" },
+  { code: "OTHER", name: "Autre pays",  flag: "🌍" },
 ];
 
 const BAC_SERIES = [
@@ -38,12 +38,13 @@ const SUBJECTS_MAP: Record<string, string[]> = {
   BAC_G:  ["Comptabilité", "Economie", "Gestion", "Maths", "Français", "Anglais"],
 };
 
-type QuizQuestion = {
-  question: string;
-  choices: string[];
-  correct: number;
-  explanation: string;
-};
+const LEVELS = [
+  { value: 1, label: "Nul",       emoji: "😰", desc: "Je ne comprends rien",              score: 10, level: "Faible" as const, colorSel: "bg-gray-300 border-gray-400",   colorDef: "bg-gray-100 border-gray-200" },
+  { value: 2, label: "Faible",    emoji: "😟", desc: "Quelques bases seulement",           score: 35, level: "Faible" as const, colorSel: "bg-red-200 border-red-400",     colorDef: "bg-red-50 border-red-100" },
+  { value: 3, label: "Moyen",     emoji: "😐", desc: "Je comprends mais j'ai des lacunes", score: 60, level: "Moyen" as const,  colorSel: "bg-yellow-200 border-yellow-400", colorDef: "bg-yellow-50 border-yellow-100" },
+  { value: 4, label: "Bien",      emoji: "🙂", desc: "Je maîtrise la plupart",             score: 80, level: "Fort" as const,  colorSel: "bg-green-200 border-green-400",  colorDef: "bg-green-50 border-green-100" },
+  { value: 5, label: "Très bien", emoji: "😎", desc: "Je suis à l'aise",                   score: 95, level: "Fort" as const,  colorSel: "bg-blue-200 border-blue-400",   colorDef: "bg-blue-50 border-blue-100" },
+];
 
 type SubjectLevel = { level: "Faible" | "Moyen" | "Fort"; score: number };
 
@@ -59,25 +60,13 @@ function PrepOnboardingInner() {
   const [examType, setExamType] = useState(preselectedExam ?? "");
   const [serie, setSerie] = useState("");
 
-  // Step 2 — quiz
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [quizData, setQuizData] = useState<Record<string, QuizQuestion[]>>({});
-  const [currentSubjectIdx, setCurrentSubjectIdx] = useState(0);
-  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [answered, setAnswered] = useState(false);
-  const [subjectAnswers, setSubjectAnswers] = useState<Record<string, number[]>>({});
+  // Step 2 — self-assessment
+  const [selfEval, setSelfEval] = useState<Record<string, number>>({});
   const [subjectLevels, setSubjectLevels] = useState<Record<string, SubjectLevel>>({});
 
   // Step 3 — generate
   const [examDate, setExamDate] = useState("");
   const [generating, setGenerating] = useState(false);
-
-  const subjects = getSubjects(examType, serie);
-  const currentSubject = subjects[currentSubjectIdx] ?? "";
-  const currentSubjectQuestions = quizData[currentSubject] ?? [];
-  const currentQ = currentSubjectQuestions[currentQuestionIdx];
-  const progress = ((step) / 3) * 100;
 
   useEffect(() => {
     if (preselectedExam === "BFEM" || preselectedExam === "BAC") {
@@ -91,103 +80,16 @@ function PrepOnboardingInner() {
     return [];
   }
 
-  /* ── Step 2: Load quiz questions via AI ── */
-  async function loadQuizQuestions() {
-    setQuizLoading(true);
-    const subjs = getSubjects(examType, serie);
-    const prompt = `Tu es expert en éducation en ${country}.
-Génère 3 questions à choix multiples pour évaluer le niveau d'un élève préparant le ${examType}${serie ? " série " + serie : ""}.
-Matières : ${subjs.join(", ")}.
-
-Réponds UNIQUEMENT avec ce JSON valide :
-{
-  ${subjs.map(s => `"${s}": [
-    {
-      "question": "Question pour ${s} ?",
-      "choices": ["Option A", "Option B", "Option C", "Option D"],
-      "correct": 0,
-      "explanation": "Explication de la bonne réponse."
-    }
-  ]`).join(",\n  ")}
-}
-
-Règles :
-- Exactement 3 questions par matière
-- Questions adaptées au niveau ${examType}
-- Difficulté progressive (facile, moyen, difficile)
-- Tout en français
-- correct = index 0-3 de la bonne réponse`;
-
-    try {
-      const res = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: prompt }),
-      });
-      const data = await res.json();
-      const cleaned = (data.reply ?? "").replace(/```json|```/g, "").trim();
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("Pas de JSON");
-      const parsed = JSON.parse(match[0]);
-      // Ensure exactly 3 questions per subject
-      const normalized: Record<string, QuizQuestion[]> = {};
-      for (const s of subjs) {
-        normalized[s] = Array.isArray(parsed[s]) ? parsed[s].slice(0, 3) : [];
-      }
-      setQuizData(normalized);
-    } catch (e) {
-      console.error("Quiz load error:", e);
-      // Fallback: self-assessment
-      const fallback: Record<string, QuizQuestion[]> = {};
-      for (const s of subjs) {
-        fallback[s] = [
-          {
-            question: `Comment évalues-tu ton niveau en ${s} ?`,
-            choices: ["Je maîtrise bien", "J'ai quelques lacunes", "J'ai du mal", "Je ne connais pas du tout"],
-            correct: 0,
-            explanation: "Auto-évaluation de ton niveau.",
-          },
-        ];
-      }
-      setQuizData(fallback);
-    } finally {
-      setQuizLoading(false);
-    }
+  function setLevelForSubject(subj: string, value: number) {
+    setSelfEval(prev => ({ ...prev, [subj]: value }));
+    const lv = LEVELS.find(l => l.value === value)!;
+    setSubjectLevels(prev => ({ ...prev, [subj]: { level: lv.level, score: lv.score } }));
   }
 
-  function handleAnswer(idx: number) {
-    if (answered) return;
-    setSelectedAnswer(idx);
-    setAnswered(true);
-    const prev = subjectAnswers[currentSubject] ?? [];
-    setSubjectAnswers(p => ({ ...p, [currentSubject]: [...prev, idx] }));
-  }
-
-  function nextQuestion() {
-    const questions = quizData[currentSubject] ?? [];
-    if (currentQuestionIdx < questions.length - 1) {
-      setCurrentQuestionIdx(i => i + 1);
-      setSelectedAnswer(null);
-      setAnswered(false);
-    } else {
-      // Calculate level for this subject
-      const answers = [...(subjectAnswers[currentSubject] ?? [])];
-      const qs = quizData[currentSubject] ?? [];
-      const correct = answers.filter((a, i) => a === qs[i]?.correct).length;
-      const score = Math.round((correct / qs.length) * 100);
-      const level: "Faible" | "Moyen" | "Fort" = score >= 67 ? "Fort" : score >= 34 ? "Moyen" : "Faible";
-      setSubjectLevels(p => ({ ...p, [currentSubject]: { level, score } }));
-
-      if (currentSubjectIdx < subjects.length - 1) {
-        setCurrentSubjectIdx(i => i + 1);
-        setCurrentQuestionIdx(0);
-        setSelectedAnswer(null);
-        setAnswered(false);
-      } else {
-        setStep(3);
-      }
-    }
-  }
+  const subjects = getSubjects(examType, serie);
+  const allEvaluated = subjects.length > 0 && subjects.every(s => selfEval[s] !== undefined);
+  const progress = (step / 3) * 100;
+  const defaultExamDate = examType === "BFEM" ? "2026-06-20" : "2026-06-25";
 
   /* ── Step 3: Generate program ── */
   async function generateProgram() {
@@ -200,26 +102,29 @@ Règles :
         .map(([s, l]) => `${s}: ${l.level} (${l.score}%)`)
         .join(", ");
 
+      const finalExamDate = examDate || defaultExamDate;
       const daysLeft = Math.max(1, Math.ceil(
-        (new Date(examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        (new Date(finalExamDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       ));
+
+      const payload = {
+        examType:  examType  || "BAC",
+        examDate:  finalExamDate,
+        serie:     serie     || "S1",
+        country:   country   || "Sénégal",
+        levels:    levelsStr || "Non évalué",
+        daysLeft,
+      };
+      console.log("PAYLOAD ENVOYÉ:", JSON.stringify(payload));
 
       const res = await fetch("/api/prep-program", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          country,
-          examType,
-          serie,
-          levels: levelsStr,
-          examDate,
-          daysLeft,
-        }),
+        body: JSON.stringify(payload),
       });
       const programData = await res.json();
       if (!res.ok) throw new Error(programData.error);
 
-      // Save student profile
       await supabase.from("prep_students").upsert({
         user_id: user.id,
         exam_type: examType,
@@ -230,41 +135,36 @@ Règles :
         stress_journal: [],
       }, { onConflict: "user_id" });
 
-      // Save program
       const { error: progErr } = await supabase.from("prep_programs").upsert({
         user_id: user.id,
         program: programData,
-        exam_date: examDate,
+        exam_date: finalExamDate,
       }, { onConflict: "user_id" });
       if (progErr) throw progErr;
 
       saveOffline("program_" + user.id, programData);
-      saveOffline("student_" + user.id, { country, examType, serie, subjectLevels, examDate });
+      saveOffline("student_" + user.id, { country, examType, serie, subjectLevels, examDate: finalExamDate });
 
       router.push("/prep/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Impossible de générer le programme";
       console.error(err);
-      alert("Erreur : " + (err.message || "Impossible de générer le programme"));
+      alert("Erreur : " + msg);
     } finally {
       setGenerating(false);
     }
   }
 
-  const defaultExamDate = examType === "BFEM" ? "2026-06-20" : "2026-06-25";
-
-  /* ─── RENDER ─── */
-
-  if (generating) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
-        <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-        <div className="text-center">
-          <p className="font-bold text-lg text-on-surface">L&apos;IA crée ton programme personnalisé…</p>
-          <p className="text-on-surface-variant text-sm mt-1">Analyse de tes niveaux et planification en cours</p>
-        </div>
+  /* ─── GENERATING OVERLAY ─── */
+  if (generating) return (
+    <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
+      <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      <div className="text-center">
+        <p className="font-bold text-lg text-on-surface">L&apos;IA crée ton programme personnalisé…</p>
+        <p className="text-on-surface-variant text-sm mt-1">Analyse de tes niveaux et planification en cours</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <main className="min-h-screen bg-surface text-on-surface">
@@ -312,7 +212,7 @@ Règles :
           <>
             <div>
               <h1 className="text-2xl font-extrabold text-on-surface mb-1">Quel examen prépares-tu ?</h1>
-              <p className="text-on-surface-variant text-sm">Pays sélectionné : <strong>{country}</strong></p>
+              <p className="text-on-surface-variant text-sm">Pays : <strong>{country}</strong></p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {["BFEM", "BAC"].map(e => (
@@ -351,7 +251,7 @@ Règles :
 
             <button
               disabled={!examType || (examType === "BAC" && !serie)}
-              onClick={async () => { setStep(2); await loadQuizQuestions(); }}
+              onClick={() => setStep(2)}
               className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
               style={{ backgroundColor: "#FF6B00" }}>
               Suivant →
@@ -359,73 +259,51 @@ Règles :
           </>
         )}
 
-        {/* ── STEP 2: Quiz per subject ── */}
+        {/* ── STEP 2: Self-assessment ── */}
         {step === 2 && (
           <>
-            {quizLoading ? (
-              <div className="flex flex-col items-center justify-center py-20 space-y-4">
-                <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-                <p className="text-on-surface-variant text-sm">Génération des questions d&apos;évaluation…</p>
-              </div>
-            ) : currentQ ? (
-              <>
-                {/* Subject progress */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-on-surface-variant font-medium">
-                    <span>Matière {currentSubjectIdx + 1}/{subjects.length} — <strong className="text-on-surface">{currentSubject}</strong></span>
-                    <span>Q{currentQuestionIdx + 1}/{currentSubjectQuestions.length}</span>
-                  </div>
-                  <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${((currentSubjectIdx * 3 + currentQuestionIdx + 1) / (subjects.length * 3)) * 100}%` }} />
-                  </div>
-                </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-on-surface mb-1">Évalue ton niveau</h1>
+              <p className="text-on-surface-variant text-sm">Pour chaque matière, choisis honnêtement ton niveau actuel.</p>
+            </div>
 
-                <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-4">
-                  <p className="font-bold text-on-surface leading-snug">{currentQ.question}</p>
-                  <div className="space-y-2">
-                    {currentQ.choices.map((choice, i) => {
-                      let cls = "border-transparent bg-surface-container-low text-on-surface";
-                      if (answered) {
-                        if (i === currentQ.correct) cls = "border-green-500 bg-green-50 text-green-700";
-                        else if (i === selectedAnswer) cls = "border-red-400 bg-red-50 text-red-600";
-                      } else if (selectedAnswer === i) {
-                        cls = "border-primary bg-primary/10 text-primary";
-                      }
-                      return (
-                        <button key={i}
-                          onClick={() => handleAnswer(i)}
-                          className={`w-full text-left p-3 rounded-xl border-2 font-medium text-sm transition-all ${cls}`}>
-                          {choice}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {answered && (
-                    <div className="bg-surface-container rounded-xl p-3 text-sm text-on-surface-variant">
-                      <span className="font-bold text-on-surface">Explication : </span>{currentQ.explanation}
+            <div className="space-y-5">
+              {subjects.map(subj => {
+                const selected = selfEval[subj];
+                return (
+                  <div key={subj} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="font-bold text-on-surface">{subj}</p>
+                      {selected !== undefined && (
+                        <span className="text-sm">{LEVELS[selected - 1].emoji} <span className="font-semibold text-on-surface-variant text-xs">{LEVELS[selected - 1].label}</span></span>
+                      )}
                     </div>
-                  )}
-                </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {LEVELS.map(lv => (
+                        <button
+                          key={lv.value}
+                          onClick={() => setLevelForSubject(subj, lv.value)}
+                          className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all active:scale-[0.95] ${selected === lv.value ? lv.colorSel + " ring-2 ring-offset-1 ring-primary" : lv.colorDef}`}>
+                          <span className="text-xl">{lv.emoji}</span>
+                          <span className="text-[9px] font-bold text-on-surface leading-tight text-center">{lv.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selected !== undefined && (
+                      <p className="text-xs text-on-surface-variant italic">{LEVELS[selected - 1].desc}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-                {answered && (
-                  <button onClick={nextQuestion}
-                    className="w-full py-4 font-black text-white rounded-2xl transition-all active:scale-[0.98]"
-                    style={{ backgroundColor: "#FF6B00" }}>
-                    {currentQuestionIdx < currentSubjectQuestions.length - 1
-                      ? "Question suivante →"
-                      : currentSubjectIdx < subjects.length - 1
-                        ? `Matière suivante : ${subjects[currentSubjectIdx + 1]} →`
-                        : "Voir mon programme →"}
-                  </button>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-10">
-                <p className="text-on-surface-variant">Chargement des questions…</p>
-              </div>
-            )}
+            <button
+              disabled={!allEvaluated}
+              onClick={() => setStep(3)}
+              className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
+              style={{ backgroundColor: "#FF6B00" }}>
+              Continuer → ({Object.keys(selfEval).length}/{subjects.length} matières)
+            </button>
           </>
         )}
 
@@ -434,23 +312,28 @@ Règles :
           <>
             <div>
               <h1 className="text-2xl font-extrabold text-on-surface mb-1">Ton programme est presque prêt !</h1>
-              <p className="text-on-surface-variant text-sm">Confirme la date de ton examen pour que l&apos;IA planifie ton programme.</p>
+              <p className="text-on-surface-variant text-sm">Confirme la date de ton examen pour que l&apos;IA planifie tout.</p>
             </div>
 
             {/* Levels recap */}
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <p className="font-bold text-on-surface text-sm">Résumé de ton évaluation</p>
+              <p className="font-bold text-on-surface text-sm">Résumé de ton auto-évaluation</p>
               <div className="space-y-2">
-                {Object.entries(subjectLevels).map(([subj, info]) => (
-                  <div key={subj} className="flex items-center justify-between">
-                    <span className="text-sm text-on-surface">{subj}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      info.level === "Fort" ? "bg-green-100 text-green-700" :
-                      info.level === "Moyen" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-700"
-                    }`}>{info.level} — {info.score}%</span>
-                  </div>
-                ))}
+                {Object.entries(subjectLevels).map(([subj, info]) => {
+                  const lv = LEVELS.find(l => l.level === info.level && l.score === info.score) ?? LEVELS[2];
+                  return (
+                    <div key={subj} className="flex items-center justify-between">
+                      <span className="text-sm text-on-surface flex items-center gap-2">
+                        <span>{lv.emoji}</span> {subj}
+                      </span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        info.level === "Fort" ? "bg-green-100 text-green-700" :
+                        info.level === "Moyen" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>{info.level} — {info.score}%</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -466,7 +349,7 @@ Règles :
             </div>
 
             <button
-              onClick={() => generateProgram()}
+              onClick={generateProgram}
               disabled={generating}
               className="w-full py-4 font-black text-white rounded-2xl shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ backgroundColor: "#FF6B00" }}>
