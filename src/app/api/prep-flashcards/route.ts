@@ -6,13 +6,14 @@ export async function POST(request: Request) {
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
 
   const body = await request.json().catch(() => ({}));
-  const chapter  = body?.chapter  || "Révision générale";
-  const subject  = body?.subject  || "Maths";
-  const examType = body?.examType || "BAC";
-  const serie    = body?.serie    || "";
-  const count    = Math.min(body?.count || 10, 20);
+  const chapter         = body?.chapter         || "Révision générale";
+  const subject         = body?.subject         || "Maths";
+  const examType        = body?.examType        || "BAC";
+  const serie           = body?.serie           || "";
+  const count           = Math.min(body?.count || 10, 20);
+  const programmeContenu: string = body?.programmeContenu || "";
 
-  const prompt = `Génère ${count} flashcards pour le chapitre "${chapter}" en ${subject}, niveau ${examType}${serie ? " série " + serie : ""}.
+  const prompt = `Génère ${count} flashcards pour le chapitre "${chapter}" en ${subject}, niveau ${examType}${serie ? " série " + serie : ""}.${programmeContenu ? `\n\nPROGRAMME OFFICIEL DU CHAPITRE :\n${programmeContenu}\n\nBase-toi sur ce contenu pour générer des flashcards précises et fidèles au programme.` : ""}
 
 Retourne UNIQUEMENT ce JSON valide :
 {

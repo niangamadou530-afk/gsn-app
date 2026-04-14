@@ -4,9 +4,9 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { MATIERES_BY_SERIE } from "@/data/programmes";
 
-/* ─── XP & LEVELS ──────────────────────────────────────────── */
-
+/* ─── XP & LEVELS ─────────────────────────────────────────── */
 const LEVELS_XP = [
   { min: 0,    label: "Novice",     emoji: "🌱" },
   { min: 100,  label: "Apprenti",   emoji: "📚" },
@@ -15,59 +15,55 @@ const LEVELS_XP = [
   { min: 1000, label: "Brillant",   emoji: "💎" },
   { min: 1500, label: "Maître BAC", emoji: "👑" },
 ];
-
 function getLevel(xp: number) {
   return [...LEVELS_XP].reverse().find(l => xp >= l.min) ?? LEVELS_XP[0];
 }
-
-function calcXP(isCorrect: boolean, timeSpent: number, streak: number): number {
-  if (!isCorrect) return 0;
+function calcXP(correct: boolean, timeSpent: number, streak: number) {
+  if (!correct) return 0;
   const base = 10;
-  const timeBonus = timeSpent < 10 ? 5 : timeSpent < 20 ? 3 : timeSpent < 35 ? 1 : 0;
+  const bonus = timeSpent < 10 ? 5 : timeSpent < 20 ? 3 : timeSpent < 35 ? 1 : 0;
   const mult = streak >= 5 ? 2.0 : streak >= 3 ? 1.5 : streak >= 2 ? 1.2 : 1.0;
-  return Math.round((base + timeBonus) * mult);
+  return Math.round((base + bonus) * mult);
+}
+function scoreToLevel(pct: number): string {
+  if (pct >= 70) return "Fort";
+  if (pct >= 40) return "Moyen";
+  return "Faible";
 }
 
 /* ─── TYPES ────────────────────────────────────────────────── */
-
 type QuizQuestion = {
   id: number;
-  type: "qcm" | "vrai_faux" | "calcul" | "definition";
+  type: string;
   question: string;
   choices: string[];
   correct_answer: string;
   explanation: string;
   points: number;
-  difficulty: "facile" | "moyen" | "difficile";
+  difficulty: string;
   chapter?: string;
 };
+type SubjectLevel = { level: string; score: number };
 
-type AnswerRecord = {
-  question: string;
-  answer: string;
-  correct: boolean;
-  timeSpent: number;
-  chapter?: string;
-};
-
-type MicroLecon = {
-  chapter: string;
-  subject: string;
-  explanation: string;
-  key_points: string[];
-  exemple: string;
-};
-
-type QuizAnalysis = {
-  pret_bac_percent: number;
-  chapitres_faibles: string[];
-  message_coach: string;
-};
+type Phase =
+  | "loading"
+  | "positioning_intro"
+  | "positioning_loading"
+  | "positioning_quiz"
+  | "positioning_results"
+  | "subject_select"
+  | "quiz_loading"
+  | "quiz"
+  | "quiz_result";
 
 const QUESTION_TIME = 45;
+const BAC_DATE = "2026-06-30";
+
+function daysUntilBAC() {
+  return Math.max(0, Math.ceil((new Date(BAC_DATE).getTime() - Date.now()) / 86400000));
+}
 
 /* ─── PAGE ─────────────────────────────────────────────────── */
-
 export default function QuizPage() {
   const router = useRouter();
 
@@ -78,105 +74,172 @@ export default function QuizPage() {
   const [totalXP, setTotalXP] = useState(0);
   const [currentLevel, setCurrentLevel] = useState("Novice");
   const [bestStreak, setBestStreak] = useState(0);
+  const [subjectLevels, setSubjectLevels] = useState<Record<string, SubjectLevel>>({});
 
-  // Step: "loading_user" | "loading_quiz" | "quiz" | "result"
-  const [step, setStep] = useState<"loading_user" | "loading_quiz" | "quiz" | "result">("loading_user");
-  const [autoSubject, setAutoSubject] = useState("");
+  // Phase machine
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [error, setError] = useState("");
 
-  // Quiz state
+  // ── POSITIONING ──────────────────────────────────────────
+  const [posSubjects, setPosSubjects] = useState<string[]>([]);
+  const [posIdx, setPosIdx] = useState(0);           // which subject we're positioning
+  const [posQuestions, setPosQuestions] = useState<QuizQuestion[]>([]);
+  const [posAnswered, setPosAnswered] = useState(0);  // questions answered in current subject
+  const [posCorrect, setPosCorrect] = useState(0);    // correct answers in current subject
+  const [posScores, setPosScores] = useState<Record<string, number>>({}); // subject → pct
+  const [posSelected, setPosSelected] = useState<string | null>(null);
+  const [posRevealed, setPosRevealed] = useState(false);
+
+  // ── REGULAR QUIZ ──────────────────────────────────────────
+  const [quizSubject, setQuizSubject] = useState("");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [answers, setAnswers] = useState<AnswerRecord[]>([]);
+  const [answers, setAnswers] = useState<{ correct: boolean; timeSpent: number; chapter?: string }[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
   const [streak, setStreak] = useState(0);
   const [sessionXP, setSessionXP] = useState(0);
-  const [loadError, setLoadError] = useState("");
 
-  // Per-question timer
-  const questionStartRef = useRef<number>(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startRef = useRef(Date.now());
 
-  // Results
-  const [analysis, setAnalysis] = useState<QuizAnalysis | null>(null);
-  const [microLecons, setMicroLecons] = useState<MicroLecon[]>([]);
-  const [analyzing, setAnalyzing] = useState(false);
-
-  // Load user + pick weakest subject
+  /* ── LOAD USER ────────────────────────────────────────────── */
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.replace("/login"); return; }
       setUserId(user.id);
 
-      const [{ data: stu }, { data: stats }, { data: results }] = await Promise.all([
-        supabase.from("prep_students").select("exam_type, serie").eq("user_id", user.id).limit(1),
-        supabase.from("prep_player_stats").select("total_xp, current_level, best_streak").eq("user_id", user.id).maybeSingle(),
-        supabase.from("prep_results").select("subject, score").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
+      const [{ data: stu }, { data: stats }] = await Promise.all([
+        supabase.from("prep_students")
+          .select("exam_type, serie, level_per_subject, positioning_done")
+          .eq("user_id", user.id).limit(1),
+        supabase.from("prep_player_stats")
+          .select("total_xp, current_level, best_streak")
+          .eq("user_id", user.id).maybeSingle(),
       ]);
 
       const et = stu?.[0]?.exam_type ?? "BAC";
       const sr = stu?.[0]?.serie ?? "S1";
+      const positioningDone = stu?.[0]?.positioning_done === true;
+      const levels = (stu?.[0]?.level_per_subject as Record<string, SubjectLevel>) ?? {};
+
       setExamType(et);
       setSerie(sr);
+      setSubjectLevels(levels);
       setTotalXP(stats?.total_xp ?? 0);
       setCurrentLevel(stats?.current_level ?? "Novice");
       setBestStreak(stats?.best_streak ?? 0);
 
-      // Pick weakest subject from recent results
-      const subject = pickWeakestSubject(results ?? [], sr, et);
-      setAutoSubject(subject);
-      setStep("loading_quiz");
-      await loadQuiz(subject, sr, et);
+      const subjects = MATIERES_BY_SERIE[sr] ?? MATIERES_BY_SERIE["S1"];
+      setPosSubjects(subjects);
+
+      if (!positioningDone) {
+        setPhase("positioning_intro");
+      } else {
+        setPhase("subject_select");
+      }
     }
     load();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  function pickWeakestSubject(
-    results: { subject: string; score: number }[],
-    sr: string,
-    et: string
-  ): string {
-    // Compute avg per subject
-    const sums: Record<string, { total: number; count: number }> = {};
-    for (const r of results) {
-      if (!sums[r.subject]) sums[r.subject] = { total: 0, count: 0 };
-      sums[r.subject].total += r.score;
-      sums[r.subject].count += 1;
-    }
-    const avgs: Record<string, number> = {};
-    for (const [s, v] of Object.entries(sums)) {
-      avgs[s] = v.total / v.count;
-    }
-    const MATIERES_BY_SERIE: Record<string, string[]> = {
-      L1: ["Français", "Philosophie", "Histoire-Géographie", "Anglais", "Maths"],
-      L2: ["Français", "Philosophie", "Histoire-Géographie", "Anglais", "Maths", "Sciences Physiques"],
-      S1: ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français", "Philosophie"],
-      S2: ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français", "Philosophie"],
-      S3: ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français"],
-      S4: ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français"],
-      G:  ["Comptabilité", "Maths", "Français"],
-      BFEM: ["Maths", "Français", "Sciences Physiques", "Sciences Naturelles"],
-    };
-    const matieres = MATIERES_BY_SERIE[sr] ?? MATIERES_BY_SERIE["S1"];
-
-    // Sort by avg score (lowest first)
-    const sorted = matieres.sort((a, b) => (avgs[a] ?? 10) - (avgs[b] ?? 10));
-    return sorted[0] ?? matieres[0];
-  }
-
-  async function loadQuiz(subject: string, sr: string, et: string) {
-    setLoadError("");
+  /* ── POSITIONING: load questions for next subject ─────────── */
+  async function loadPositioningQuestions(subject: string) {
+    setPhase("positioning_loading");
+    setError("");
+    setPosSelected(null);
+    setPosRevealed(false);
+    setPosAnswered(0);
+    setPosCorrect(0);
     try {
       const res = await fetch("/api/prep-quiz", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, serie: sr, examType: et, count: 10 }),
+        body: JSON.stringify({ subject, serie, examType, count: 3 }),
       });
       const data = await res.json();
-      if (!res.ok || !data.questions?.length) throw new Error(data.error || "Aucune question générée.");
+      if (!res.ok || !data.questions?.length) throw new Error(data.error || "Erreur");
+      setPosQuestions(data.questions);
+      setPhase("positioning_quiz");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur de chargement");
+      setPhase("positioning_intro");
+    }
+  }
+
+  function startPositioning() {
+    setPosIdx(0);
+    setPosScores({});
+    loadPositioningQuestions(posSubjects[0]);
+  }
+
+  function submitPosAnswer() {
+    if (!posSelected || posRevealed) return;
+    const q = posQuestions[posAnswered];
+    const correct = posSelected === q.correct_answer;
+    setPosCorrect(c => correct ? c + 1 : c);
+    setPosRevealed(true);
+  }
+
+  function nextPosQuestion() {
+    const nextAnswered = posAnswered + 1;
+    setPosSelected(null);
+    setPosRevealed(false);
+
+    if (nextAnswered >= posQuestions.length) {
+      // Subject done — compute score
+      const pct = Math.round(((posCorrect + (posSelected === posQuestions[posAnswered]?.correct_answer ? 1 : 0)) / posQuestions.length) * 100);
+      const actualPct = Math.round(posCorrect / posQuestions.length * 100);
+      const newScores = { ...posScores, [posSubjects[posIdx]]: actualPct };
+      setPosScores(newScores);
+
+      const nextIdx = posIdx + 1;
+      if (nextIdx >= posSubjects.length) {
+        // All subjects done
+        finishPositioning(newScores);
+      } else {
+        setPosIdx(nextIdx);
+        loadPositioningQuestions(posSubjects[nextIdx]);
+      }
+    } else {
+      setPosAnswered(nextAnswered);
+    }
+  }
+
+  async function finishPositioning(scores: Record<string, number>) {
+    if (!userId) return;
+    // Build level_per_subject
+    const newLevels: Record<string, SubjectLevel> = {};
+    for (const [subj, pct] of Object.entries(scores)) {
+      newLevels[subj] = { level: scoreToLevel(pct), score: pct };
+    }
+    setSubjectLevels(newLevels);
+    setPosScores(scores);
+
+    // Save to Supabase
+    await supabase.from("prep_students")
+      .update({ level_per_subject: newLevels, positioning_done: true })
+      .eq("user_id", userId);
+
+    // Chapter progress is seeded when the user visits /prep/programme
+
+    setPhase("positioning_results");
+  }
+
+  /* ── REGULAR QUIZ: load questions ─────────────────────────── */
+  async function startQuiz(subject: string) {
+    setQuizSubject(subject);
+    setPhase("quiz_loading");
+    setError("");
+    try {
+      const res = await fetch("/api/prep-quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject, serie, examType, count: 10 }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.questions?.length) throw new Error(data.error || "Erreur");
       setQuestions(data.questions);
       setCurrentIdx(0);
       setAnswers([]);
@@ -184,25 +247,26 @@ export default function QuizPage() {
       setRevealed(false);
       setStreak(0);
       setSessionXP(0);
-      setStep("quiz");
+      setTimeLeft(QUESTION_TIME);
+      setPhase("quiz");
     } catch (err: unknown) {
-      setLoadError(err instanceof Error ? err.message : "Erreur chargement quiz.");
-      setStep("result");
+      setError(err instanceof Error ? err.message : "Erreur chargement quiz");
+      setPhase("subject_select");
     }
   }
 
-  // Per-question timer
+  /* ── QUIZ TIMER ───────────────────────────────────────────── */
   useEffect(() => {
-    if (step !== "quiz") return;
+    if (phase !== "quiz") return;
     if (timerRef.current) clearInterval(timerRef.current);
-    questionStartRef.current = Date.now();
+    startRef.current = Date.now();
     setTimeLeft(QUESTION_TIME);
 
     timerRef.current = setInterval(() => {
       setTimeLeft(t => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          timeoutAnswer();
+          handleTimeout();
           return 0;
         }
         return t - 1;
@@ -210,29 +274,27 @@ export default function QuizPage() {
     }, 1000);
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIdx, step]);
+  }, [currentIdx, phase]);
 
-  const timeoutAnswer = useCallback(() => {
+  function handleTimeout() {
     if (revealed) return;
-    const q = questions[currentIdx];
-    const timeSpent = Math.round((Date.now() - questionStartRef.current) / 1000);
-    setAnswers(prev => [...prev, { question: q.question, answer: "", correct: false, timeSpent, chapter: q.chapter }]);
+    const timeSpent = QUESTION_TIME;
+    setAnswers(prev => [...prev, { correct: false, timeSpent, chapter: questions[currentIdx]?.chapter }]);
     setStreak(0);
     setRevealed(true);
-  }, [revealed, questions, currentIdx]);
+  }
 
   function submitAnswer() {
     if (!selected || revealed) return;
     if (timerRef.current) clearInterval(timerRef.current);
     const q = questions[currentIdx];
     const correct = selected === q.correct_answer;
-    const timeSpent = Math.round((Date.now() - questionStartRef.current) / 1000);
+    const timeSpent = Math.round((Date.now() - startRef.current) / 1000);
     const newStreak = correct ? streak + 1 : 0;
-    const xpGained = calcXP(correct, timeSpent, newStreak);
-
-    setAnswers(prev => [...prev, { question: q.question, answer: selected, correct, timeSpent, chapter: q.chapter }]);
+    const xp = calcXP(correct, timeSpent, newStreak);
+    setAnswers(prev => [...prev, { correct, timeSpent, chapter: q.chapter }]);
     setStreak(newStreak);
-    setSessionXP(s => s + xpGained);
+    setSessionXP(s => s + xp);
     setRevealed(true);
   }
 
@@ -248,160 +310,419 @@ export default function QuizPage() {
 
   const finishQuiz = useCallback(async () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    setStep("result");
-    setAnalyzing(true);
-
-    const allAnswers = answers;
-    const correct = allAnswers.filter(a => a.correct).length;
+    setPhase("quiz_result");
+    const correct = answers.filter(a => a.correct).length;
     const score = Math.round((correct / questions.length) * 20);
+    const pct = Math.round((correct / questions.length) * 100);
 
-    // Save to DB
-    if (userId) {
-      const newXP = totalXP + sessionXP;
-      const newStreak = Math.max(bestStreak, streak);
-      const level = getLevel(newXP);
+    if (!userId) return;
+    const newXP = totalXP + sessionXP;
+    const newStreak = Math.max(bestStreak, streak);
+    const lvl = getLevel(newXP);
 
-      await Promise.all([
-        supabase.from("prep_results").insert({
-          user_id: userId,
-          subject: autoSubject,
-          score,
-          feedback: `Quiz IA — ${correct}/${questions.length} correctes, ${sessionXP} XP gagnés`,
-        }),
-        supabase.from("prep_player_stats").upsert({
-          user_id: userId,
-          total_xp: newXP,
-          current_level: level.label,
-          best_streak: newStreak,
-        }, { onConflict: "user_id" }),
-      ]);
+    // Update level for this subject
+    const newLevels = {
+      ...subjectLevels,
+      [quizSubject]: { level: scoreToLevel(pct), score: pct },
+    };
+    setSubjectLevels(newLevels);
+    setTotalXP(newXP);
+    setCurrentLevel(lvl.label);
 
-      setTotalXP(newXP);
-      setCurrentLevel(level.label);
-    }
-
-    // Groq analysis
-    try {
-      const res = await fetch("/api/prep-analyse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: autoSubject,
-          serie,
-          examType,
-          questions: questions.map((q, i) => ({
-            question: q.question,
-            correct_answer: q.correct_answer,
-            user_answer: allAnswers[i]?.answer ?? "",
-            is_correct: allAnswers[i]?.correct ?? false,
-            chapter: q.chapter,
-          })),
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setAnalysis(data.analysis);
-        // Load micro-lecons for weak chapters
-        if (data.analysis?.chapitres_faibles?.length > 0) {
-          const lecons: MicroLecon[] = [];
-          for (const ch of data.analysis.chapitres_faibles.slice(0, 2)) {
-            try {
-              const lres = await fetch("/api/prep-micro-lecon", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ subject: autoSubject, chapter: ch, serie }),
-              });
-              const ldata = await lres.json();
-              if (lres.ok && ldata.lecon) lecons.push(ldata.lecon);
-            } catch {}
-          }
-          setMicroLecons(lecons);
-        }
-      }
-    } catch {}
-    setAnalyzing(false);
+    await Promise.all([
+      supabase.from("prep_results").insert({
+        user_id: userId,
+        subject: quizSubject,
+        score,
+        feedback: `Quiz IA — ${correct}/${questions.length} correctes, ${sessionXP} XP`,
+      }),
+      supabase.from("prep_player_stats").upsert({
+        user_id: userId,
+        total_xp: newXP,
+        current_level: lvl.label,
+        best_streak: newStreak,
+      }, { onConflict: "user_id" }),
+      supabase.from("prep_students")
+        .update({ level_per_subject: newLevels })
+        .eq("user_id", userId),
+    ]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [answers, questions, userId, totalXP, sessionXP, streak, bestStreak, autoSubject, serie, examType]);
+  }, [answers, questions, userId, totalXP, sessionXP, streak, bestStreak, quizSubject, subjectLevels]);
+
+  /* ─── RENDERS ─────────────────────────────────────────────── */
+
+  const level = getLevel(totalXP);
+  const dl = daysUntilBAC();
 
   // ── LOADING ────────────────────────────────────────────────
-  if (step === "loading_user" || step === "loading_quiz") {
-    return (
-      <main className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4">
-        <div className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent", borderWidth: 3 }} />
-        <div className="text-center">
-          <p className="font-bold text-on-surface">
-            {step === "loading_user" ? "Chargement de ton profil…" : `Génération du quiz — ${autoSubject}…`}
+  if (phase === "loading") return (
+    <main className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    </main>
+  );
+
+  // ── POSITIONING INTRO ──────────────────────────────────────
+  if (phase === "positioning_intro") return (
+    <main className="min-h-screen bg-surface text-on-surface pb-28">
+      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+        <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
+          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+        </Link>
+        <div>
+          <p className="text-xs text-on-surface-variant">GSN PREP</p>
+          <p className="font-bold text-on-surface">Quiz de positionnement</p>
+        </div>
+      </header>
+      <div className="max-w-lg mx-auto px-6 py-10 space-y-6">
+        <div className="rounded-2xl p-6 text-white space-y-2" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
+          <span className="material-symbols-outlined text-[48px] text-white/80" style={{ fontVariationSettings: "'FILL' 1" }}>quiz</span>
+          <h1 className="text-2xl font-extrabold">Quiz de positionnement</h1>
+          <p className="text-white/80 text-sm leading-relaxed">
+            Bienvenue ! Pour personnaliser ton programme de révision, réponds à quelques questions par matière.
+            Cela ne prend que 5 minutes.
           </p>
-          {step === "loading_quiz" && (
-            <p className="text-sm text-on-surface-variant mt-1">L&apos;IA sélectionne les questions sur tes points faibles</p>
+        </div>
+
+        <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
+          <p className="font-bold text-on-surface text-sm">Comment ça marche ?</p>
+          {[
+            { icon: "looks_one", text: `3 questions par matière (${posSubjects.length} matières — série ${serie})` },
+            { icon: "looks_two", text: "Le système calcule ton niveau de départ par matière" },
+            { icon: "looks_3", text: "Tu reçois un programme de révision personnalisé jusqu'au 30 juin" },
+          ].map((s, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+              <p className="text-sm text-on-surface">{s.text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl p-3">
+          <span className="material-symbols-outlined text-blue-600 text-[18px]">calendar_today</span>
+          <p className="text-sm text-blue-800 font-medium">BAC dans <strong>J-{dl}</strong> — 30 juin 2026</p>
+        </div>
+
+        {error && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{error}</p>}
+
+        <button onClick={startPositioning}
+          className="w-full py-4 rounded-2xl font-black text-white text-base shadow-lg"
+          style={{ backgroundColor: "#FF6B00" }}>
+          Commencer le positionnement →
+        </button>
+      </div>
+    </main>
+  );
+
+  // ── POSITIONING LOADING ────────────────────────────────────
+  if (phase === "positioning_loading") return (
+    <main className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent", borderWidth: 3 }} />
+      <div className="text-center">
+        <p className="font-bold text-on-surface">Chargement des questions…</p>
+        <p className="text-sm text-on-surface-variant mt-1">
+          {posSubjects[posIdx]} — matière {posIdx + 1}/{posSubjects.length}
+        </p>
+      </div>
+    </main>
+  );
+
+  // ── POSITIONING QUIZ ───────────────────────────────────────
+  if (phase === "positioning_quiz") {
+    const q = posQuestions[posAnswered];
+    if (!q) return null;
+    const progress = ((posIdx * 3 + posAnswered) / (posSubjects.length * 3)) * 100;
+
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-28">
+        <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-outline-variant/20">
+          <div className="h-1 bg-surface-container-low">
+            <div className="h-full transition-all" style={{ width: `${progress}%`, backgroundColor: "#FF6B00" }} />
+          </div>
+          <div className="px-6 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-on-surface-variant">Positionnement · {posSubjects[posIdx]}</p>
+              <p className="text-sm font-bold text-on-surface">
+                Matière {posIdx + 1}/{posSubjects.length} · Question {posAnswered + 1}/3
+              </p>
+            </div>
+            <span className="text-xs text-on-surface-variant bg-surface-container px-2 py-1 rounded-full">
+              Sans XP
+            </span>
+          </div>
+        </header>
+
+        <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-2">
+            {q.chapter && (
+              <span className="text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">{q.chapter}</span>
+            )}
+            <p className="font-semibold text-on-surface text-base leading-snug">{q.question}</p>
+          </div>
+
+          <div className="space-y-2">
+            {q.choices.map((choice, i) => {
+              let cls = "border-outline-variant/30 bg-surface-container-lowest text-on-surface";
+              if (posRevealed) {
+                if (choice === q.correct_answer) cls = "border-green-400 bg-green-50 text-green-800";
+                else if (choice === posSelected) cls = "border-red-400 bg-red-50 text-red-700";
+                else cls = "border-outline-variant/20 bg-surface-container text-on-surface-variant";
+              } else if (posSelected === choice) {
+                cls = "border-primary bg-primary/5 text-primary";
+              }
+              return (
+                <button key={i}
+                  onClick={() => !posRevealed && setPosSelected(choice)}
+                  disabled={posRevealed}
+                  className={`w-full text-left px-4 py-3.5 rounded-xl border-2 font-medium text-sm transition-all ${cls}`}>
+                  <span className="font-black mr-2 text-xs text-on-surface-variant">{String.fromCharCode(65 + i)}.</span>
+                  {choice}
+                </button>
+              );
+            })}
+          </div>
+
+          {posRevealed && (
+            <div className="bg-surface-container rounded-xl p-4">
+              <p className="text-xs font-bold text-on-surface-variant uppercase mb-1">Correction</p>
+              <p className="text-sm text-on-surface leading-relaxed">{q.explanation}</p>
+            </div>
+          )}
+
+          {!posRevealed ? (
+            <button onClick={submitPosAnswer} disabled={!posSelected}
+              className="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-40"
+              style={{ backgroundColor: "#FF6B00" }}>
+              Valider
+            </button>
+          ) : (
+            <button onClick={nextPosQuestion}
+              className="w-full py-3.5 rounded-xl font-bold text-white"
+              style={{ backgroundColor: "#FF6B00" }}>
+              {posAnswered + 1 >= posQuestions.length
+                ? (posIdx + 1 >= posSubjects.length ? "Voir mes résultats" : `Matière suivante : ${posSubjects[posIdx + 1]} →`)
+                : "Question suivante →"}
+            </button>
           )}
         </div>
       </main>
     );
   }
 
-  // ── ERROR ──────────────────────────────────────────────────
-  if (step === "result" && loadError) {
+  // ── POSITIONING RESULTS ────────────────────────────────────
+  if (phase === "positioning_results") {
+    const nbFort   = Object.values(posScores).filter(s => s >= 70).length;
+    const nbMoyen  = Object.values(posScores).filter(s => s >= 40 && s < 70).length;
+    const nbFaible = Object.values(posScores).filter(s => s < 40).length;
+
     return (
-      <main className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4 px-6">
-        <span className="material-symbols-outlined text-[48px] text-red-400">error</span>
-        <p className="font-bold text-on-surface">{loadError}</p>
-        <Link href="/prep/dashboard" className="px-6 py-3 rounded-xl font-bold text-white text-sm" style={{ backgroundColor: "#FF6B00" }}>
-          Retour au tableau de bord
-        </Link>
+      <main className="min-h-screen bg-surface text-on-surface pb-28">
+        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4">
+          <p className="font-bold text-on-surface">Résultats du positionnement</p>
+          <p className="text-xs text-on-surface-variant">BAC dans J-{dl} — 30 juin 2026</p>
+        </header>
+
+        <div className="max-w-lg mx-auto px-6 py-6 space-y-5">
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { val: nbFort,   label: "Fort ✅",    color: "text-green-600 bg-green-50"  },
+              { val: nbMoyen,  label: "Moyen 🔶",  color: "text-yellow-600 bg-yellow-50" },
+              { val: nbFaible, label: "Faible 🔴",  color: "text-red-600 bg-red-50"      },
+            ].map(s => (
+              <div key={s.label} className={`rounded-2xl p-4 text-center ${s.color}`}>
+                <p className="text-3xl font-black">{s.val}</p>
+                <p className="text-xs font-semibold mt-0.5">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {posSubjects.map(subj => {
+              const pct = posScores[subj] ?? 0;
+              const lv = scoreToLevel(pct);
+              return (
+                <div key={subj} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between gap-3">
+                  <p className="font-bold text-sm text-on-surface flex-1">{subj}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-surface-container rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 70 ? "#22c55e" : pct >= 40 ? "#f59e0b" : "#ef4444" }} />
+                    </div>
+                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${lv === "Fort" ? "bg-green-100 text-green-700" : lv === "Moyen" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                      {lv}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <Link href="/prep/programme"
+            className="flex items-center gap-3 p-4 rounded-2xl text-white shadow-lg"
+            style={{ background: "linear-gradient(135deg,#1a73e8,#4285f4)" }}>
+            <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+            <div>
+              <p className="font-black">Voir mon programme de révision</p>
+              <p className="text-white/80 text-xs">Organisé par matière, chapitre et semaine jusqu'au 30 juin</p>
+            </div>
+            <span className="material-symbols-outlined text-white/70 ml-auto">arrow_forward_ios</span>
+          </Link>
+
+          <button onClick={() => setPhase("subject_select")}
+            className="w-full py-3.5 rounded-xl font-bold text-white"
+            style={{ backgroundColor: "#FF6B00" }}>
+            Commencer à réviser →
+          </button>
+        </div>
       </main>
     );
   }
 
-  // ── QUIZ ───────────────────────────────────────────────────
-  if (step === "quiz") {
-    const q = questions[currentIdx];
-    const pct = (timeLeft / QUESTION_TIME) * 100;
-    const isLow = timeLeft <= 10;
-    const level = getLevel(totalXP + sessionXP);
-
+  // ── SUBJECT SELECT ─────────────────────────────────────────
+  if (phase === "subject_select") {
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-28">
-        {/* Header */}
-        <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-outline-variant/20">
-          <div className="px-6 py-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="text-xs text-on-surface-variant font-medium">Quiz IA · {autoSubject}</p>
-              <p className="text-sm font-bold text-on-surface">{currentIdx + 1}/{questions.length}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {streak >= 2 && (
-                <span className="text-sm font-black text-orange-500">🔥 ×{streak}</span>
-              )}
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-sm ${isLow ? "bg-red-100 text-red-600" : "bg-orange-50 text-orange-600"}`}>
-                <span className="material-symbols-outlined text-[16px]">timer</span>
-                {timeLeft}s
-              </div>
-              <div className="flex items-center gap-1 bg-yellow-50 px-3 py-1.5 rounded-lg">
-                <span className="text-sm font-black text-yellow-600">+{sessionXP}</span>
-                <span className="text-xs text-yellow-500">XP</span>
-              </div>
-            </div>
-          </div>
-          {/* Timer bar */}
-          <div className="h-1 bg-surface-container-low">
-            <div className="h-full transition-all duration-1000"
-              style={{ width: `${pct}%`, backgroundColor: isLow ? "#ef4444" : "#FF6B00" }} />
+        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+          <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+          </Link>
+          <div>
+            <p className="text-xs text-on-surface-variant">GSN PREP · Quiz IA</p>
+            <p className="font-bold text-on-surface">Choisir une matière</p>
           </div>
         </header>
 
-        {/* Level pill */}
-        <div className="max-w-2xl mx-auto px-6 pt-4 flex items-center gap-2">
-          <span className="text-lg">{level.emoji}</span>
-          <span className="text-xs font-semibold text-on-surface-variant">{level.label} · {totalXP + sessionXP} XP</span>
-        </div>
+        <div className="max-w-lg mx-auto px-6 py-6 space-y-5">
+          {/* XP + countdown */}
+          <div className="flex gap-3">
+            <div className="flex-1 bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3">
+              <span className="text-2xl">{level.emoji}</span>
+              <div>
+                <p className="font-black text-on-surface text-sm">{currentLevel}</p>
+                <p className="text-xs text-on-surface-variant">{totalXP} XP</p>
+              </div>
+            </div>
+            <div className="flex-1 bg-orange-50 rounded-2xl p-4 shadow-sm text-center">
+              <p className="text-2xl font-black text-primary">J-{dl}</p>
+              <p className="text-[10px] text-on-surface-variant font-medium">BAC 30 juin</p>
+            </div>
+          </div>
 
-        <div className="max-w-2xl mx-auto px-6 py-4 space-y-5">
-          {/* Question */}
+          {error && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">{error}</p>}
+
+          {/* Subjects */}
+          <div className="space-y-2">
+            <p className="font-bold text-on-surface text-sm">Série {serie} — choisir la matière à réviser</p>
+            {(MATIERES_BY_SERIE[serie] ?? MATIERES_BY_SERIE["S1"]).map(subj => {
+              const info = subjectLevels[subj];
+              const lv = info?.level ?? "Faible";
+              const sc = info?.score ?? 0;
+              return (
+                <button key={subj} onClick={() => startQuiz(subj)}
+                  className="w-full flex items-center justify-between gap-3 bg-surface-container-lowest rounded-xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-on-surface text-sm">{subj}</p>
+                    {info && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="w-16 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${sc}%`, backgroundColor: sc >= 70 ? "#22c55e" : sc >= 40 ? "#f59e0b" : "#ef4444" }} />
+                        </div>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${lv === "Fort" ? "bg-green-100 text-green-700" : lv === "Moyen" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                          {lv}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {lv === "Faible" && !info && (
+                      <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">Priorité</span>
+                    )}
+                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Repositionnement */}
+          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-2">
+            <p className="text-xs font-bold text-on-surface-variant uppercase">Mettre à jour mon niveau</p>
+            <p className="text-sm text-on-surface-variant">Refaire le quiz de positionnement pour une matière spécifique</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {(MATIERES_BY_SERIE[serie] ?? []).map(subj => (
+                <button key={subj}
+                  onClick={async () => {
+                    setPosIdx((MATIERES_BY_SERIE[serie] ?? []).indexOf(subj));
+                    setPosSubjects([subj]);
+                    await loadPositioningQuestions(subj);
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-outline-variant/30 text-on-surface-variant hover:border-primary hover:text-primary transition-colors">
+                  {subj}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <Link href="/prep/programme"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 hover:border-blue-400 transition-colors">
+            <span className="material-symbols-outlined text-blue-600 text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+            <div>
+              <p className="font-bold text-on-surface text-sm">Mon programme de révision</p>
+              <p className="text-xs text-on-surface-variant">Chapitres · Semaines · BAC 30 juin</p>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant ml-auto">arrow_forward_ios</span>
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // ── QUIZ LOADING ───────────────────────────────────────────
+  if (phase === "quiz_loading") return (
+    <main className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent", borderWidth: 3 }} />
+      <div className="text-center">
+        <p className="font-bold text-on-surface">Génération du quiz IA…</p>
+        <p className="text-sm text-on-surface-variant mt-1">{quizSubject} · Série {serie}</p>
+      </div>
+    </main>
+  );
+
+  // ── ACTIVE QUIZ ────────────────────────────────────────────
+  if (phase === "quiz") {
+    const q = questions[currentIdx];
+    if (!q) return null;
+    const pct = (timeLeft / QUESTION_TIME) * 100;
+    const isLow = timeLeft <= 10;
+    const lastAns = answers[answers.length - 1];
+    const lastXP = lastAns ? calcXP(lastAns.correct, lastAns.timeSpent, streak) : 0;
+
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-28">
+        <header className="sticky top-0 z-30 bg-surface/95 backdrop-blur border-b border-outline-variant/20">
+          <div className="px-6 py-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-on-surface-variant">{quizSubject} · {serie}</p>
+              <p className="text-sm font-bold text-on-surface">{currentIdx + 1}/{questions.length}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {streak >= 2 && <span className="text-sm font-black text-orange-500">🔥 ×{streak}</span>}
+              <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-black text-sm ${isLow ? "bg-red-100 text-red-600" : "bg-orange-50 text-orange-600"}`}>
+                <span className="material-symbols-outlined text-[14px]">timer</span>
+                {timeLeft}s
+              </div>
+              <div className="bg-yellow-50 px-3 py-1.5 rounded-lg">
+                <span className="text-sm font-black text-yellow-600">+{sessionXP} XP</span>
+              </div>
+            </div>
+          </div>
+          <div className="h-1 bg-surface-container-low">
+            <div className="h-full transition-all duration-1000" style={{ width: `${pct}%`, backgroundColor: isLow ? "#ef4444" : "#FF6B00" }} />
+          </div>
+        </header>
+
+        <div className="max-w-2xl mx-auto px-6 py-5 space-y-4">
           <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`text-[11px] font-black px-2 py-0.5 rounded-full text-white
-                ${q.difficulty === "facile" ? "bg-green-500" : q.difficulty === "moyen" ? "bg-yellow-500" : "bg-red-500"}`}>
+              <span className={`text-[11px] font-black px-2 py-0.5 rounded-full text-white ${q.difficulty === "facile" ? "bg-green-500" : q.difficulty === "moyen" ? "bg-yellow-500" : "bg-red-500"}`}>
                 {q.difficulty}
               </span>
               {q.chapter && <span className="text-[11px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">{q.chapter}</span>}
@@ -409,7 +730,6 @@ export default function QuizPage() {
             <p className="font-semibold text-on-surface text-base leading-snug">{q.question}</p>
           </div>
 
-          {/* Choices */}
           <div className="space-y-2">
             {q.choices.map((choice, i) => {
               let cls = "border-outline-variant/30 bg-surface-container-lowest text-on-surface";
@@ -425,36 +745,28 @@ export default function QuizPage() {
                   onClick={() => !revealed && setSelected(choice)}
                   disabled={revealed}
                   className={`w-full text-left px-4 py-3.5 rounded-xl border-2 font-medium text-sm transition-all ${cls}`}>
-                  <span className="font-black mr-2 text-xs text-on-surface-variant">
-                    {String.fromCharCode(65 + i)}.
-                  </span>
+                  <span className="font-black mr-2 text-xs text-on-surface-variant">{String.fromCharCode(65 + i)}.</span>
                   {choice}
                 </button>
               );
             })}
           </div>
 
-          {/* XP feedback */}
-          {revealed && (() => {
-            const ans = answers[answers.length - 1];
-            const xp = ans ? calcXP(ans.correct, ans.timeSpent, streak) : 0;
-            return (
-              <div className={`rounded-xl p-3 flex items-center gap-3 ${ans?.correct ? "bg-green-50" : "bg-red-50"}`}>
-                <span className={`text-2xl`}>{ans?.correct ? "✅" : "❌"}</span>
-                <div className="flex-1">
-                  <p className={`text-sm font-bold ${ans?.correct ? "text-green-700" : "text-red-700"}`}>
-                    {ans?.correct ? `Correct ! +${xp} XP` : (ans?.answer === "" ? "Temps écoulé !" : "Incorrect")}
-                  </p>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">{q.explanation}</p>
-                </div>
+          {revealed && (
+            <div className={`rounded-xl p-3 flex items-start gap-3 ${lastAns?.correct ? "bg-green-50" : "bg-red-50"}`}>
+              <span className="text-xl shrink-0">{lastAns?.correct ? "✅" : "❌"}</span>
+              <div>
+                <p className={`text-sm font-bold ${lastAns?.correct ? "text-green-700" : "text-red-700"}`}>
+                  {lastAns?.correct ? `Correct ! +${lastXP} XP` : lastAns?.timeSpent === QUESTION_TIME ? "Temps écoulé !" : "Incorrect"}
+                </p>
+                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">{q.explanation}</p>
               </div>
-            );
-          })()}
+            </div>
+          )}
 
-          {/* Actions */}
           {!revealed ? (
             <button onClick={submitAnswer} disabled={!selected}
-              className="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-40 transition-all"
+              className="w-full py-3.5 rounded-xl font-bold text-white disabled:opacity-40"
               style={{ backgroundColor: "#FF6B00" }}>
               Valider
             </button>
@@ -470,133 +782,78 @@ export default function QuizPage() {
     );
   }
 
-  // ── RESULTS ────────────────────────────────────────────────
-  const correct = answers.filter(a => a.correct).length;
-  const score20 = questions.length > 0 ? Math.round((correct / questions.length) * 20) : 0;
-  const level = getLevel(totalXP);
+  // ── QUIZ RESULT ────────────────────────────────────────────
+  if (phase === "quiz_result") {
+    const correct = answers.filter(a => a.correct).length;
+    const score20 = questions.length > 0 ? Math.round((correct / questions.length) * 20) : 0;
+    const pct = questions.length > 0 ? Math.round((correct / questions.length) * 100) : 0;
+    const newLv = getLevel(totalXP);
+    const mention = score20 >= 14 ? "Bien" : score20 >= 10 ? "Passable" : "À retravailler";
+    const mentionColor = score20 >= 14 ? "bg-green-100 text-green-700" : score20 >= 10 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700";
 
-  return (
-    <main className="min-h-screen bg-surface text-on-surface pb-28">
-      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
-        <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
-          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
-        </Link>
-        <p className="font-bold text-on-surface">Résultats du Quiz IA</p>
-      </header>
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-28">
+        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+          <Link href="/prep/quiz" onClick={() => setPhase("subject_select")} className="text-outline hover:text-on-surface">
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+          </Link>
+          <p className="font-bold text-on-surface">Résultats — {quizSubject}</p>
+        </header>
 
-      <div className="max-w-lg mx-auto px-6 py-6 space-y-5">
-        {/* Score + XP card */}
-        <div className="rounded-2xl p-6 text-white shadow-lg space-y-3" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
-          <p className="text-white/80 text-sm font-semibold">{autoSubject} · {serie} {examType}</p>
-          <div className="flex items-center justify-between">
+        <div className="max-w-lg mx-auto px-6 py-6 space-y-5">
+          <div className="rounded-2xl p-6 text-white shadow-lg text-center" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
+            <p className="text-white/80 text-sm font-semibold">{quizSubject} · {serie}</p>
+            <p className="text-6xl font-black mt-2">{score20}<span className="text-2xl text-white/60">/20</span></p>
+            <span className={`inline-block mt-2 text-sm font-black px-4 py-1.5 rounded-full ${mentionColor}`}>{mention}</span>
+            <p className="text-white/70 text-sm mt-2">{correct}/{questions.length} correctes · +{sessionXP} XP</p>
+            <div className="flex items-center justify-center gap-2 mt-3 bg-white/10 rounded-xl px-4 py-2">
+              <span className="text-xl">{newLv.emoji}</span>
+              <span className="font-bold text-sm">{currentLevel}</span>
+              <span className="text-white/70 text-xs ml-2">{totalXP} XP total</span>
+            </div>
+          </div>
+
+          {/* Niveau mis à jour */}
+          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3">
             <div>
-              <p className="text-5xl font-black">{score20}<span className="text-xl text-white/60">/20</span></p>
-              <p className="text-white/80 text-sm mt-1">{correct}/{questions.length} correctes</p>
+              <p className="text-xs text-on-surface-variant font-semibold uppercase">Niveau mis à jour</p>
+              <p className="font-bold text-on-surface">{quizSubject}</p>
             </div>
-            <div className="text-right">
-              <p className="text-3xl font-black">+{sessionXP}</p>
-              <p className="text-white/70 text-sm">XP gagnés</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 bg-white/10 rounded-xl px-4 py-2">
-            <span className="text-xl">{level.emoji}</span>
-            <span className="font-bold text-sm">{currentLevel}</span>
-            <span className="text-white/70 text-xs ml-auto">{totalXP} XP total</span>
-          </div>
-        </div>
-
-        {/* Analyse IA */}
-        {analyzing ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm flex items-center gap-3">
-            <div className="w-6 h-6 rounded-full border-2 border-t-transparent animate-spin shrink-0" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-            <p className="text-sm font-semibold text-on-surface">Analyse IA en cours…</p>
-          </div>
-        ) : analysis ? (
-          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="font-bold text-on-surface text-sm">Prêt pour le BAC ?</p>
-              <span className={`text-2xl font-black ${analysis.pret_bac_percent >= 70 ? "text-green-600" : analysis.pret_bac_percent >= 50 ? "text-yellow-600" : "text-red-600"}`}>
-                {analysis.pret_bac_percent}%
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-2 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 70 ? "#22c55e" : pct >= 40 ? "#f59e0b" : "#ef4444" }} />
+              </div>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${scoreToLevel(pct) === "Fort" ? "bg-green-100 text-green-700" : scoreToLevel(pct) === "Moyen" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
+                {scoreToLevel(pct)}
               </span>
             </div>
-            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full rounded-full transition-all"
-                style={{ width: `${analysis.pret_bac_percent}%`, backgroundColor: analysis.pret_bac_percent >= 70 ? "#22c55e" : analysis.pret_bac_percent >= 50 ? "#f59e0b" : "#ef4444" }} />
-            </div>
-            <p className="text-sm text-on-surface-variant leading-relaxed">{analysis.message_coach}</p>
-            {analysis.chapitres_faibles.length > 0 && (
-              <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase mb-2">Chapitres à revoir</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {analysis.chapitres_faibles.map((ch, i) => (
-                    <span key={i} className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-medium">{ch}</span>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-        ) : null}
 
-        {/* Micro-leçons */}
-        {microLecons.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="font-bold text-on-surface">Micro-leçons pour toi</h2>
-            {microLecons.map((lecon, i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-                <div className="flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-                  </div>
-                  <div>
-                    <p className="font-bold text-on-surface text-sm">{lecon.chapter}</p>
-                    <p className="text-xs text-on-surface-variant">{lecon.subject}</p>
-                  </div>
-                </div>
-                <p className="text-sm text-on-surface leading-relaxed">{lecon.explanation}</p>
-                {lecon.key_points.length > 0 && (
-                  <ul className="space-y-1">
-                    {lecon.key_points.map((pt, j) => (
-                      <li key={j} className="flex items-start gap-2 text-xs text-on-surface-variant">
-                        <span className="text-primary font-black shrink-0">·</span>
-                        {pt}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {lecon.exemple && (
-                  <div className="bg-surface-container rounded-xl p-3">
-                    <p className="text-xs font-bold text-on-surface-variant mb-1">Exemple</p>
-                    <p className="text-xs text-on-surface">{lecon.exemple}</p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => { setPhase("subject_select"); }}
+              className="py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface">
+              Changer de matière
+            </button>
+            <button onClick={() => startQuiz(quizSubject)}
+              className="py-3 rounded-xl font-bold text-sm text-white"
+              style={{ backgroundColor: "#FF6B00" }}>
+              Rejouer
+            </button>
+          </div>
 
-        {/* Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => {
-            setStep("loading_quiz");
-            loadQuiz(autoSubject, serie, examType);
-          }}
-            className="py-3 rounded-xl font-bold text-sm text-white"
-            style={{ backgroundColor: "#FF6B00" }}>
-            Rejouer
-          </button>
-          <Link href="/prep/classement"
-            className="py-3 rounded-xl font-bold text-sm text-white text-center"
-            style={{ backgroundColor: "#1a73e8" }}>
-            Classement 🏆
+          <Link href="/prep/programme"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 hover:border-blue-400 transition-colors">
+            <span className="material-symbols-outlined text-blue-600 text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
+            <div>
+              <p className="font-bold text-on-surface text-sm">Programme de révision</p>
+              <p className="text-xs text-on-surface-variant">J-{dl} avant le BAC</p>
+            </div>
+            <span className="material-symbols-outlined text-on-surface-variant ml-auto">arrow_forward_ios</span>
           </Link>
         </div>
+      </main>
+    );
+  }
 
-        <Link href="/prep/simulateur"
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-outline-variant/30 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors">
-          <span className="material-symbols-outlined text-[16px]">assignment</span>
-          Passer un examen blanc
-        </Link>
-      </div>
-    </main>
-  );
+  return null;
 }

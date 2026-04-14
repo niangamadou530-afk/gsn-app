@@ -1,267 +1,373 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { MATIERES_BY_SERIE, getProgramme } from "@/data/programmes";
 
-type Flashcard = {
+type DBFlashcard = {
+  id: string;
+  matiere: string;
+  chapitre: string;
+  recto: string;
+  verso: string;
+  maitrisee: boolean;
+  created_at: string;
+};
+
+type GeneratedCard = {
   id: number;
   recto: string;
   verso: string;
   explication: string;
   difficulte: "facile" | "moyen" | "difficile";
-  chapitre: string;
 };
 
-const SUBJECTS = [
-  "Maths", "Français", "Physique-Chimie", "Sciences Naturelles",
-  "Histoire-Géographie", "Philosophie", "Anglais", "Comptabilité",
-];
-const CHAPTERS: Record<string, string[]> = {
-  "Maths":             ["Suites numériques", "Dérivées", "Intégrales", "Probabilités", "Géométrie espace", "Nombres complexes"],
-  "Français":          ["Dissertation", "Commentaire composé", "Résumé", "Sembène Ousmane", "Cheikh Hamidou Kane"],
-  "Physique-Chimie":   ["Circuits RC/RL", "Mécanique Newton", "Optique", "Ondes", "Réactions chimiques"],
-  "Sciences Naturelles": ["Génétique", "Immunologie", "Écologie", "Nutrition", "Évolution"],
-  "Histoire-Géographie": ["Décolonisation", "Guerre froide", "Mondialisation", "Géographie Afrique"],
-  "Philosophie":       ["Liberté", "Conscience", "L'État", "La morale", "La vérité"],
-  "Anglais":           ["Compréhension écrite", "Expression écrite", "Grammaire"],
-  "Comptabilité":      ["Bilan", "Compte de résultat", "Amortissements", "TVA"],
-};
+type Phase = "home" | "setup_matiere" | "setup_chapitre" | "generating" | "review" | "history";
 
-const REVIEW_KEY = "gsn_prep_flashcard_review";
-
-function getReviewData(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(REVIEW_KEY) || "{}"); } catch { return {}; }
-}
-function setReviewDate(id: string, days: number) {
-  const data = getReviewData();
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  data[id] = date.toISOString();
-  localStorage.setItem(REVIEW_KEY, JSON.stringify(data));
+const BAC_DATE = "2026-06-30";
+function daysUntilBAC() {
+  return Math.max(0, Math.ceil((new Date(BAC_DATE).getTime() - Date.now()) / 86400000));
 }
 
-type Phase = "setup" | "loading" | "study" | "done";
+export default function FlashcardsPage() {
+  const router = useRouter();
 
-function FlashcardsInner() {
-  const searchParams = useSearchParams();
-  const preChapter = searchParams.get("chapter") ?? "";
-  const preSubject = searchParams.get("subject") ?? "";
+  // User
+  const [userId, setUserId] = useState<string | null>(null);
+  const [serie, setSerie] = useState("S1");
 
-  const [phase, setPhase] = useState<Phase>("setup");
-  const [subject, setSubject] = useState(preSubject);
-  const [chapter, setChapter] = useState(preChapter);
-  const [customChapter, setCustomChapter] = useState("");
-  const [cards, setCards] = useState<Flashcard[]>([]);
-  const [current, setCurrent] = useState(0);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [knownIds, setKnownIds] = useState<Set<number>>(new Set());
-  const [reviewIds, setReviewIds] = useState<Set<number>>(new Set());
+  // Selection
+  const [selectedMatiere, setSelectedMatiere] = useState("");
+  const [selectedChapitre, setSelectedChapitre] = useState("");
+
+  // Generated cards
+  const [cards, setCards] = useState<GeneratedCard[]>([]);
+  const [cardIdx, setCardIdx] = useState(0);
+  const [flipped, setFlipped] = useState(false);
+  const [mastered, setMastered] = useState<Set<number>>(new Set());
+  const [toReview, setToReview] = useState<Set<number>>(new Set());
+
+  // Saved cards
+  const [savedSets, setSavedSets] = useState<{ matiere: string; chapitre: string; count: number; mastered: number }[]>([]);
+  const [historyCards, setHistoryCards] = useState<DBFlashcard[]>([]);
+  const [historyFlipped, setHistoryFlipped] = useState<Set<string>>(new Set());
+
+  const [phase, setPhase] = useState<Phase>("home");
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (preSubject) setSubject(preSubject);
-    if (preChapter) { setChapter(preChapter); setCustomChapter(preChapter); }
-  }, [preSubject, preChapter]);
+  const dl = daysUntilBAC();
 
-  const availableChapters = CHAPTERS[subject] ?? [];
-  const finalChapter = chapter === "__custom__" ? customChapter : chapter;
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.replace("/login"); return; }
+      setUserId(user.id);
+
+      const { data: stu } = await supabase.from("prep_students").select("serie").eq("user_id", user.id).limit(1);
+      setSerie(stu?.[0]?.serie ?? "S1");
+
+      await loadSavedSets(user.id);
+    }
+    load();
+  }, [router]);
+
+  async function loadSavedSets(uid: string) {
+    const { data } = await supabase
+      .from("flashcards")
+      .select("matiere, chapitre, maitrisee")
+      .eq("user_id", uid);
+    if (!data) return;
+
+    // Group by matiere+chapitre
+    const groups: Record<string, { count: number; mastered: number }> = {};
+    for (const card of data) {
+      const key = `${card.matiere}::${card.chapitre}`;
+      if (!groups[key]) groups[key] = { count: 0, mastered: 0 };
+      groups[key].count++;
+      if (card.maitrisee) groups[key].mastered++;
+    }
+    setSavedSets(
+      Object.entries(groups).map(([key, v]) => {
+        const [matiere, chapitre] = key.split("::");
+        return { matiere, chapitre, ...v };
+      })
+    );
+  }
 
   async function generateCards() {
-    if (!finalChapter) return;
-    setPhase("loading");
+    if (!selectedMatiere || !selectedChapitre) return;
+    setPhase("generating");
     setError("");
+
+    const prog = getProgramme(selectedMatiere, serie);
     try {
       const res = await fetch("/api/prep-flashcards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapter: finalChapter, subject, examType: "BAC", count: 10 }),
+        body: JSON.stringify({
+          subject: selectedMatiere,
+          chapter: selectedChapitre,
+          serie,
+          examType: "BAC",
+          count: 10,
+          programmeContenu: prog?.contenu?.slice(0, 1500) ?? "",
+        }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      if (!Array.isArray(data.flashcards)) throw new Error("Structure invalide");
+      if (!res.ok || !data.flashcards?.length) throw new Error(data.error || "Erreur");
       setCards(data.flashcards);
-      setCurrent(0);
-      setIsFlipped(false);
-      setKnownIds(new Set());
-      setReviewIds(new Set());
-      setPhase("study");
+      setCardIdx(0);
+      setFlipped(false);
+      setMastered(new Set());
+      setToReview(new Set());
+      setPhase("review");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la génération");
-      setPhase("setup");
+      setError(err instanceof Error ? err.message : "Erreur de génération");
+      setPhase("setup_chapitre");
     }
   }
 
-  function handleKnown() {
-    const card = cards[current];
-    setKnownIds(prev => new Set([...prev, card.id]));
-    setReviewDate(`${subject}_${card.id}`, 3);
-    advance();
+  async function saveCardsToSupabase() {
+    if (!userId || !cards.length) return;
+    const inserts = cards.map(c => ({
+      user_id: userId,
+      serie,
+      matiere: selectedMatiere,
+      chapitre: selectedChapitre,
+      recto: c.recto,
+      verso: c.verso,
+      maitrisee: false,
+    }));
+    await supabase.from("flashcards").insert(inserts);
+    await loadSavedSets(userId);
   }
 
-  function handleReview() {
-    const card = cards[current];
-    setReviewIds(prev => new Set([...prev, card.id]));
-    setReviewDate(`${subject}_${card.id}`, 1);
-    advance();
+  function handleMastered() {
+    setMastered(prev => new Set([...prev, cardIdx]));
+    advanceCard();
   }
 
-  function advance() {
-    setIsFlipped(false);
-    if (current < cards.length - 1) {
-      setCurrent(c => c + 1);
+  function handleToReview() {
+    setToReview(prev => new Set([...prev, cardIdx]));
+    advanceCard();
+  }
+
+  function advanceCard() {
+    setFlipped(false);
+    if (cardIdx < cards.length - 1) {
+      setCardIdx(i => i + 1);
     } else {
-      setPhase("done");
+      saveCardsToSupabase();
+      setPhase("home");
     }
   }
 
-  const card = cards[current];
-  const progress = cards.length > 0 ? ((current) / cards.length) * 100 : 0;
+  async function loadHistory(matiere: string, chapitre: string) {
+    if (!userId) return;
+    const { data } = await supabase
+      .from("flashcards")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("matiere", matiere)
+      .eq("chapitre", chapitre)
+      .order("created_at", { ascending: false });
+    setHistoryCards((data ?? []) as DBFlashcard[]);
+    setHistoryFlipped(new Set());
+    setPhase("history");
+  }
 
-  /* ── SETUP ── */
-  if (phase === "setup") return (
-    <main className="min-h-screen bg-surface text-on-surface pb-10">
+  async function toggleMaitrised(id: string, current: boolean) {
+    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id);
+    setHistoryCards(prev => prev.map(c => c.id === id ? { ...c, maitrisee: !current } : c));
+    if (userId) await loadSavedSets(userId);
+  }
+
+  const matieres = MATIERES_BY_SERIE[serie] ?? [];
+  const chapitres = selectedMatiere ? (getProgramme(selectedMatiere, serie)?.chapitres ?? []) : [];
+  const card = cards[cardIdx];
+  const progress = cards.length > 0 ? (cardIdx / cards.length) * 100 : 0;
+
+  /* ── HOME ─────────────────────────────────────────────────── */
+  if (phase === "home") return (
+    <main className="min-h-screen bg-surface text-on-surface pb-28">
       <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
         <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </Link>
         <div>
           <p className="font-bold text-on-surface">Flashcards</p>
-          <p className="text-xs text-on-surface-variant">Mémorise par répétition espacée</p>
+          <p className="text-xs text-on-surface-variant">BAC dans J-{dl} · 30 juin 2026</p>
         </div>
       </header>
 
       <div className="max-w-xl mx-auto px-6 py-6 space-y-6">
         <div className="rounded-2xl p-5 text-white" style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
           <span className="text-4xl block mb-2">🃏</span>
-          <h1 className="text-xl font-extrabold">Flashcards interactives</h1>
-          <p className="text-white/80 text-sm mt-1">L&apos;IA génère des cartes pour ton chapitre. Mémorise et planifie tes révisions.</p>
+          <h1 className="text-xl font-extrabold">Flashcards par chapitre</h1>
+          <p className="text-white/80 text-sm mt-1">
+            Choisis une matière et un chapitre du programme officiel. L&apos;IA génère des cartes mémorisables.
+          </p>
         </div>
 
-        <div className="space-y-2">
-          <p className="font-bold text-sm text-on-surface">Matière</p>
-          <div className="grid grid-cols-2 gap-2">
-            {SUBJECTS.map(s => (
-              <button key={s} onClick={() => { setSubject(s); setChapter(""); }}
-                className={`p-3 rounded-xl border-2 text-sm font-semibold text-left transition-all ${subject === s ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-surface-container-lowest shadow-sm text-on-surface"}`}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {subject && (
-          <div className="space-y-2">
-            <p className="font-bold text-sm text-on-surface">Chapitre</p>
-            <div className="space-y-1.5">
-              {availableChapters.map(ch => (
-                <button key={ch} onClick={() => setChapter(ch)}
-                  className={`w-full p-3 rounded-xl border-2 text-sm font-semibold text-left transition-all ${chapter === ch ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-surface-container-lowest shadow-sm text-on-surface"}`}>
-                  {ch}
-                </button>
-              ))}
-              <button onClick={() => setChapter("__custom__")}
-                className={`w-full p-3 rounded-xl border-2 text-sm font-semibold text-left transition-all ${chapter === "__custom__" ? "border-purple-500 bg-purple-50 text-purple-700" : "border-dashed border-outline-variant/40 text-on-surface-variant"}`}>
-                + Saisir un autre chapitre…
-              </button>
-            </div>
-            {chapter === "__custom__" && (
-              <input
-                type="text"
-                value={customChapter}
-                onChange={e => setCustomChapter(e.target.value)}
-                placeholder="Ex: Thermodynamique, Poésie africaine…"
-                className="w-full p-4 rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-purple-500 focus:outline-none text-sm" />
-            )}
-          </div>
-        )}
-
-        {error && (
-          <div className="flex items-center gap-2 bg-red-50 text-red-700 rounded-xl px-4 py-3">
-            <span className="material-symbols-outlined text-[18px]">error</span>
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        <button onClick={generateCards} disabled={!finalChapter}
-          className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+        <button
+          onClick={() => { setSelectedMatiere(""); setSelectedChapitre(""); setPhase("setup_matiere"); }}
+          className="w-full py-4 rounded-2xl font-black text-white shadow-lg flex items-center justify-center gap-2"
           style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
-          <span className="material-symbols-outlined">auto_awesome</span>
-          Générer mes flashcards
+          <span className="material-symbols-outlined">add</span>
+          Créer de nouvelles flashcards
         </button>
+
+        {/* Saved sets */}
+        {savedSets.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="font-bold text-on-surface">Mes sets de flashcards</h2>
+            <div className="space-y-2">
+              {savedSets.map((set, i) => {
+                const pct = set.count > 0 ? Math.round((set.mastered / set.count) * 100) : 0;
+                return (
+                  <button key={i}
+                    onClick={() => loadHistory(set.matiere, set.chapitre)}
+                    className="w-full flex items-center justify-between gap-3 bg-surface-container-lowest rounded-xl p-4 shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+                    <div className="text-left flex-1">
+                      <p className="font-bold text-on-surface text-sm">{set.chapitre}</p>
+                      <p className="text-xs text-on-surface-variant">{set.matiere} · {set.count} cartes</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-12 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500 rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-purple-600 font-bold">{pct}%</span>
+                      <span className="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );
 
-  /* ── LOADING ── */
-  if (phase === "loading") return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-4 p-6">
-      <div className="w-14 h-14 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }} />
-      <p className="font-bold text-on-surface">Génération des flashcards…</p>
-      <p className="text-on-surface-variant text-sm">{finalChapter} — {subject}</p>
-    </div>
+  /* ── SETUP: matière ───────────────────────────────────────── */
+  if (phase === "setup_matiere") return (
+    <main className="min-h-screen bg-surface text-on-surface pb-28">
+      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+        <button onClick={() => setPhase("home")} className="text-outline hover:text-on-surface">
+          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+        </button>
+        <p className="font-bold text-on-surface">Choisir la matière</p>
+      </header>
+      <div className="max-w-xl mx-auto px-6 py-6 space-y-3">
+        <p className="text-sm text-on-surface-variant">Série {serie}</p>
+        {matieres.map(m => (
+          <button key={m}
+            onClick={() => { setSelectedMatiere(m); setSelectedChapitre(""); setPhase("setup_chapitre"); }}
+            className="w-full flex items-center justify-between px-4 py-4 bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+            <p className="font-bold text-on-surface">{m}</p>
+            <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+          </button>
+        ))}
+      </div>
+    </main>
   );
 
-  /* ── STUDY ── */
-  if (phase === "study" && card) return (
+  /* ── SETUP: chapitre ──────────────────────────────────────── */
+  if (phase === "setup_chapitre") return (
+    <main className="min-h-screen bg-surface text-on-surface pb-28">
+      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+        <button onClick={() => setPhase("setup_matiere")} className="text-outline hover:text-on-surface">
+          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+        </button>
+        <p className="font-bold text-on-surface">{selectedMatiere} — choisir le chapitre</p>
+      </header>
+      <div className="max-w-xl mx-auto px-6 py-6 space-y-2">
+        {error && <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl mb-3">{error}</p>}
+        {chapitres.map(ch => (
+          <button key={ch}
+            onClick={() => { setSelectedChapitre(ch); setError(""); }}
+            className={`w-full text-left px-4 py-3.5 rounded-xl border-2 font-medium text-sm transition-all ${selectedChapitre === ch ? "border-purple-500 bg-purple-50 text-purple-700" : "border-transparent bg-surface-container-lowest text-on-surface shadow-sm"}`}>
+            {ch}
+          </button>
+        ))}
+        <div className="pt-3">
+          <button
+            onClick={generateCards}
+            disabled={!selectedChapitre}
+            className="w-full py-4 rounded-2xl font-black text-white disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
+            Générer les flashcards →
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+
+  /* ── GENERATING ───────────────────────────────────────────── */
+  if (phase === "generating") return (
+    <main className="min-h-screen bg-surface flex flex-col items-center justify-center gap-4">
+      <div className="w-12 h-12 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "#7C3AED", borderTopColor: "transparent", borderWidth: 3 }} />
+      <div className="text-center">
+        <p className="font-bold text-on-surface">Génération des flashcards…</p>
+        <p className="text-sm text-on-surface-variant mt-1">{selectedMatiere} · {selectedChapitre}</p>
+      </div>
+    </main>
+  );
+
+  /* ── REVIEW ───────────────────────────────────────────────── */
+  if (phase === "review" && card) return (
     <main className="min-h-screen bg-surface text-on-surface pb-10">
-      {/* Progress */}
       <div className="sticky top-0 z-30 bg-surface border-b border-outline-variant/20">
         <div className="h-1.5" style={{ background: `linear-gradient(to right, #7C3AED ${progress}%, #e0e0e0 0%)` }} />
         <div className="px-6 py-3 flex items-center justify-between">
-          <span className="text-sm font-bold text-on-surface">{current + 1} / {cards.length}</span>
+          <span className="text-sm font-bold">{cardIdx + 1}/{cards.length}</span>
+          <div className="text-xs font-semibold text-on-surface-variant">{selectedChapitre}</div>
           <div className="flex gap-3 text-xs font-semibold">
-            <span className="text-green-600">✓ {knownIds.size}</span>
-            <span className="text-amber-600">↻ {reviewIds.size}</span>
+            <span className="text-green-600">✓ {mastered.size}</span>
+            <span className="text-amber-600">↻ {toReview.size}</span>
           </div>
-          <span className="text-xs text-on-surface-variant">{card.chapitre}</span>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-6 py-8 space-y-5">
-        {/* Difficulty badge */}
         <div className="flex items-center gap-2">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${card.difficulte === "facile" ? "bg-green-100 text-green-700" : card.difficulte === "moyen" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
             {card.difficulte}
           </span>
-          <span className="text-xs text-on-surface-variant">{isFlipped ? "Réponse" : "Question"} — Appuie sur la carte</span>
+          <span className="text-xs text-on-surface-variant">{flipped ? "Verso" : "Recto"} · Appuie pour retourner</span>
         </div>
 
-        {/* Flip card */}
         <div
-          onClick={() => setIsFlipped(f => !f)}
+          onClick={() => setFlipped(f => !f)}
           className="cursor-pointer select-none rounded-3xl shadow-lg min-h-52 flex flex-col items-center justify-center p-8 text-center transition-all active:scale-[0.98]"
-          style={{ background: isFlipped ? "linear-gradient(135deg,#7C3AED,#A855F7)" : "white", border: isFlipped ? "none" : "2px solid rgba(0,0,0,0.06)" }}>
-          <p className={`text-lg font-bold leading-snug ${isFlipped ? "text-white" : "text-on-surface"}`}>
-            {isFlipped ? card.verso : card.recto}
+          style={{ background: flipped ? "linear-gradient(135deg,#7C3AED,#A855F7)" : "white", border: flipped ? "none" : "2px solid rgba(0,0,0,0.06)" }}>
+          <p className={`text-lg font-bold leading-snug ${flipped ? "text-white" : "text-on-surface"}`}>
+            {flipped ? card.verso : card.recto}
           </p>
-          {isFlipped && card.explication && (
+          {flipped && card.explication && (
             <p className="text-white/80 text-sm mt-4 leading-relaxed">{card.explication}</p>
           )}
-          {!isFlipped && (
-            <p className="text-outline text-xs mt-4">👆 Appuie pour révéler</p>
-          )}
+          {!flipped && <p className="text-outline text-xs mt-4">👆 Appuie pour révéler</p>}
         </div>
 
-        {/* Action buttons (only after flip) */}
-        {isFlipped && (
+        {flipped ? (
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={handleReview}
-              className="py-4 rounded-2xl border-2 border-amber-300 bg-amber-50 font-bold text-amber-700 text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">replay</span>
-              À revoir<br /><span className="text-[10px] font-normal">Demain</span>
+            <button onClick={handleToReview}
+              className="py-4 rounded-2xl border-2 border-amber-300 bg-amber-50 font-bold text-amber-700 text-sm active:scale-[0.98] flex flex-col items-center">
+              <span className="material-symbols-outlined text-[20px]">replay</span>
+              À revoir
             </button>
-            <button onClick={handleKnown}
-              className="py-4 rounded-2xl bg-green-500 font-bold text-white text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-md shadow-green-500/20">
-              <span className="material-symbols-outlined text-[18px]">check_circle</span>
-              Je savais !<br /><span className="text-[10px] font-normal">Revoir dans 3 jours</span>
+            <button onClick={handleMastered}
+              className="py-4 rounded-2xl bg-green-500 font-bold text-white text-sm active:scale-[0.98] flex flex-col items-center shadow-md">
+              <span className="material-symbols-outlined text-[20px]">check_circle</span>
+              Je savais !
             </button>
           </div>
-        )}
-
-        {!isFlipped && (
-          <button onClick={() => setIsFlipped(true)}
-            className="w-full py-4 rounded-2xl font-black text-white text-sm active:scale-[0.98] transition-all"
+        ) : (
+          <button onClick={() => setFlipped(true)}
+            className="w-full py-4 rounded-2xl font-black text-white active:scale-[0.98]"
             style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
             Révéler la réponse
           </button>
@@ -270,67 +376,61 @@ function FlashcardsInner() {
     </main>
   );
 
-  /* ── DONE ── */
-  if (phase === "done") return (
-    <main className="min-h-screen bg-surface text-on-surface pb-10">
-      <div className="max-w-xl mx-auto px-6 py-12 space-y-6 flex flex-col items-center text-center">
-        <span className="text-6xl">🎉</span>
-        <div>
-          <h2 className="text-2xl font-extrabold text-on-surface">Session terminée !</h2>
-          <p className="text-on-surface-variant text-sm mt-1">{finalChapter} — {cards.length} cartes</p>
-        </div>
+  /* ── HISTORY ──────────────────────────────────────────────── */
+  if (phase === "history") {
+    const total = historyCards.length;
+    const masteredCount = historyCards.filter(c => c.maitrisee).length;
 
-        {/* Score */}
-        <div className="w-full rounded-2xl p-5 shadow-sm bg-surface-container-lowest space-y-3">
-          <div className="flex justify-around text-center">
-            <div>
-              <p className="text-3xl font-black text-green-600">{knownIds.size}</p>
-              <p className="text-xs text-on-surface-variant font-medium">Je savais ✓</p>
-              <p className="text-[10px] text-green-600">Revoir dans 3j</p>
-            </div>
-            <div className="w-px bg-outline-variant/20" />
-            <div>
-              <p className="text-3xl font-black text-amber-600">{reviewIds.size}</p>
-              <p className="text-xs text-on-surface-variant font-medium">À revoir ↻</p>
-              <p className="text-[10px] text-amber-600">Revoir demain</p>
-            </div>
-            <div className="w-px bg-outline-variant/20" />
-            <div>
-              <p className="text-3xl font-black text-primary">{Math.round((knownIds.size / cards.length) * 100)}%</p>
-              <p className="text-xs text-on-surface-variant font-medium">Score</p>
-            </div>
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-28">
+        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
+          <button onClick={() => setPhase("home")} className="text-outline hover:text-on-surface">
+            <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+          </button>
+          <div className="flex-1">
+            <p className="font-bold text-on-surface">{historyCards[0]?.chapitre ?? "Flashcards"}</p>
+            <p className="text-xs text-on-surface-variant">{historyCards[0]?.matiere} · {masteredCount}/{total} maîtrisées</p>
           </div>
-        </div>
+        </header>
 
-        <div className="flex gap-3 w-full">
-          <button onClick={() => { setCurrent(0); setIsFlipped(false); setKnownIds(new Set()); setReviewIds(new Set()); setPhase("study"); }}
-            className="flex-1 py-3 border-2 border-outline-variant/30 rounded-xl font-bold text-on-surface text-sm">
-            Recommencer
-          </button>
-          <button onClick={() => setPhase("setup")}
-            className="flex-1 py-3 rounded-xl font-black text-white text-sm"
-            style={{ background: "linear-gradient(135deg,#7C3AED,#A855F7)" }}>
-            Nouveau chapitre
-          </button>
+        <div className="max-w-xl mx-auto px-6 py-6 space-y-3">
+          {/* Progress */}
+          <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+            <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${total > 0 ? Math.round(masteredCount / total * 100) : 0}%` }} />
+          </div>
+
+          {historyCards.map(c => {
+            const isFlipped = historyFlipped.has(c.id);
+            return (
+              <div key={c.id}
+                onClick={() => {
+                  setHistoryFlipped(prev => {
+                    const n = new Set(prev);
+                    n.has(c.id) ? n.delete(c.id) : n.add(c.id);
+                    return n;
+                  });
+                }}
+                className="cursor-pointer rounded-2xl shadow-sm overflow-hidden border border-outline-variant/10 select-none">
+                <div className={`p-4 transition-colors ${isFlipped ? "bg-purple-600" : "bg-surface-container-lowest"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={`text-sm font-semibold leading-snug flex-1 ${isFlipped ? "text-white" : "text-on-surface"}`}>
+                      {isFlipped ? c.verso : c.recto}
+                    </p>
+                    <button
+                      onClick={e => { e.stopPropagation(); toggleMaitrised(c.id, c.maitrisee); }}
+                      className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${c.maitrisee ? "bg-green-500 text-white" : "bg-surface-container text-on-surface-variant"}`}>
+                      <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: c.maitrisee ? "'FILL' 1" : "'FILL' 0" }}>check</span>
+                    </button>
+                  </div>
+                  {!isFlipped && <p className="text-[10px] text-on-surface-variant mt-1">Appuie pour voir le verso</p>}
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <Link href="/prep/dashboard" className="text-primary text-sm font-bold hover:underline">
-          Retour au tableau de bord
-        </Link>
-      </div>
-    </main>
-  );
+      </main>
+    );
+  }
 
   return null;
-}
-
-export default function FlashcardsPage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#7C3AED", borderTopColor: "transparent" }} />
-      </div>
-    }>
-      <FlashcardsInner />
-    </Suspense>
-  );
 }
