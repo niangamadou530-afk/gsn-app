@@ -1,100 +1,139 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-const ETABLISSEMENTS = `
-Universités publiques (Sénégal) :
-- UCAD (Université Cheikh Anta Diop, Dakar) : médecine, droit, lettres, sciences, économie
-- UGB (Université Gaston Berger, Saint-Louis) : sciences appliquées, droit, sociologie
-- UASZ (Université Assane Seck, Ziguinchor) : sciences, lettres, droit
-- UDT (Université du Sine Saloum El-Hadji Ibrahima Niasse, Kaolack) : sciences, lettres
+const ETABLISSEMENTS_SN = `
+UNIVERSITÉS PUBLIQUES DU SÉNÉGAL :
+- UCAD (Université Cheikh Anta Diop, Dakar) : médecine, pharmacie, droit, lettres, sciences, économie, philosophie
+- UGB (Université Gaston Berger, Saint-Louis) : sciences et technologies, droit, sociologie, lettres
+- UASZ (Université Assane Seck, Ziguinchor) : sciences, lettres, droit, géographie
+- UDT (Université du Sine-Saloum, Kaolack) : sciences, lettres, sciences de l'éducation
+- Université de Thiès (UT) : ingénierie, technologies, agronomie
 
-Grandes Écoles publiques :
-- ESP (École Supérieure Polytechnique, Dakar) : génie civil, électronique, informatique, mécanique
-- ENSEPT (École Nationale Supérieure de l'Enseignement Professionnel et Technique) : formations techniques
-- ENSP (École Nationale Supérieure de Police) : sciences juridiques, sécurité
+GRANDES ÉCOLES PUBLIQUES :
+- ESP (École Supérieure Polytechnique, Dakar/Thiès) : génie civil, génie électrique, informatique, génie mécanique — Sélection sur concours, BAC S recommandé
+- ENSEPT : enseignement professionnel et technique
+- ENSP : police et sécurité
+- ENSEA : statistique et économie appliquée
+- ENSIAS : ingénierie et systèmes d'information
 
-Écoles privées reconnues :
-- ISM (Institut Supérieur de Management) : management, marketing, finance, RH
-- Sup de Co Dakar : commerce, marketing, management international
+GRANDES ÉCOLES PRIVÉES RECONNUES :
+- ISM (Institut Supérieur de Management) : management, RH, marketing, finance
+- Sup de Co Dakar : commerce, marketing, management international, logistique
 - ISCAM : management, communication, audit
-- Institut Africain de Management (IAM) : gestion, entrepreneuriat
-- Ecole Supérieure des Technologies de l'Information (ESTI) : informatique, systèmes
-- CESAG (Centre Africain d'Études Supérieures en Gestion) : finance, comptabilité, management
+- IAM (Institut Africain de Management) : gestion, entrepreneuriat, finance
+- ESTI (École Supérieure des Technologies de l'Information) : informatique, réseaux, cybersécurité
+- CESAG : finance, comptabilité, management — reconnu UEMOA
 - 3iL Africa : informatique, réseaux, cybersécurité
-- Université Cheikh Anta Diop privée (UCAD privée) : santé, droit, économie
+- IPSL (Institut Polytechnique Saint-Louis) : génie, technologies
 
-GSN Learn (formations professionnelles certifiantes) :
-- Développement Web (6 mois) : HTML, CSS, JavaScript, React, Next.js
-- Marketing Digital (4 mois) : SEO, réseaux sociaux, Google Ads, analytics
-- Finance & Comptabilité (5 mois) : comptabilité SYSCOHADA, Excel avancé, finance
-- Design Graphique (4 mois) : Adobe Suite, Figma, identité visuelle
-- Maintenance Informatique (4 mois) : hardware, networking, Windows Server
-- Entrepreneuriat (3 mois) : business plan, pitch, financement, gestion
+GSN LEARN (formations professionnelles certifiantes 4-6 mois) :
+- Développement Web : HTML, CSS, JavaScript, React, Next.js
+- Marketing Digital : SEO, réseaux sociaux, Google Ads, analytics
+- Finance & Comptabilité : SYSCOHADA, Excel avancé, finance
+- Design Graphique : Adobe Suite, Figma, identité visuelle
+- Maintenance Informatique : hardware, networking, Windows Server
+- Entrepreneuriat : business plan, pitch, financement
 `;
 
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
 
-  const body = await request.json().catch(() => ({}));
-  const { examType = "BAC", serie = "S1", country = "Sénégal", grades = {} } = body;
-
-  if (!grades || Object.keys(grades).length === 0) {
-    return NextResponse.json({ error: "Notes manquantes" }, { status: 400 });
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "FormData invalide" }, { status: 400 });
   }
 
-  const gradesText = Object.entries(grades as Record<string, number>)
-    .map(([subj, note]) => `${subj}: ${note}/20`)
-    .join(", ");
+  const file = formData.get("file") as File | null;
+  const examType = (formData.get("examType") as string) || "BAC";
+  const serie = (formData.get("serie") as string) || "";
 
-  const prompt = `Tu es un conseiller d'orientation expert en ${country}.
-Un élève a passé le ${examType}${serie ? " série " + serie : ""} avec les notes suivantes : ${gradesText}.
+  if (!file) return NextResponse.json({ error: "Fichier manquant" }, { status: 400 });
 
-${ETABLISSEMENTS}
+  const groq = new Groq({ apiKey });
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const fileType = file.type;
 
-Analyse le profil de cet élève et génère des recommandations d'orientation.
-Calcule la moyenne générale, détermine la mention, et recommande les meilleures formations.
+  const orientationPrompt = (extractedText: string) => `Tu es un conseiller d'orientation expert au Sénégal.
+Analyse ce relevé de notes du ${examType}${serie ? " série " + serie : ""} sénégalais.
+
+Contenu du document :
+${extractedText}
+
+${ETABLISSEMENTS_SN}
+
+Extrait les matières et notes du document, calcule la moyenne pondérée selon les coefficients officiels du BAC sénégalais.
+Recommande les meilleures formations et établissements adaptés à ce profil.
 
 Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 {
   "moyenne": 13.5,
   "mention": "Assez bien",
   "orientation_principale": "Sciences et Technologies",
+  "notes_extraites": {"Maths": 15, "Français": 12},
   "etablissements_recommandes": [
     {
       "nom": "ESP - École Supérieure Polytechnique",
       "type": "Grande École publique",
       "filiere": "Génie Informatique",
-      "pourquoi": "Tes notes en Maths et Physique sont excellentes.",
-      "conditions_acces": "Concours direct, dossier avec mention BAC",
+      "pourquoi": "Tes résultats en Maths et Sciences sont excellents.",
+      "conditions_acces": "Concours national, mention BAC recommandée",
       "lien_gsn": true
     }
   ],
   "parcours_gsn_learn": ["Développement Web", "Maintenance Informatique"],
-  "message_personnalise": "Avec ta moyenne de X/20 et ta série S1, tu as de solides bases pour..."
+  "message_personnalise": "Avec ta moyenne de X/20 et ta série..."
 }
 
 Règles :
-- Recommande 4 à 6 établissements pertinents selon les notes
-- lien_gsn = true si GSN Learn peut compléter ou préparer à cette filière
 - mention : "Passable" (<10), "Assez bien" (10-12), "Bien" (12-14), "Très bien" (14-16), "Excellent" (>16)
-- Adapte selon le pays : ${country}
+- Recommande 4 à 6 établissements pertinents
+- lien_gsn = true si GSN Learn complète ou prépare à cette filière
 - Tout en français`;
 
   try {
-    const groq = new Groq({ apiKey });
-    const completion = await groq.chat.completions.create({
-      messages: [
-        { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown." },
-        { role: "user", content: prompt },
-      ],
-      model: "llama-3.1-8b-instant",
-      max_tokens: 2000,
-      temperature: 0.3,
-    });
+    let content: string;
 
-    const raw = completion.choices[0]?.message?.content ?? "";
-    const cleaned = raw.replace(/```json|```/g, "").trim();
+    if (fileType.startsWith("image/")) {
+      const base64 = buffer.toString("base64");
+      const mimeType = fileType as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      const completion = await groq.chat.completions.create({
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+            { type: "text", text: orientationPrompt("(voir image du relevé ci-dessus)") },
+          ],
+        }],
+        model: "llama-3.2-11b-vision-preview",
+        max_tokens: 2000,
+        temperature: 0.2,
+      });
+      content = completion.choices[0]?.message?.content ?? "";
+    } else {
+      // PDF or text file
+      const text = buffer.toString("utf-8")
+        .replace(/[^\x20-\x7E\n]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 3000);
+
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown." },
+          { role: "user", content: orientationPrompt(text || "Document PDF — extrait les informations visibles.") },
+        ],
+        model: "llama-3.1-8b-instant",
+        max_tokens: 2000,
+        temperature: 0.2,
+      });
+      content = completion.choices[0]?.message?.content ?? "";
+    }
+
+    const cleaned = content.replace(/```json|```/g, "").trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Pas de JSON dans la réponse");
 

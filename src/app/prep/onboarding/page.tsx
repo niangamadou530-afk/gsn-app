@@ -7,21 +7,10 @@ import { saveOffline } from "@/lib/offline";
 
 /* ─── DATA ─────────────────────────────────────────────── */
 
-const COUNTRIES = [
-  { code: "SN", name: "Sénégal",       flag: "🇸🇳" },
-  { code: "CI", name: "Côte d'Ivoire", flag: "🇨🇮" },
-  { code: "ML", name: "Mali",           flag: "🇲🇱" },
-  { code: "BF", name: "Burkina Faso",  flag: "🇧🇫" },
-  { code: "GN", name: "Guinée",         flag: "🇬🇳" },
-  { code: "TG", name: "Togo",           flag: "🇹🇬" },
-  { code: "BJ", name: "Bénin",          flag: "🇧🇯" },
-  { code: "CM", name: "Cameroun",       flag: "🇨🇲" },
-  { code: "OTHER", name: "Autre pays",  flag: "🌍" },
-];
-
 const BAC_SERIES = [
-  { code: "L",  label: "Série L",  desc: "Lettres & Sciences Humaines" },
-  { code: "S1", label: "Série S1", desc: "Maths — Physique" },
+  { code: "L1", label: "Série L1", desc: "Lettres & Sciences Humaines" },
+  { code: "L2", label: "Série L2", desc: "Langues & Civilisations" },
+  { code: "S1", label: "Série S1", desc: "Maths — Sciences Physiques" },
   { code: "S2", label: "Série S2", desc: "Maths — Sciences Naturelles" },
   { code: "S3", label: "Série S3", desc: "Maths — Technologie" },
   { code: "S4", label: "Série S4", desc: "Maths — Agriculture" },
@@ -29,21 +18,22 @@ const BAC_SERIES = [
 ];
 
 const SUBJECTS_MAP: Record<string, string[]> = {
-  BFEM:   ["Français", "Maths", "Sciences Physiques", "Sciences Naturelles", "Histoire-Géographie", "Anglais"],
-  BAC_L:  ["Français", "Philosophie", "Histoire-Géographie", "Anglais", "Arabe/Espagnol"],
-  BAC_S1: ["Maths", "Physique-Chimie", "Sciences Naturelles", "Français", "Anglais"],
-  BAC_S2: ["Maths", "Sciences Naturelles", "Physique-Chimie", "Français", "Anglais"],
-  BAC_S3: ["Maths", "Physique-Chimie", "Sciences Naturelles", "Français", "Anglais"],
-  BAC_S4: ["Maths", "Physique-Chimie", "Sciences Naturelles", "Français", "Anglais"],
-  BAC_G:  ["Comptabilité", "Economie", "Gestion", "Maths", "Français", "Anglais"],
+  BFEM:    ["Français", "Maths", "Sciences Physiques", "Sciences Naturelles", "Histoire-Géographie", "Anglais"],
+  BAC_L1:  ["Philosophie", "Français", "Histoire-Géographie", "Anglais", "Arabe/Espagnol"],
+  BAC_L2:  ["Philosophie", "Français", "Histoire-Géographie", "Anglais", "Arabe"],
+  BAC_S1:  ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français", "Philosophie", "Anglais"],
+  BAC_S2:  ["Maths", "Sciences Naturelles", "Sciences Physiques", "Français", "Philosophie", "Anglais"],
+  BAC_S3:  ["Maths", "Sciences Physiques", "Sciences Naturelles", "Français", "Anglais"],
+  BAC_S4:  ["Maths", "Sciences Naturelles", "Français", "Anglais"],
+  BAC_G:   ["Comptabilité", "Économie", "Gestion", "Maths", "Français", "Anglais"],
 };
 
 const LEVELS = [
-  { value: 1, label: "Nul",       emoji: "😰", desc: "Je ne comprends rien",              score: 10, level: "Faible" as const, colorSel: "bg-gray-300 border-gray-400",   colorDef: "bg-gray-100 border-gray-200" },
-  { value: 2, label: "Faible",    emoji: "😟", desc: "Quelques bases seulement",           score: 35, level: "Faible" as const, colorSel: "bg-red-200 border-red-400",     colorDef: "bg-red-50 border-red-100" },
-  { value: 3, label: "Moyen",     emoji: "😐", desc: "Je comprends mais j'ai des lacunes", score: 60, level: "Moyen" as const,  colorSel: "bg-yellow-200 border-yellow-400", colorDef: "bg-yellow-50 border-yellow-100" },
-  { value: 4, label: "Bien",      emoji: "🙂", desc: "Je maîtrise la plupart",             score: 80, level: "Fort" as const,  colorSel: "bg-green-200 border-green-400",  colorDef: "bg-green-50 border-green-100" },
-  { value: 5, label: "Très bien", emoji: "😎", desc: "Je suis à l'aise",                   score: 95, level: "Fort" as const,  colorSel: "bg-blue-200 border-blue-400",   colorDef: "bg-blue-50 border-blue-100" },
+  { value: 1, label: "Nul",       emoji: "😰", score: 10,  level: "Faible" as const, colorSel: "bg-gray-300 border-gray-400",    colorDef: "bg-gray-100 border-gray-200" },
+  { value: 2, label: "Faible",    emoji: "😟", score: 35,  level: "Faible" as const, colorSel: "bg-red-200 border-red-400",      colorDef: "bg-red-50 border-red-100" },
+  { value: 3, label: "Moyen",     emoji: "😐", score: 60,  level: "Moyen"  as const, colorSel: "bg-yellow-200 border-yellow-400", colorDef: "bg-yellow-50 border-yellow-100" },
+  { value: 4, label: "Bien",      emoji: "🙂", score: 80,  level: "Fort"   as const, colorSel: "bg-green-200 border-green-400",  colorDef: "bg-green-50 border-green-100" },
+  { value: 5, label: "Très bien", emoji: "😎", score: 95,  level: "Fort"   as const, colorSel: "bg-blue-200 border-blue-400",   colorDef: "bg-blue-50 border-blue-100" },
 ];
 
 type SubjectLevel = { level: "Faible" | "Moyen" | "Fort"; score: number };
@@ -56,22 +46,14 @@ function PrepOnboardingInner() {
   const preselectedExam = searchParams.get("exam");
 
   const [step, setStep] = useState(0);
-  const [country, setCountry] = useState("");
   const [examType, setExamType] = useState(preselectedExam ?? "");
   const [serie, setSerie] = useState("");
-
-  // Step 2 — self-assessment
   const [selfEval, setSelfEval] = useState<Record<string, number>>({});
   const [subjectLevels, setSubjectLevels] = useState<Record<string, SubjectLevel>>({});
-
-  // Step 3 — generate
-  const [examDate, setExamDate] = useState("");
-  const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (preselectedExam === "BFEM" || preselectedExam === "BAC") {
-      setExamType(preselectedExam);
-    }
+    if (preselectedExam === "BFEM" || preselectedExam === "BAC") setExamType(preselectedExam);
   }, [preselectedExam]);
 
   function getSubjects(exam: string, s: string): string[] {
@@ -88,88 +70,48 @@ function PrepOnboardingInner() {
 
   const subjects = getSubjects(examType, serie);
   const allEvaluated = subjects.length > 0 && subjects.every(s => selfEval[s] !== undefined);
-  const progress = (step / 3) * 100;
-  const defaultExamDate = examType === "BFEM" ? "2026-06-20" : "2026-06-25";
+  const progress = ((step + 1) / 3) * 100;
 
-  /* ── Step 3: Generate program ── */
-  async function generateProgram() {
-    setGenerating(true);
+  /* ── Save profile and redirect ── */
+  async function saveProfile() {
+    setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
 
-      const levelsStr = Object.entries(subjectLevels)
-        .map(([s, l]) => `${s}: ${l.level} (${l.score}%)`)
-        .join(", ");
-
-      const finalExamDate = examDate || defaultExamDate;
-      const daysLeft = Math.max(1, Math.ceil(
-        (new Date(finalExamDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      ));
-
-      const payload = {
-        examType:  examType  || "BAC",
-        examDate:  finalExamDate,
-        serie:     serie     || "S1",
-        country:   country   || "Sénégal",
-        levels:    levelsStr || "Non évalué",
-        daysLeft,
-      };
-      console.log("PAYLOAD ENVOYÉ:", JSON.stringify(payload));
-
-      const res = await fetch("/api/prep-program", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const programData = await res.json();
-      if (!res.ok) throw new Error(programData.error);
-
-      // Save student profile — select → update or insert
-      const { data: existingStu } = await supabase
-        .from("prep_students").select("id").eq("user_id", user.id).maybeSingle();
       const stuPayload = {
         exam_type: examType,
         serie: serie || null,
         level_per_subject: subjectLevels,
-        country,
+        country: "Sénégal",
         voice_lang: "fr-FR",
         stress_journal: [],
       };
-      const stuResult = existingStu
+
+      const { data: existingStu } = await supabase
+        .from("prep_students").select("id").eq("user_id", user.id).maybeSingle();
+
+      const result = existingStu
         ? await supabase.from("prep_students").update(stuPayload).eq("user_id", user.id)
         : await supabase.from("prep_students").insert({ user_id: user.id, ...stuPayload });
-      if (stuResult.error) console.error("prep_students error:", stuResult.error.message);
 
-      // Save program — select → update or insert
-      const { data: existingProg } = await supabase
-        .from("prep_programs").select("id").eq("user_id", user.id).maybeSingle();
-      const progPayload = { program: programData, exam_date: finalExamDate };
-      const progResult = existingProg
-        ? await supabase.from("prep_programs").update(progPayload).eq("user_id", user.id)
-        : await supabase.from("prep_programs").insert({ user_id: user.id, ...progPayload });
-      if (progResult.error) throw new Error("Sauvegarde programme: " + progResult.error.message);
+      if (result.error) throw new Error(result.error.message);
 
-      saveOffline("program_" + user.id, programData);
-      saveOffline("student_" + user.id, { country, examType, serie, subjectLevels, examDate: finalExamDate });
-
+      saveOffline("student_" + user.id, { examType, serie, subjectLevels });
       router.push("/prep/dashboard");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Impossible de générer le programme";
-      console.error(err);
-      alert("Erreur : " + msg);
+      alert("Erreur : " + (err instanceof Error ? err.message : "Impossible de sauvegarder"));
     } finally {
-      setGenerating(false);
+      setSaving(false);
     }
   }
 
-  /* ─── GENERATING OVERLAY ─── */
-  if (generating) return (
+  if (saving) return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
       <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       <div className="text-center">
-        <p className="font-bold text-lg text-on-surface">L&apos;IA crée ton programme personnalisé…</p>
-        <p className="text-on-surface-variant text-sm mt-1">Analyse de tes niveaux et planification en cours</p>
+        <p className="font-bold text-lg text-on-surface">Création de ton profil…</p>
+        <p className="text-on-surface-variant text-sm mt-1">Sénégal · {examType}{serie ? " " + serie : ""}</p>
       </div>
     </div>
   );
@@ -184,10 +126,8 @@ function PrepOnboardingInner() {
           <span className="material-symbols-outlined text-on-surface">arrow_back</span>
         </button>
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold text-primary uppercase tracking-widest">Étape {step + 1} sur 4</span>
-          </div>
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+          <span className="text-xs font-bold text-primary uppercase tracking-widest">Étape {step + 1} sur 3</span>
+          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden mt-1">
             <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, backgroundColor: "#FF6B00" }} />
           </div>
         </div>
@@ -195,32 +135,12 @@ function PrepOnboardingInner() {
 
       <div className="max-w-xl mx-auto px-6 py-8 space-y-6">
 
-        {/* ── STEP 0: Country ── */}
+        {/* ── STEP 0: Exam + Serie ── */}
         {step === 0 && (
           <>
             <div>
-              <h1 className="text-2xl font-extrabold text-on-surface mb-1">Dans quel pays passes-tu ton examen ?</h1>
-              <p className="text-on-surface-variant text-sm">L&apos;IA adapte le programme au curriculum officiel de ton pays.</p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {COUNTRIES.map(c => (
-                <button key={c.code}
-                  onClick={() => { setCountry(c.name); setStep(1); }}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all active:scale-[0.97] text-left ${country === c.name ? "border-primary bg-primary/5" : "border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30"}`}>
-                  <span className="text-2xl">{c.flag}</span>
-                  <span className="font-semibold text-sm text-on-surface">{c.name}</span>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ── STEP 1: Exam + Serie ── */}
-        {step === 1 && (
-          <>
-            <div>
               <h1 className="text-2xl font-extrabold text-on-surface mb-1">Quel examen prépares-tu ?</h1>
-              <p className="text-on-surface-variant text-sm">Pays : <strong>{country}</strong></p>
+              <p className="text-on-surface-variant text-sm">🇸🇳 Sénégal · Programme officiel Office du BAC</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               {["BFEM", "BAC"].map(e => (
@@ -259,7 +179,7 @@ function PrepOnboardingInner() {
 
             <button
               disabled={!examType || (examType === "BAC" && !serie)}
-              onClick={() => setStep(2)}
+              onClick={() => setStep(1)}
               className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
               style={{ backgroundColor: "#FF6B00" }}>
               Suivant →
@@ -267,8 +187,8 @@ function PrepOnboardingInner() {
           </>
         )}
 
-        {/* ── STEP 2: Self-assessment ── */}
-        {step === 2 && (
+        {/* ── STEP 1: Self-assessment ── */}
+        {step === 1 && (
           <>
             <div>
               <h1 className="text-2xl font-extrabold text-on-surface mb-1">Évalue ton niveau</h1>
@@ -288,8 +208,7 @@ function PrepOnboardingInner() {
                     </div>
                     <div className="grid grid-cols-5 gap-1.5">
                       {LEVELS.map(lv => (
-                        <button
-                          key={lv.value}
+                        <button key={lv.value}
                           onClick={() => setLevelForSubject(subj, lv.value)}
                           className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all active:scale-[0.95] ${selected === lv.value ? lv.colorSel + " ring-2 ring-offset-1 ring-primary" : lv.colorDef}`}>
                           <span className="text-xl">{lv.emoji}</span>
@@ -297,9 +216,6 @@ function PrepOnboardingInner() {
                         </button>
                       ))}
                     </div>
-                    {selected !== undefined && (
-                      <p className="text-xs text-on-surface-variant italic">{LEVELS[selected - 1].desc}</p>
-                    )}
                   </div>
                 );
               })}
@@ -307,7 +223,7 @@ function PrepOnboardingInner() {
 
             <button
               disabled={!allEvaluated}
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
               style={{ backgroundColor: "#FF6B00" }}>
               Continuer → ({Object.keys(selfEval).length}/{subjects.length} matières)
@@ -315,17 +231,24 @@ function PrepOnboardingInner() {
           </>
         )}
 
-        {/* ── STEP 3: Date + Generate ── */}
-        {step === 3 && (
+        {/* ── STEP 2: Confirmation ── */}
+        {step === 2 && (
           <>
             <div>
-              <h1 className="text-2xl font-extrabold text-on-surface mb-1">Ton programme est presque prêt !</h1>
-              <p className="text-on-surface-variant text-sm">Confirme la date de ton examen pour que l&apos;IA planifie tout.</p>
+              <h1 className="text-2xl font-extrabold text-on-surface mb-1">Récapitulatif</h1>
+              <p className="text-on-surface-variant text-sm">Confirme ton profil pour accéder à GSN PREP.</p>
             </div>
 
-            {/* Levels recap */}
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <p className="font-bold text-on-surface text-sm">Résumé de ton auto-évaluation</p>
+              <div className="flex items-center gap-3 pb-3 border-b border-outline-variant/20">
+                <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
+                <div>
+                  <p className="font-bold text-on-surface">
+                    {examType}{serie ? " · Série " + serie : ""}
+                  </p>
+                  <p className="text-xs text-on-surface-variant">🇸🇳 Sénégal · Programme officiel</p>
+                </div>
+              </div>
               <div className="space-y-2">
                 {Object.entries(subjectLevels).map(([subj, info]) => {
                   const lv = LEVELS.find(l => l.level === info.level && l.score === info.score) ?? LEVELS[2];
@@ -338,31 +261,20 @@ function PrepOnboardingInner() {
                         info.level === "Fort" ? "bg-green-100 text-green-700" :
                         info.level === "Moyen" ? "bg-yellow-100 text-yellow-700" :
                         "bg-red-100 text-red-700"
-                      }`}>{info.level} — {info.score}%</span>
+                      }`}>{info.level}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-on-surface">Date de l&apos;examen</label>
-              <input type="date"
-                value={examDate || defaultExamDate}
-                onChange={e => setExamDate(e.target.value)}
-                className="w-full p-4 rounded-xl border-2 border-outline-variant/30 bg-surface-container-lowest text-on-surface focus:border-primary focus:outline-none font-medium" />
-              <p className="text-xs text-on-surface-variant">
-                Par défaut : {examType === "BFEM" ? "20 juin 2026 (BFEM)" : "25 juin 2026 (BAC)"}
-              </p>
-            </div>
-
             <button
-              onClick={generateProgram}
-              disabled={generating}
+              onClick={saveProfile}
+              disabled={saving}
               className="w-full py-4 font-black text-white rounded-2xl shadow-lg disabled:opacity-50 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               style={{ backgroundColor: "#FF6B00" }}>
-              <span className="material-symbols-outlined">auto_awesome</span>
-              Générer mon programme de révision
+              <span className="material-symbols-outlined">check_circle</span>
+              Créer mon profil GSN PREP
             </button>
           </>
         )}
