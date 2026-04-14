@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/prep/dashboard",   icon: "home",        label: "Accueil"     },
-  { href: "/prep/simulateur",  icon: "quiz",        label: "Examen"      },
-  { href: "/prep/progression", icon: "trending_up", label: "Progrès"     },
+  { href: "/prep/dashboard",   icon: "home",        label: "Accueil"   },
+  { href: "/prep/quiz",        icon: "psychology",  label: "Quiz IA"   },
+  { href: "/prep/simulateur",  icon: "assignment",  label: "Examen"    },
+  { href: "/prep/progression", icon: "trending_up", label: "Progrès"   },
   { href: "/prep/orientation", icon: "explore",     label: "Orientation" },
 ];
 
@@ -18,7 +19,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
       {children}
       <nav className="fixed bottom-0 left-0 w-full z-50 bg-surface/95 backdrop-blur border-t border-outline-variant/20 flex justify-around items-center px-2 pb-6 pt-3">
         {NAV_ITEMS.map(item => {
-          const active = pathname === item.href || (item.href !== "/prep/dashboard" && pathname.startsWith(item.href));
+          const active = pathname === item.href || (item.href !== "/prep/dashboard" && item.href !== "/prep/quiz" && pathname.startsWith(item.href)) || (item.href === "/prep/quiz" && pathname === "/prep/quiz");
           return (
             <Link
               key={item.href}

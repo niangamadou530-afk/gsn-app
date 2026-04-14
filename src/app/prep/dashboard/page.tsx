@@ -122,12 +122,12 @@ export default function PrepDashboardPage() {
           <h2 className="text-lg font-bold text-on-surface">Boîte à outils</h2>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { href: "/prep/resumeur",    icon: "auto_stories",    label: "Résumeur",             desc: "Cours → résumé IA",      color: "text-orange-500", bg: "bg-orange-50" },
-              { href: "/prep/flashcards",  icon: "style",           label: "Flashcards",           desc: "Mémorisation active",    color: "text-purple-600", bg: "bg-purple-50" },
+              { href: "/prep/quiz",        icon: "psychology",      label: "Quiz IA",              desc: "Adaptatif · XP · Niveaux", color: "text-orange-500", bg: "bg-orange-50" },
+              { href: "/prep/simulateur",  icon: "assignment",      label: "Examen blanc",         desc: "Sans XP · Minuterie",    color: "text-blue-600",   bg: "bg-blue-50" },
               { href: "/prep/soft-skills", icon: "self_improvement",label: "Bien-être & Orga",     desc: "Stress & Pomodoro",      color: "text-red-500",    bg: "bg-red-50" },
               { href: "/prep/bibliotheque",icon: "library_books",   label: "Épreuves",             desc: "Sujets & corrigés",      color: "text-primary",    bg: "bg-primary/5" },
               { href: "/prep/classement",  icon: "emoji_events",    label: "Classement",           desc: "Top Sénégal",            color: "text-yellow-600", bg: "bg-yellow-50" },
-              { href: "/prep/simulateur",  icon: "quiz",            label: "Examen blanc",         desc: "Mode gamifié",           color: "text-blue-600",   bg: "bg-blue-50" },
+              { href: "/prep/orientation", icon: "explore",         label: "Orientation",          desc: "Universités · GSN Learn", color: "text-green-600", bg: "bg-green-50" },
             ].map(item => (
               <Link key={item.href} href={item.href}
                 className="bg-surface-container-lowest rounded-2xl p-3 shadow-sm hover:shadow-md transition-all active:scale-[0.97] space-y-2">

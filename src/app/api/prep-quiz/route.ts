@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { getProgramme } from "@/data/programmes";
 
 /* ══════════════════════════════════════════════════════════
    Programmes officiels BAC / BFEM Sénégal (Office du BAC)
-   Source : officedubac.sn
+   Fallback inline data (kept for legacy compatibility)
    ══════════════════════════════════════════════════════════ */
 
 const PROGRAMMES_OFFICIELS: Record<string, Record<string, string>> = {
@@ -302,7 +303,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
 
-  let body: { subject: string; examType: string; serie?: string; questionCount?: number };
+  let body: { subject: string; examType: string; serie?: string; questionCount?: number; count?: number; annee?: string; examBlanc?: boolean };
   try {
     body = await req.json();
     if (!body.subject || !body.examType) throw new Error("subject et examType requis");
@@ -310,19 +311,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Requête invalide" }, { status: 400 });
   }
 
-  const { subject, examType, serie = "", questionCount } = body;
-  const n = Math.min(questionCount || 10, 20);
+  const { subject, examType, serie = "", questionCount, count, annee } = body;
+  const n = Math.min(count || questionCount || 10, 20);
 
-  // Look up official program
+  // First try new programmes.ts, fallback to inline data
   const serieKey = serie || (examType === "BFEM" ? "BFEM" : "S1");
-  const subjectProgs = PROGRAMMES_OFFICIELS[subject] ?? {};
-  const progForSerie = subjectProgs[serieKey] ?? subjectProgs[Object.keys(subjectProgs)[0]] ?? "";
+  const prog = getProgramme(subject, serieKey);
+  let programSection = "";
+  if (prog) {
+    programSection = `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${prog.contenu.slice(0, 2500)}\n`;
+  } else {
+    const subjectProgs = PROGRAMMES_OFFICIELS[subject] ?? {};
+    const progForSerie = subjectProgs[serieKey] ?? subjectProgs[Object.keys(subjectProgs)[0]] ?? "";
+    programSection = progForSerie ? `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${progForSerie}\n` : "";
+  }
 
-  const programSection = progForSerie
-    ? `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${progForSerie}\n`
-    : "";
+  const anneeContext = annee ? ` (session ${annee})` : "";
 
-  const prompt = `Génère ${n} questions d'examen pour la matière "${subject}", niveau ${examType}${serie ? " série " + serie : ""} au Sénégal.${programSection}
+  const prompt = `Génère ${n} questions d'examen pour la matière "${subject}", niveau ${examType}${serie ? " série " + serie : ""}${anneeContext} au Sénégal.${programSection}
 Questions variées : QCM (4 choix), vrai/faux, calculs, définitions.
 Difficulté progressive : 30% facile, 40% moyen, 30% difficile.
 Les questions doivent être précisément basées sur le programme officiel ci-dessus.
