@@ -88,21 +88,32 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
     : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
   return `Tu es un professeur expert du ${examType} sénégalais.
 Produis un résumé complet, détaillé et structuré pour ${matiere}${ctx} ${src}.
-Tu dois inclure : 1) Introduction et contexte 2) Toutes les notions essentielles expliquées clairement 3) Définitions importantes 4) Formules ou règles clés 5) Exemples concrets 6) Points difficiles expliqués simplement 7) Ce qui tombe souvent aux examens au Sénégal 8) Résumé final en 5 points clés.
-Sois précis, complet et pédagogique.
+Réponds en texte brut structuré, pas en JSON.
 
-Retourne UNIQUEMENT ce JSON :
-{
-  "titre": "Titre du cours ou chapitre",
-  "resume": "Introduction et contexte, puis toutes les notions essentielles expliquées clairement avec exemples concrets et points difficiles simplifiés. Rédige plusieurs paragraphes détaillés.",
-  "points_cles": ["Résumé point clé 1", "Point clé 2", "Point clé 3", "Point clé 4", "Point clé 5"],
-  "formules": ["Formule ou règle 1 avec explication complète", "Règle 2", "Exemple concret 1", "Exemple concret 2"],
-  "definitions": [
-    { "terme": "Terme important", "definition": "Définition complète et claire avec contexte." }
-  ],
-  "conseils_exam": ["Ce qui tombe souvent aux examens sénégalais : point 1", "Point difficile expliqué simplement", "Conseil méthodologique 1", "Conseil méthodologique 2"]
-}
-Tout en français. Sois très détaillé et complet dans chaque section.`;
+Structure ton résumé avec ces sections :
+
+## Introduction
+Présente le contexte et l'importance du sujet.
+
+## Notions essentielles
+Explique toutes les notions clés clairement et en détail.
+
+## Définitions importantes
+Liste et définis les termes clés avec leur contexte.
+
+## Formules et règles
+Donne les formules, règles et méthodes importantes avec explications.
+
+## Exemples concrets
+Illustre avec des exemples pratiques et concrets.
+
+## Ce qui tombe aux examens
+Conseils spécifiques pour les examens sénégalais, points souvent évalués.
+
+## Points clés à retenir
+Résume en 5 points essentiels.
+
+Sois précis, complet et pédagogique. Tout en français.`;
 }
 
 function evaluatePrompt(
@@ -168,6 +179,7 @@ export async function POST(req: Request) {
 
     /* ── Document mode (Mode A) ── */
     if (mode === "document" && fileBase64 && fileType) {
+      const isResume = type === "resume";
       let prompt: string;
       if (type === "flashcards")      prompt = flashcardsPrompt(matiere, "", examType, serie, true);
       else if (type === "quiz")       prompt = quizPrompt(matiere, "", examType, serie, quizMode, true);
@@ -191,7 +203,6 @@ export async function POST(req: Request) {
         });
         content = completion.choices[0]?.message?.content ?? "";
       } else {
-        // PDF: decode base64 to text
         const buf  = Buffer.from(fileBase64, "base64");
         const text = buf.toString("utf-8")
           .replace(/[^\x20-\x7E\n]/g, " ")
@@ -199,11 +210,12 @@ export async function POST(req: Request) {
           .trim()
           .slice(0, 3000);
 
+        const msgs = isResume
+          ? [{ role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }]
+          : [sysJson(), { role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }];
+
         const completion = await groq.chat.completions.create({
-          messages: [
-            sysJson(),
-            { role: "user", content: `${prompt}\n\nContenu du document :\n${text}` },
-          ],
+          messages: msgs,
           model: "llama-3.1-8b-instant",
           max_tokens: 3000,
           temperature: 0.3,
@@ -211,14 +223,25 @@ export async function POST(req: Request) {
         content = completion.choices[0]?.message?.content ?? "";
       }
 
+      if (isResume) return NextResponse.json({ texte: content.trim() });
       return NextResponse.json(parseJson(content));
     }
 
     /* ── Knowledge mode (Mode B) ── */
+    if (type === "resume") {
+      const prompt = resumePrompt(matiere, chapitre, examType, serie, false);
+      const completion = await groq.chat.completions.create({
+        messages: [{ role: "user", content: prompt }],
+        model: "llama-3.1-8b-instant",
+        max_tokens: 3000,
+        temperature: 0.4,
+      });
+      return NextResponse.json({ texte: (completion.choices[0]?.message?.content ?? "").trim() });
+    }
+
     let prompt: string;
-    if (type === "flashcards")      prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false);
-    else if (type === "quiz")       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false);
-    else                            prompt = resumePrompt(matiere, chapitre, examType, serie, false);
+    if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false);
+    else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false);
 
     const completion = await groq.chat.completions.create({
       messages: [sysJson(), { role: "user", content: prompt }],

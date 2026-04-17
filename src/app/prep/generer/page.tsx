@@ -89,7 +89,10 @@ function GenererPageInner() {
   const [savedQuiz,       setSavedQuiz]       = useState<SavedQuizResult[]>([]);
   const [savedResumes,    setSavedResumes]    = useState<SavedResume[]>([]);
   const [libLoading, setLibLoading]           = useState(false);
-  const [libFlipIdx, setLibFlipIdx]           = useState<Record<string, boolean>>({});
+  const [libDeck, setLibDeck]                 = useState<SavedFlashcard[]>([]);
+  const [libDeckTitle, setLibDeckTitle]       = useState("");
+  const [libCardIdx, setLibCardIdx]           = useState(0);
+  const [libCardFlipped, setLibCardFlipped]   = useState(false);
   const [expandedResume, setExpandedResume]   = useState<string | null>(null);
 
   async function loadLibrary(section: "mes_flashcards" | "mes_quiz" | "mes_resumes") {
@@ -253,7 +256,7 @@ function GenererPageInner() {
         }
       } else {
         setResume(data);
-        await saveResume(data, mat, chap);
+        await saveResume(data.texte as string ?? "", mat, chap);
         await fetchVideos(mat, chap);
         setPhase("resume_result");
       }
@@ -285,11 +288,11 @@ function GenererPageInner() {
     });
   }
 
-  async function saveResume(data: Record<string, unknown>, mat: string, chap: string) {
-    if (!userId) return;
+  async function saveResume(texte: string, mat: string, chap: string) {
+    if (!userId || !texte) return;
     await supabase.from("prep_resumes").insert({
       user_id: userId, matiere: mat, chapitre: chap,
-      contenu: JSON.stringify(data),
+      contenu: texte,
     });
   }
 
@@ -765,71 +768,15 @@ function GenererPageInner() {
 
   // ── RESUME RESULT ──
   if (phase === "resume_result" && resume) {
-    const r = resume as {
-      titre?: string; resume?: string;
-      points_cles?: string[]; formules?: string[];
-      definitions?: Array<{ terme: string; definition: string }>;
-      conseils_exam?: string[];
-    };
+    const texte = (resume as { texte?: string }).texte ?? "";
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
         <PageHeader title={`Résumé · ${activeMat()}`} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
-          {r.titre && <h2 className="text-xl font-black text-on-surface">{r.titre}</h2>}
-
-          {r.resume && (
-            <Section title="Notions essentielles" icon="description">
-              <p className="text-on-surface text-sm leading-relaxed">{r.resume}</p>
-            </Section>
-          )}
-
-          {r.points_cles && r.points_cles.length > 0 && (
-            <Section title="Points clés" icon="star">
-              <ul className="space-y-1.5">
-                {r.points_cles.map((p, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
-                    <span className="text-primary font-bold mt-0.5">•</span> {p}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {r.formules && r.formules.length > 0 && (
-            <Section title="Définitions importantes" icon="function">
-              <ul className="space-y-1">
-                {r.formules.map((f, i) => (
-                  <li key={i} className="text-sm font-mono bg-surface-container p-2 rounded-lg text-on-surface">{f}</li>
-                ))}
-              </ul>
-            </Section>
-          )}
-
-          {r.definitions && r.definitions.length > 0 && (
-            <Section title="Définitions" icon="book">
-              <div className="space-y-2">
-                {r.definitions.map((d, i) => (
-                  <div key={i}>
-                    <p className="text-sm font-bold text-on-surface">{d.terme}</p>
-                    <p className="text-sm text-on-surface-variant">{d.definition}</p>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          )}
-
-          {r.conseils_exam && r.conseils_exam.length > 0 && (
-            <Section title="Ce qui tombe souvent aux examens" icon="emoji_events">
-              <ul className="space-y-1.5">
-                {r.conseils_exam.map((c, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
-                    <span className="text-amber-500 font-bold">⚡</span> {c}
-                  </li>
-                ))}
-              </ul>
-            </Section>
-          )}
+          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
+            <ResumeText texte={texte} />
+          </div>
 
           <button
             onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
@@ -852,6 +799,60 @@ function GenererPageInner() {
 
   // ── MES FLASHCARDS ──
   if (phase === "mes_flashcards") {
+    // Deck actif — affichage une carte à la fois (même design que génération)
+    if (libDeck.length > 0) {
+      const card = libDeck[libCardIdx];
+      const mastered = libDeck.filter(c => c.maitrisee).length;
+      return (
+        <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+          <PageHeader title={libDeckTitle} onBack={() => { setLibDeck([]); setLibCardIdx(0); setLibCardFlipped(false); }} />
+          <div className="flex-1 px-6 py-4 space-y-4">
+
+            <div className="flex items-center justify-between text-sm text-on-surface-variant">
+              <span>{libCardIdx + 1} / {libDeck.length}</span>
+              <span className="text-green-600 font-semibold">{mastered} maîtrisées</span>
+            </div>
+            <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+              <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / libDeck.length) * 100}%` }} />
+            </div>
+
+            {/* Même carte flip que la génération */}
+            <div
+              onClick={() => setLibCardFlipped(f => !f)}
+              className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: libCardFlipped ? "#1e293b" : "#FF6B00" }}>
+              <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{libCardFlipped ? "Réponse" : "Question"}</p>
+              <p className="text-white font-bold text-lg text-center leading-relaxed">
+                {libCardFlipped ? card.verso : card.recto}
+              </p>
+              <p className="text-xs text-white/50 mt-2">Toucher pour retourner</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { toggleFlashMaitrisee(card.id, card.maitrisee); }}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
+                {card.maitrisee ? "✓ Maîtrisée" : "Je maîtrise"}
+              </button>
+              <button
+                onClick={() => { setLibCardIdx(i => (i + 1) % libDeck.length); setLibCardFlipped(false); }}
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface border-2 border-outline-variant active:scale-[0.97] transition-all">
+                ↻ Suivante
+              </button>
+            </div>
+
+            <button
+              onClick={() => { setLibCardIdx(i => Math.max(0, i - 1)); setLibCardFlipped(false); }}
+              disabled={libCardIdx === 0}
+              className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
+              ← Précédente
+            </button>
+          </div>
+        </main>
+      );
+    }
+
+    // Vue liste des groupes
     const grouped: Record<string, SavedFlashcard[]> = {};
     for (const f of savedFlashcards) {
       const key = `${f.matiere}${f.chapitre ? " · " + f.chapitre : ""}`;
@@ -862,33 +863,30 @@ function GenererPageInner() {
       <main className="min-h-screen bg-surface text-on-surface pb-8">
         <PageHeader title="Mes Flashcards" onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
-          <div className="px-4 py-4 space-y-4">
+          <div className="px-4 py-4 space-y-3">
             {Object.keys(grouped).length === 0 ? (
               <EmptyLib icon="style" msg="Aucune flashcard sauvegardée" sub="Génère des flashcards pour les retrouver ici." />
-            ) : Object.entries(grouped).map(([group, cards]) => (
-              <div key={group} className="space-y-2">
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-1">{group}</p>
-                {cards.map(f => {
-                  const flipped = !!libFlipIdx[f.id];
-                  return (
-                    <div key={f.id} className="space-y-1">
-                      <div
-                        onClick={() => setLibFlipIdx(p => ({ ...p, [f.id]: !p[f.id] }))}
-                        className="rounded-2xl p-5 min-h-20 flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-transform"
-                        style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
-                        <p className="text-[10px] font-bold text-white/60 uppercase mb-1">{flipped ? "Réponse" : "Question"}</p>
-                        <p className="text-white font-semibold text-sm leading-relaxed">{flipped ? f.verso : f.recto}</p>
-                      </div>
-                      <button
-                        onClick={() => toggleFlashMaitrisee(f.id, f.maitrisee)}
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${f.maitrisee ? "bg-green-100 text-green-700" : "bg-surface-container text-on-surface-variant"}`}>
-                        {f.maitrisee ? "✓ Maîtrisée" : "Marquer maîtrisée"}
-                      </button>
+            ) : Object.entries(grouped).map(([group, cards]) => {
+              const done = cards.filter(c => c.maitrisee).length;
+              return (
+                <button
+                  key={group}
+                  onClick={() => { setLibDeck(cards); setLibDeckTitle(group); setLibCardIdx(0); setLibCardFlipped(false); }}
+                  className="w-full flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl shadow-sm text-left active:scale-[0.98] transition-transform">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#FF6B0020" }}>
+                    <span className="material-symbols-outlined text-[20px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>style</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-on-surface text-sm truncate">{group}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{cards.length} cartes · {done} maîtrisées</p>
+                    <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1.5">
+                      <div className="h-full bg-green-500" style={{ width: `${cards.length > 0 ? (done / cards.length) * 100 : 0}%` }} />
                     </div>
-                  );
-                })}
-              </div>
-            ))}
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </main>
@@ -936,8 +934,6 @@ function GenererPageInner() {
             {savedResumes.length === 0 ? (
               <EmptyLib icon="auto_stories" msg="Aucun résumé sauvegardé" sub="Génère un résumé pour le retrouver ici." />
             ) : savedResumes.map(r => {
-              let parsed: { titre?: string; resume?: string; points_cles?: string[] } = {};
-              try { parsed = JSON.parse(r.contenu); } catch { /* raw */ }
               const isOpen = expandedResume === r.id;
               return (
                 <div key={r.id} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
@@ -948,7 +944,7 @@ function GenererPageInner() {
                       <span className="material-symbols-outlined text-amber-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-on-surface text-sm truncate">{parsed.titre ?? r.matiere ?? "Résumé"}</p>
+                      <p className="font-bold text-on-surface text-sm truncate">{r.matiere ?? "Résumé"}</p>
                       <p className="text-xs text-on-surface-variant">
                         {r.matiere}{r.chapitre ? " · " + r.chapitre : ""} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
                       </p>
@@ -956,17 +952,8 @@ function GenererPageInner() {
                     <span className="material-symbols-outlined text-on-surface-variant text-[20px]" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}>expand_more</span>
                   </button>
                   {isOpen && (
-                    <div className="border-t border-outline-variant/15 p-4 space-y-3">
-                      {parsed.resume && <p className="text-sm text-on-surface leading-relaxed">{parsed.resume}</p>}
-                      {parsed.points_cles && parsed.points_cles.length > 0 && (
-                        <ul className="space-y-1">
-                          {parsed.points_cles.map((p, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
-                              <span className="text-amber-500 font-bold shrink-0">•</span> {p}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                    <div className="border-t border-outline-variant/15 p-4">
+                      <ResumeText texte={r.contenu} />
                     </div>
                   )}
                 </div>
@@ -999,6 +986,37 @@ function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }
       <p className="text-sm text-on-surface-variant mt-1">{sub}</p>
     </div>
   );
+}
+
+function ResumeText({ texte }: { texte: string }) {
+  const lines = texte.split("\n");
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("## ")) {
+      elements.push(
+        <p key={key++} className="font-extrabold text-on-surface text-base mt-5 mb-1.5" style={{ color: "#FF6B00" }}>
+          {trimmed.slice(3)}
+        </p>
+      );
+    } else if (trimmed.startsWith("# ")) {
+      elements.push(
+        <p key={key++} className="font-black text-on-surface text-lg mt-4 mb-2">
+          {trimmed.slice(2)}
+        </p>
+      );
+    } else if (trimmed === "") {
+      elements.push(<div key={key++} className="h-1" />);
+    } else {
+      elements.push(
+        <p key={key++} className="text-sm text-on-surface leading-relaxed">
+          {trimmed}
+        </p>
+      );
+    }
+  }
+  return <div className="space-y-0.5">{elements}</div>;
 }
 
 function PageHeader({ title, onBack }: { title: string; onBack: () => void }) {
