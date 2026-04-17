@@ -291,12 +291,21 @@ function GenererPageInner() {
   }
 
   async function saveResume(texte: string, mat: string, chap: string) {
-    if (!userId || !texte) return;
+    if (!texte) { console.warn("[saveResume] texte vide, abandon"); return; }
+    // Toujours récupérer un user_id frais depuis l'auth
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { console.warn("[saveResume] utilisateur non connecté"); return; }
+    console.log("[saveResume] insertion →", { user_id: user.id, matiere: mat, chapitre: chap, len: texte.length });
     const { error } = await supabase.from("prep_resumes").insert({
-      user_id: userId, matiere: mat, chapitre: chap,
+      user_id: user.id, matiere: mat, chapitre: chap,
       contenu: texte,
     });
-    if (!error) setResumeSaved(true);
+    if (error) {
+      console.error("[saveResume] erreur Supabase:", error.message, error.details, error.hint);
+    } else {
+      console.log("[saveResume] OK");
+      setResumeSaved(true);
+    }
   }
 
   /* ── QCM logic ── */
