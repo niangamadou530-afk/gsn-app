@@ -121,7 +121,7 @@ export default function SoftSkillsPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-28">
+    <main className="min-h-screen bg-surface text-on-surface pb-24">
       <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
         <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
@@ -335,30 +335,6 @@ export default function SoftSkillsPage() {
           </>
         )}
       </div>
-
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 bg-surface/90 backdrop-blur border-t border-outline-variant/20 flex justify-around items-center px-4 pb-6 pt-3">
-        <Link href="/prep/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
-        </Link>
-        <Link href="/prep/bibliotheque" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">library_books</span>
-          <span className="text-[10px] font-medium mt-0.5">Épreuves</span>
-        </Link>
-        <Link href="/prep/simulateur" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">quiz</span>
-          <span className="text-[10px] font-medium mt-0.5">Examen</span>
-        </Link>
-        <Link href="/prep/progression" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
-          <span className="material-symbols-outlined">trending_up</span>
-          <span className="text-[10px] font-medium mt-0.5">Progrès</span>
-        </Link>
-        <Link href="/prep/soft-skills" className="flex flex-col items-center active:scale-90 transition-transform" style={{ color: "#FF6B00" }}>
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>self_improvement</span>
-          <span className="text-[10px] font-medium mt-0.5">Méthodes</span>
-        </Link>
-      </nav>
     </main>
   );
 }
