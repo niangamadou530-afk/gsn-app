@@ -988,35 +988,75 @@ function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }
   );
 }
 
+function nettoyerContenu(texte: string): string {
+  return texte
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
+    .replace(/`{1,3}(.*?)`{1,3}/g, "$1")
+    .replace(/^\s*[-*+]\s/gm, "• ")
+    .replace(/^\s*\d+\.\s/gm, "")
+    .trim();
+}
+
+const SECTION_ICONS: Record<string, string> = {
+  "Introduction":           "info",
+  "Notions essentielles":   "lightbulb",
+  "Définitions importantes":"book_2",
+  "Formules et règles":     "functions",
+  "Exemples concrets":      "science",
+  "Ce qui tombe aux examens":"star",
+  "Points clés à retenir":  "checklist",
+};
+
 function ResumeText({ texte }: { texte: string }) {
-  const lines = texte.split("\n");
-  const elements: React.ReactNode[] = [];
-  let key = 0;
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("## ")) {
-      elements.push(
-        <p key={key++} className="font-extrabold text-on-surface text-base mt-5 mb-1.5" style={{ color: "#FF6B00" }}>
-          {trimmed.slice(3)}
-        </p>
-      );
-    } else if (trimmed.startsWith("# ")) {
-      elements.push(
-        <p key={key++} className="font-black text-on-surface text-lg mt-4 mb-2">
-          {trimmed.slice(2)}
-        </p>
-      );
-    } else if (trimmed === "") {
-      elements.push(<div key={key++} className="h-1" />);
+  // Split into sections by ## headings
+  const rawSections = texte.split(/\n(?=## )/);
+  const sections: Array<{ title: string; content: string }> = [];
+
+  for (const raw of rawSections) {
+    const firstNewline = raw.indexOf("\n");
+    if (raw.startsWith("## ") && firstNewline !== -1) {
+      const title   = raw.slice(3, firstNewline).trim();
+      const content = nettoyerContenu(raw.slice(firstNewline + 1));
+      if (content) sections.push({ title, content });
     } else {
-      elements.push(
-        <p key={key++} className="text-sm text-on-surface leading-relaxed">
-          {trimmed}
-        </p>
-      );
+      // Preamble before first ## or lone text
+      const cleaned = nettoyerContenu(raw.replace(/^##?\s?/gm, ""));
+      if (cleaned) sections.push({ title: "", content: cleaned });
     }
   }
-  return <div className="space-y-0.5">{elements}</div>;
+
+  if (sections.length === 0) {
+    return (
+      <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
+        {nettoyerContenu(texte)}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {sections.map((s, i) => {
+        const icon = SECTION_ICONS[s.title] ?? "article";
+        return (
+          <div key={i} className="bg-surface-container rounded-2xl overflow-hidden">
+            {s.title && (
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/15" style={{ backgroundColor: "#FF6B0012" }}>
+                <span className="material-symbols-outlined text-[18px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                <p className="font-extrabold text-sm" style={{ color: "#FF6B00" }}>{s.title}</p>
+              </div>
+            )}
+            <div className="px-4 py-3 space-y-1.5">
+              {s.content.split("\n").filter(l => l.trim()).map((line, j) => (
+                <p key={j} className="text-sm text-on-surface leading-relaxed">{line.trim()}</p>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function PageHeader({ title, onBack }: { title: string; onBack: () => void }) {
