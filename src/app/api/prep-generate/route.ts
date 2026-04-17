@@ -84,20 +84,22 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
     ? "en te basant UNIQUEMENT sur le contenu du document fourni"
     : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
   return `Tu es un professeur expert du ${examType} sénégalais.
-Génère un résumé structuré pour ${matiere}${ctx} ${src}.
+Produis un résumé complet, détaillé et structuré pour ${matiere}${ctx} ${src}.
+Tu dois inclure : 1) Introduction et contexte 2) Toutes les notions essentielles expliquées clairement 3) Définitions importantes 4) Formules ou règles clés 5) Exemples concrets 6) Points difficiles expliqués simplement 7) Ce qui tombe souvent aux examens au Sénégal 8) Résumé final en 5 points clés.
+Sois précis, complet et pédagogique.
 
 Retourne UNIQUEMENT ce JSON :
 {
   "titre": "Titre du cours ou chapitre",
-  "resume": "Résumé en 5 lignes maximum, clair et concis.",
-  "points_cles": ["Point essentiel 1", "Point 2", "Point 3", "Point 4", "Point 5"],
-  "formules": ["Formule ou règle 1", "Formule 2"],
+  "resume": "Introduction et contexte, puis toutes les notions essentielles expliquées clairement avec exemples concrets et points difficiles simplifiés. Rédige plusieurs paragraphes détaillés.",
+  "points_cles": ["Résumé point clé 1", "Point clé 2", "Point clé 3", "Point clé 4", "Point clé 5"],
+  "formules": ["Formule ou règle 1 avec explication complète", "Règle 2", "Exemple concret 1", "Exemple concret 2"],
   "definitions": [
-    { "terme": "Terme", "definition": "Définition claire." }
+    { "terme": "Terme important", "definition": "Définition complète et claire avec contexte." }
   ],
-  "conseils_exam": ["Ce qui tombe souvent : conseil 1", "Conseil 2", "Conseil 3"]
+  "conseils_exam": ["Ce qui tombe souvent aux examens sénégalais : point 1", "Point difficile expliqué simplement", "Conseil méthodologique 1", "Conseil méthodologique 2"]
 }
-Tout en français.`;
+Tout en français. Sois très détaillé et complet dans chaque section.`;
 }
 
 function evaluatePrompt(

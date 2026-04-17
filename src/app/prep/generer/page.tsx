@@ -70,9 +70,10 @@ export default function GenererPage() {
   const [videos, setVideos]             = useState<YoutubeVideo[]>([]);
   const [videoPlaying, setVideoPlaying] = useState<string | null>(null);
 
-  const [phase, setPhase]   = useState<Phase>("home");
-  const [error, setError]   = useState("");
-  const [mode, setMode]     = useState<"A" | "B" | null>(null);
+  const [phase, setPhase]     = useState<Phase>("home");
+  const [error, setError]     = useState("");
+  const [mode, setMode]       = useState<"A" | "B" | null>(null);
+  const [flashSaved, setFlashSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function GenererPage() {
   async function generate() {
     setPhase("generating");
     setError("");
+    setFlashSaved(false);
     const mat = activeMat();
     const chap = activeChapitre();
 
@@ -222,6 +224,7 @@ export default function GenererPage() {
         recto: c.recto, verso: c.verso, maitrisee: false,
       }))
     );
+    setFlashSaved(true);
   }
 
   async function saveQuizResult(score: number, total: number) {
@@ -481,6 +484,14 @@ export default function GenererPage() {
         <PageHeader title={`Flashcards · ${activeMat()}`} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
+          {/* Confirmation sauvegarde */}
+          {flashSaved && (
+            <div className="flex items-center gap-2 bg-green-50 border-2 border-green-200 rounded-xl px-4 py-2.5">
+              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-green-700 font-semibold text-sm">Flashcards sauvegardées</p>
+            </div>
+          )}
+
           {/* Progress */}
           <div className="flex items-center justify-between text-sm text-on-surface-variant">
             <span>{currentCard + 1} / {flashcards.length}</span>
@@ -521,6 +532,14 @@ export default function GenererPage() {
             disabled={currentCard === 0}
             className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
             ← Précédente
+          </button>
+
+          {/* Générer d'autres flashcards */}
+          <button
+            onClick={generate}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold border-2 border-primary text-primary bg-primary/5 active:scale-[0.97] transition-transform">
+            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>refresh</span>
+            Générer d'autres flashcards
           </button>
 
           {/* WhatsApp */}

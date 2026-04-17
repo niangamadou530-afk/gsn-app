@@ -1,6 +1,30 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
+const LYCEES_SN = `
+MEILLEURS LYCÉES PUBLICS DU SÉNÉGAL :
+- Lycée Blaise Diagne (Dakar) : excellence académique, séries L et S, fort taux de réussite au BAC
+- Lycée Lamine Guèye (Dakar) : séries L, S, G — très réputé à Dakar
+- Lycée Thierno Mamadou Tall (Thiès) : fort en série S
+- Lycée Charles de Gaulle (Saint-Louis) : séries L et S, ancienne tradition
+- Lycée de Ziguinchor : excellent résultats en Casamance, séries L et S
+- Lycée El Hadj Ibrahima Niasse (Kaolack) : fort en série S
+- Lycée Gaston Berger (Saint-Louis) : séries scientifiques
+- Lycée Malick Sy (Thiès) : séries L et T
+
+MEILLEURS LYCÉES PRIVÉS DU SÉNÉGAL :
+- Cours Sainte-Marie de Hann (Dakar) : séries L, S, G — très sélectif
+- Lycée Notre-Dame de Dakar : sérieux et résultats solides
+- Lycée Kennedy (Dakar) : séries S et L, encadrement rigoureux
+- Institut Sainte-Jeanne d'Arc (Dakar) : séries L et G
+- Lycée El Bosco (Dakar) : séries S et T
+- Prytanée Militaire de Saint-Louis : discipline, séries S — admission sur concours
+
+SÉRIES AU LYCÉE :
+- Série L (Littéraire) : Philosophie, Français, Histoire-Géographie, Langues — pour profils littéraires et langues
+- Série S (Scientifique) : Maths, Sciences Physiques, SVT — pour profils scientifiques et techniques
+`;
+
 const ETABLISSEMENTS_SN = `
 UNIVERSITÉS PUBLIQUES DU SÉNÉGAL :
 - UCAD (Université Cheikh Anta Diop, Dakar) : médecine, pharmacie, droit, lettres, sciences, économie, philosophie
@@ -57,8 +81,48 @@ export async function POST(request: Request) {
   const buffer = Buffer.from(arrayBuffer);
   const fileType = file.type;
 
-  const orientationPrompt = (extractedText: string) => `Tu es un conseiller d'orientation expert au Sénégal.
-Analyse ce relevé de notes du ${examType}${serie ? " série " + serie : ""} sénégalais.
+  const orientationPrompt = (extractedText: string) => {
+    if (examType === "BFEM") {
+      return `Tu es un conseiller d'orientation expert au Sénégal.
+Analyse ce bulletin général annuel d'un élève de 3e préparant le BFEM sénégalais.
+
+Contenu du document :
+${extractedText}
+
+${LYCEES_SN}
+
+Extrait les matières et notes du document, calcule la moyenne générale.
+Oriente UNIQUEMENT vers les séries L (littéraire) et S (scientifique) au lycée selon le profil de l'élève.
+Recommande 4 à 6 lycées parmi les meilleurs du Sénégal adaptés au profil.
+
+Retourne UNIQUEMENT ce JSON valide (sans markdown) :
+{
+  "moyenne": 13.5,
+  "mention": "Assez bien",
+  "orientation_principale": "Série S (Sciences) recommandée",
+  "notes_extraites": {"Maths": 15, "Français": 12},
+  "etablissements_recommandes": [
+    {
+      "nom": "Lycée Blaise Diagne",
+      "type": "Lycée public",
+      "filiere": "Série S",
+      "pourquoi": "Tes résultats en Maths et Sciences sont excellents.",
+      "conditions_acces": "Inscription sur dossier, résultats BFEM requis",
+      "lien_gsn": false
+    }
+  ],
+  "parcours_gsn_learn": [],
+  "message_personnalise": "Avec ta moyenne de X/20..."
+}
+
+Règles :
+- mention : "Passable" (<10), "Assez bien" (10-12), "Bien" (12-14), "Très bien" (14-16), "Excellent" (>16)
+- Oriente vers Série S si points forts en Maths/Sciences, Série L si points forts en Français/Histoire
+- Tout en français`;
+    }
+
+    return `Tu es un conseiller d'orientation expert au Sénégal.
+Analyse ce relevé de notes ou relevé de BAC du ${examType}${serie ? " série " + serie : ""} sénégalais.
 
 Contenu du document :
 ${extractedText}
@@ -66,7 +130,7 @@ ${extractedText}
 ${ETABLISSEMENTS_SN}
 
 Extrait les matières et notes du document, calcule la moyenne pondérée selon les coefficients officiels du BAC sénégalais.
-Recommande les meilleures formations et établissements adaptés à ce profil.
+Recommande les meilleures universités et grandes écoles avec les facultés et filières précises adaptées au profil.
 
 Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 {
@@ -90,9 +154,10 @@ Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 
 Règles :
 - mention : "Passable" (<10), "Assez bien" (10-12), "Bien" (12-14), "Très bien" (14-16), "Excellent" (>16)
-- Recommande 4 à 6 établissements pertinents
+- Recommande 4 à 6 établissements pertinents avec faculté et filière précises
 - lien_gsn = true si GSN Learn complète ou prépare à cette filière
 - Tout en français`;
+  };
 
   try {
     let content: string;

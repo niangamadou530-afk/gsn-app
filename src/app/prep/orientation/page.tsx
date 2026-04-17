@@ -69,7 +69,11 @@ export default function OrientationPage() {
     <main className="min-h-screen bg-surface text-on-surface pb-8">
       <header className="px-6 pt-8 pb-4">
         <h1 className="text-2xl font-extrabold">Orientation</h1>
-        <p className="text-on-surface-variant text-sm">Upload ton relevé de notes pour des recommandations personnalisées</p>
+        <p className="text-on-surface-variant text-sm">
+          {examType === "BFEM"
+            ? "Upload ton bulletin général annuel pour des recommandations de lycée"
+            : "Upload ton relevé de notes ou relevé de BAC pour des recommandations personnalisées"}
+        </p>
       </header>
 
       <div className="px-6 space-y-4">
@@ -88,7 +92,9 @@ export default function OrientationPage() {
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[40px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
-                  <p className="font-bold text-on-surface">Upload ton relevé de notes</p>
+                  <p className="font-bold text-on-surface">
+                    {examType === "BFEM" ? "Upload ton bulletin général annuel" : "Upload ton relevé de notes ou relevé de BAC"}
+                  </p>
                   <p className="text-sm text-on-surface-variant">Photo ou PDF · IA Vision</p>
                 </>
               )}
@@ -100,9 +106,9 @@ export default function OrientationPage() {
             <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
               <p className="font-bold text-on-surface text-sm mb-1">Comment ça marche ?</p>
               <ol className="space-y-1 text-sm text-on-surface-variant">
-                <li>1. Prends une photo de ton bulletin de notes</li>
+                <li>1. Prends une photo de {examType === "BFEM" ? "ton bulletin général annuel" : "ton relevé de notes ou relevé de BAC"}</li>
                 <li>2. L'IA analyse tes résultats ({examType}{serie ? " " + serie : ""})</li>
-                <li>3. Tu reçois des recommandations d'orientation au Sénégal</li>
+                <li>3. Tu reçois des recommandations {examType === "BFEM" ? "de lycée (séries L et S)" : "d'orientation au Sénégal"}</li>
               </ol>
             </div>
           </>
@@ -181,7 +187,7 @@ export default function OrientationPage() {
             <button onClick={() => { setResult(null); setFileName(""); }}
               className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
               style={{ backgroundColor: "#FF6B00" }}>
-              Analyser un autre relevé
+              {examType === "BFEM" ? "Analyser un autre bulletin" : "Analyser un autre relevé de notes ou relevé de BAC"}
             </button>
           </>
         )}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getMatieres, getChapitres } from "@/data/programmes";
 
 const BAC_DATE  = "2026-06-30";
 const BFEM_DATE = "2026-07-15";
@@ -77,10 +78,25 @@ export default function CoachPage() {
         ? Object.entries(quizStats).map(([m, s]) => `${m}: ${s}%`).join(", ")
         : "Aucun quiz réalisé encore";
 
+      // Détection de matière dans le message pour injecter le programme officiel
+      const matieresList = getMatieres(exam, serie || undefined);
+      let programmeContext = "";
+      const msgLower = userMsg.toLowerCase();
+      for (const mat of matieresList) {
+        const keywords = mat.toLowerCase().split(/[\s-]+/).filter(k => k.length > 3);
+        if (keywords.some(k => msgLower.includes(k))) {
+          const chapitres = getChapitres(exam, serie || "", mat).filter(c => c !== "Autre");
+          if (chapitres.length > 0) {
+            programmeContext = `\n\nPROGRAMME OFFICIEL ${mat.toUpperCase()} (${exam}${serie ? " " + serie : ""}) :\n${chapitres.map(c => `• ${c}`).join("\n")}`;
+          }
+          break;
+        }
+      }
+
       const systemPrompt = `Tu es le Coach IA personnel de ${profile?.prenom ?? "l'élève"}, préparant le ${exam}${serie ? " série " + serie : ""} au Sénégal.
 J-${days} avant le ${exam}. Scores par matière : ${statsStr}.
 Tu parles toujours par le prénom. Tu donnes des conseils basés sur les vraies données.
-Tu es motivant, bienveillant, précis. Réponses courtes (3-5 phrases max). Tout en français.`;
+Tu es motivant, bienveillant, précis. Réponses courtes (3-5 phrases max). Tout en français.${programmeContext}`;
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",

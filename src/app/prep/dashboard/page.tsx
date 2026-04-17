@@ -167,6 +167,17 @@ export default function PrepDashboardPage() {
           </div>
         </div>
 
+        {/* Boîte à outils */}
+        <div>
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Boîte à outils</p>
+          <div className="grid grid-cols-2 gap-3">
+            <ToolCard href="/prep/soft-skills" icon="self_improvement" label="Bien-être & Organisation" desc="Stress · Pomodoro · Planning" color="#ef4444" bg="bg-red-50" />
+            <ToolCard href="/prep/epreuves"    icon="description"      label="Épreuves & Corrigés"     desc="Sujets officiels BAC/BFEM"  color="#f59e0b" bg="bg-amber-50" />
+            <ToolCard href="/prep/orientation"  icon="explore"          label="Orientation"              desc="Lycées · Universités"        color="#3b82f6" bg="bg-blue-50" />
+            <ToolCard href="/prep/generer"      icon="auto_awesome"     label="Générateur IA"            desc="Flashcards · Quiz · Résumé"  color="#FF6B00" bg="bg-orange-50" />
+          </div>
+        </div>
+
       </div>
     </main>
   );
@@ -189,6 +200,21 @@ function QuickLink({ href, icon, label, color }: { href: string; icon: string; l
       className="flex flex-col items-center gap-2 p-3 rounded-xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
       <span className="material-symbols-outlined text-[24px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
       <span className="text-[11px] font-semibold text-on-surface text-center">{label}</span>
+    </Link>
+  );
+}
+
+function ToolCard({ href, icon, label, desc, color, bg }: { href: string; icon: string; label: string; desc: string; color: string; bg: string }) {
+  return (
+    <Link href={href}
+      className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest shadow-sm active:scale-[0.97] transition-transform">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
+        <span className="material-symbols-outlined text-[20px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="font-bold text-on-surface text-xs leading-tight">{label}</p>
+        <p className="text-[10px] text-on-surface-variant mt-0.5 leading-tight">{desc}</p>
+      </div>
     </Link>
   );
 }
