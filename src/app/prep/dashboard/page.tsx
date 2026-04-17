@@ -157,25 +157,10 @@ export default function PrepDashboardPage() {
           <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
         </Link>
 
-        {/* Accès rapides */}
-        <div>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Accès rapides</p>
-          <div className="grid grid-cols-3 gap-3">
-            <QuickLink href="/prep/programme"  icon="menu_book"    label="Programme"  color="#FF6B00" />
-            <QuickLink href="/prep/classement" icon="leaderboard"  label="Classement" color="#3b82f6" />
-            <QuickLink href="/prep/progression" icon="trending_up" label="Progrès"    color="#10b981" />
-          </div>
-        </div>
-
-        {/* Boîte à outils */}
-        <div>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Boîte à outils</p>
-          <div className="grid grid-cols-2 gap-3">
-            <ToolCard href="/prep/soft-skills" icon="self_improvement" label="Bien-être & Organisation" desc="Stress · Pomodoro · Planning" color="#ef4444" bg="bg-red-50" />
-            <ToolCard href="/prep/epreuves"    icon="description"      label="Épreuves & Corrigés"     desc="Sujets officiels BAC/BFEM"  color="#f59e0b" bg="bg-amber-50" />
-            <ToolCard href="/prep/orientation"  icon="explore"          label="Orientation"              desc="Lycées · Universités"        color="#3b82f6" bg="bg-blue-50" />
-            <ToolCard href="/prep/generer"      icon="auto_awesome"     label="Générateur IA"            desc="Flashcards · Quiz · Résumé"  color="#FF6B00" bg="bg-orange-50" />
-          </div>
+        {/* Outils */}
+        <div className="grid grid-cols-2 gap-3">
+          <ToolCard href="/prep/soft-skills" icon="self_improvement" label="Bien-être & Organisation" desc="Stress · Pomodoro · Planning" color="#ef4444" bg="bg-red-50" />
+          <ToolCard href="/prep/epreuves"    icon="description"      label="Épreuves & Corrigés"     desc="Sujets officiels BAC/BFEM"  color="#f59e0b" bg="bg-amber-50" />
         </div>
 
       </div>
@@ -194,15 +179,6 @@ function StatCard({ icon, label, value, sub, color }: { icon: string; label: str
   );
 }
 
-function QuickLink({ href, icon, label, color }: { href: string; icon: string; label: string; color: string }) {
-  return (
-    <Link href={href}
-      className="flex flex-col items-center gap-2 p-3 rounded-xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
-      <span className="material-symbols-outlined text-[24px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-      <span className="text-[11px] font-semibold text-on-surface text-center">{label}</span>
-    </Link>
-  );
-}
 
 function ToolCard({ href, icon, label, desc, color, bg }: { href: string; icon: string; label: string; desc: string; color: string; bg: string }) {
   return (

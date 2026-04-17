@@ -17,7 +17,14 @@ type Phase =
   | "quiz_qcm"
   | "quiz_redaction"
   | "quiz_result"
-  | "resume_result";
+  | "resume_result"
+  | "mes_flashcards"
+  | "mes_quiz"
+  | "mes_resumes";
+
+interface SavedFlashcard { id: string; matiere: string; chapitre: string | null; recto: string; verso: string; maitrisee: boolean; }
+interface SavedQuizResult { id: string; matiere: string; chapitre: string | null; score: number; total: number; mode: string; created_at: string; }
+interface SavedResume { id: string; matiere: string | null; chapitre: string | null; contenu: string; created_at: string; }
 
 interface Flashcard { recto: string; verso: string; maitrisee?: boolean; }
 interface QcmQuestion {
@@ -76,6 +83,36 @@ function GenererPageInner() {
   const [mode, setMode]       = useState<"A" | "B" | null>(null);
   const [flashSaved, setFlashSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sections sauvegardées
+  const [savedFlashcards, setSavedFlashcards] = useState<SavedFlashcard[]>([]);
+  const [savedQuiz,       setSavedQuiz]       = useState<SavedQuizResult[]>([]);
+  const [savedResumes,    setSavedResumes]    = useState<SavedResume[]>([]);
+  const [libLoading, setLibLoading]           = useState(false);
+  const [libFlipIdx, setLibFlipIdx]           = useState<Record<string, boolean>>({});
+  const [expandedResume, setExpandedResume]   = useState<string | null>(null);
+
+  async function loadLibrary(section: "mes_flashcards" | "mes_quiz" | "mes_resumes") {
+    if (!userId) return;
+    setLibLoading(true);
+    if (section === "mes_flashcards") {
+      const { data } = await supabase.from("flashcards").select("id, matiere, chapitre, recto, verso, maitrisee").eq("user_id", userId).order("created_at", { ascending: false });
+      setSavedFlashcards((data ?? []) as SavedFlashcard[]);
+    } else if (section === "mes_quiz") {
+      const { data } = await supabase.from("quiz_results").select("id, matiere, chapitre, score, total, mode, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+      setSavedQuiz((data ?? []) as SavedQuizResult[]);
+    } else {
+      const { data } = await supabase.from("prep_resumes").select("id, matiere, chapitre, contenu, created_at").eq("user_id", userId).order("created_at", { ascending: false });
+      setSavedResumes((data ?? []) as SavedResume[]);
+    }
+    setLibLoading(false);
+    setPhase(section);
+  }
+
+  async function toggleFlashMaitrisee(id: string, current: boolean) {
+    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id);
+    setSavedFlashcards(prev => prev.map(f => f.id === id ? { ...f, maitrisee: !current } : f));
+  }
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -326,7 +363,7 @@ function GenererPageInner() {
         <h1 className="text-2xl font-extrabold">Générer avec l'IA</h1>
         <p className="text-on-surface-variant text-sm mt-1">Flashcards · Quiz · Résumé</p>
       </header>
-      <div className="px-6 space-y-4">
+      <div className="px-6 space-y-4 pb-8">
         <p className="font-bold text-on-surface">Comment veux-tu travailler ?</p>
         <button
           onClick={() => { setMode("A"); setPhase("setup_a"); }}
@@ -346,6 +383,25 @@ function GenererPageInner() {
             <p className="text-sm text-on-surface-variant mt-0.5">Choisis ta matière et un thème — l'IA génère depuis le programme officiel</p>
           </div>
         </button>
+
+        {/* Bibliothèque */}
+        <div className="pt-2">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Mes contenus sauvegardés</p>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              { key: "mes_flashcards", icon: "style",        label: "Mes Flashcards", color: "#6366f1" },
+              { key: "mes_quiz",       icon: "quiz",          label: "Mes Quiz",       color: "#10b981" },
+              { key: "mes_resumes",    icon: "auto_stories",  label: "Mes Résumés",    color: "#f59e0b" },
+            ] as const).map(s => (
+              <button key={s.key}
+                onClick={() => loadLibrary(s.key)}
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
+                <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </main>
   );
@@ -794,10 +850,156 @@ function GenererPageInner() {
     );
   }
 
+  // ── MES FLASHCARDS ──
+  if (phase === "mes_flashcards") {
+    const grouped: Record<string, SavedFlashcard[]> = {};
+    for (const f of savedFlashcards) {
+      const key = `${f.matiere}${f.chapitre ? " · " + f.chapitre : ""}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(f);
+    }
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-8">
+        <PageHeader title="Mes Flashcards" onBack={() => setPhase("home")} />
+        {libLoading ? <LibLoader /> : (
+          <div className="px-4 py-4 space-y-4">
+            {Object.keys(grouped).length === 0 ? (
+              <EmptyLib icon="style" msg="Aucune flashcard sauvegardée" sub="Génère des flashcards pour les retrouver ici." />
+            ) : Object.entries(grouped).map(([group, cards]) => (
+              <div key={group} className="space-y-2">
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest px-1">{group}</p>
+                {cards.map(f => {
+                  const flipped = !!libFlipIdx[f.id];
+                  return (
+                    <div key={f.id} className="space-y-1">
+                      <div
+                        onClick={() => setLibFlipIdx(p => ({ ...p, [f.id]: !p[f.id] }))}
+                        className="rounded-2xl p-5 min-h-20 flex flex-col justify-center cursor-pointer active:scale-[0.98] transition-transform"
+                        style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
+                        <p className="text-[10px] font-bold text-white/60 uppercase mb-1">{flipped ? "Réponse" : "Question"}</p>
+                        <p className="text-white font-semibold text-sm leading-relaxed">{flipped ? f.verso : f.recto}</p>
+                      </div>
+                      <button
+                        onClick={() => toggleFlashMaitrisee(f.id, f.maitrisee)}
+                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all ${f.maitrisee ? "bg-green-100 text-green-700" : "bg-surface-container text-on-surface-variant"}`}>
+                        {f.maitrisee ? "✓ Maîtrisée" : "Marquer maîtrisée"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  // ── MES QUIZ ──
+  if (phase === "mes_quiz") {
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-8">
+        <PageHeader title="Mes Quiz" onBack={() => setPhase("home")} />
+        {libLoading ? <LibLoader /> : (
+          <div className="px-4 py-4 space-y-3">
+            {savedQuiz.length === 0 ? (
+              <EmptyLib icon="quiz" msg="Aucun quiz passé" sub="Génère un quiz pour voir tes résultats ici." />
+            ) : savedQuiz.map(q => {
+              const pct = Math.round((q.score / q.total) * 100);
+              return (
+                <div key={q.id} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0 ${pct >= 60 ? "bg-green-500" : pct >= 40 ? "bg-orange-400" : "bg-red-500"}`}>
+                    {pct}%
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-on-surface text-sm truncate">{q.matiere}{q.chapitre ? " · " + q.chapitre : ""}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">
+                      {q.score}/{q.total} · {q.mode === "redaction" ? "Rédaction" : "QCM"} · {new Date(q.created_at).toLocaleDateString("fr-FR")}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  // ── MES RÉSUMÉS ──
+  if (phase === "mes_resumes") {
+    return (
+      <main className="min-h-screen bg-surface text-on-surface pb-8">
+        <PageHeader title="Mes Résumés" onBack={() => setPhase("home")} />
+        {libLoading ? <LibLoader /> : (
+          <div className="px-4 py-4 space-y-3">
+            {savedResumes.length === 0 ? (
+              <EmptyLib icon="auto_stories" msg="Aucun résumé sauvegardé" sub="Génère un résumé pour le retrouver ici." />
+            ) : savedResumes.map(r => {
+              let parsed: { titre?: string; resume?: string; points_cles?: string[] } = {};
+              try { parsed = JSON.parse(r.contenu); } catch { /* raw */ }
+              const isOpen = expandedResume === r.id;
+              return (
+                <div key={r.id} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+                  <button
+                    onClick={() => setExpandedResume(isOpen ? null : r.id)}
+                    className="w-full flex items-center gap-3 p-4 text-left">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-amber-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-on-surface text-sm truncate">{parsed.titre ?? r.matiere ?? "Résumé"}</p>
+                      <p className="text-xs text-on-surface-variant">
+                        {r.matiere}{r.chapitre ? " · " + r.chapitre : ""} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
+                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}>expand_more</span>
+                  </button>
+                  {isOpen && (
+                    <div className="border-t border-outline-variant/15 p-4 space-y-3">
+                      {parsed.resume && <p className="text-sm text-on-surface leading-relaxed">{parsed.resume}</p>}
+                      {parsed.points_cles && parsed.points_cles.length > 0 && (
+                        <ul className="space-y-1">
+                          {parsed.points_cles.map((p, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
+                              <span className="text-amber-500 font-bold shrink-0">•</span> {p}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    );
+  }
+
   return null;
 }
 
 /* ─── Sub-components ───────────────────────────────────── */
+
+function LibLoader() {
+  return (
+    <div className="flex justify-center py-12">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    </div>
+  );
+}
+
+function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }) {
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm">
+      <span className="material-symbols-outlined text-[40px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <p className="font-bold text-on-surface mt-2">{msg}</p>
+      <p className="text-sm text-on-surface-variant mt-1">{sub}</p>
+    </div>
+  );
+}
 
 function PageHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (

@@ -12,7 +12,10 @@ function sysJson() {
 }
 
 function parseJson(raw: string): unknown {
-  const cleaned = raw.replace(/```json|```/g, "").trim();
+  const cleaned = raw
+    .replace(/```json|```/g, "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+    .trim();
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Pas de JSON dans la réponse");
   return JSON.parse(match[0]);

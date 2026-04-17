@@ -198,7 +198,10 @@ Règles :
       content = completion.choices[0]?.message?.content ?? "";
     }
 
-    const cleaned = content.replace(/```json|```/g, "").trim();
+    const cleaned = content
+      .replace(/```json|```/g, "")
+      .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ")
+      .trim();
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (!match) throw new Error("Pas de JSON dans la réponse");
 
