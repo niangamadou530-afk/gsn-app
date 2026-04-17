@@ -81,7 +81,8 @@ function GenererPageInner() {
   const [phase, setPhase]     = useState<Phase>("home");
   const [error, setError]     = useState("");
   const [mode, setMode]       = useState<"A" | "B" | null>(null);
-  const [flashSaved, setFlashSaved] = useState(false);
+  const [flashSaved, setFlashSaved]   = useState(false);
+  const [resumeSaved, setResumeSaved] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Sections sauvegardées
@@ -256,6 +257,7 @@ function GenererPageInner() {
         }
       } else {
         setResume(data);
+        setResumeSaved(false);
         await saveResume(data.texte as string ?? "", mat, chap);
         await fetchVideos(mat, chap);
         setPhase("resume_result");
@@ -290,10 +292,11 @@ function GenererPageInner() {
 
   async function saveResume(texte: string, mat: string, chap: string) {
     if (!userId || !texte) return;
-    await supabase.from("prep_resumes").insert({
+    const { error } = await supabase.from("prep_resumes").insert({
       user_id: userId, matiere: mat, chapitre: chap,
       contenu: texte,
     });
+    if (!error) setResumeSaved(true);
   }
 
   /* ── QCM logic ── */
@@ -774,9 +777,14 @@ function GenererPageInner() {
         <PageHeader title={`Résumé · ${activeMat()}`} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
-          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
-            <ResumeText texte={texte} />
-          </div>
+          {resumeSaved && (
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 border border-green-200">
+              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-sm font-semibold text-green-700">Résumé sauvegardé ✓</p>
+            </div>
+          )}
+
+          <ResumeText texte={texte} />
 
           <button
             onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
@@ -988,49 +996,85 @@ function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }
   );
 }
 
-function nettoyerContenu(texte: string): string {
-  return texte
-    .replace(/\*\*(.*?)\*\*/g, "$1")
-    .replace(/\*(.*?)\*/g, "$1")
-    .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
-    .replace(/`{1,3}(.*?)`{1,3}/g, "$1")
-    .replace(/^\s*[-*+]\s/gm, "• ")
-    .replace(/^\s*\d+\.\s/gm, "")
-    .trim();
-}
+/* ── Resume rich formatting ─────────────────────────────── */
 
-const SECTION_ICONS: Record<string, string> = {
-  "Introduction":           "info",
-  "Notions essentielles":   "lightbulb",
-  "Définitions importantes":"book_2",
-  "Formules et règles":     "functions",
-  "Exemples concrets":      "science",
-  "Ce qui tombe aux examens":"star",
-  "Points clés à retenir":  "checklist",
+type SectionMeta = { icon: string; borderColor: string; bgColor: string; titleColor: string };
+
+const SECTION_META: Record<string, SectionMeta> = {
+  "introduction":   { icon: "info",      borderColor: "#94a3b8", bgColor: "#f1f5f9", titleColor: "#475569" },
+  "notions":        { icon: "lightbulb", borderColor: "#3b82f6", bgColor: "#eff6ff", titleColor: "#1d4ed8" },
+  "définitions":    { icon: "book_2",    borderColor: "#FF6B00", bgColor: "#fff7ed", titleColor: "#c2410c" },
+  "formules":       { icon: "functions", borderColor: "#8b5cf6", bgColor: "#f5f3ff", titleColor: "#6d28d9" },
+  "exemples":       { icon: "science",   borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
+  "examens":        { icon: "star",      borderColor: "#ef4444", bgColor: "#fef2f2", titleColor: "#b91c1c" },
+  "points":         { icon: "checklist", borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
+  "default":        { icon: "article",   borderColor: "#6366f1", bgColor: "#eef2ff", titleColor: "#4338ca" },
 };
 
+function getSectionMeta(title: string): SectionMeta {
+  const lower = title.toLowerCase();
+  for (const key of Object.keys(SECTION_META)) {
+    if (key !== "default" && lower.includes(key)) return SECTION_META[key];
+  }
+  return SECTION_META["default"];
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function formatSectionContent(raw: string, isFormulas: boolean): string {
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  const out: string[] = [];
+  let inList = false;
+
+  for (const line of lines) {
+    const isBullet = /^[-*+•]\s/.test(line) || /^\d+\.\s/.test(line);
+    let text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
+
+    // Escape then apply inline formatting
+    let html = escapeHtml(text);
+    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+    html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
+    html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
+    html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+    html = html.replace(/`(.*?)`/g,
+      "<code style=\"background:#fef9c3;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.85em\">$1</code>");
+
+    if (isBullet) {
+      if (!inList) { out.push("<ul style=\"padding:0;margin:4px 0;list-style:none\">"); inList = true; }
+      out.push(`<li style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;font-size:0.875rem;line-height:1.6"><span style="color:#FF6B00;font-weight:900;flex-shrink:0;margin-top:1px">•</span><span>${html}</span></li>`);
+    } else {
+      if (inList) { out.push("</ul>"); inList = false; }
+      if (isFormulas && /[=+×÷∑∫√²³]/.test(text)) {
+        out.push(`<p style="background:#fef9c3;border-left:3px solid #8b5cf6;border-radius:0 6px 6px 0;padding:6px 10px;font-weight:600;font-family:monospace;font-size:0.875rem;margin:4px 0">${html}</p>`);
+      } else {
+        out.push(`<p style="margin:4px 0;font-size:0.875rem;line-height:1.65">${html}</p>`);
+      }
+    }
+  }
+  if (inList) out.push("</ul>");
+  return out.join("");
+}
+
 function ResumeText({ texte }: { texte: string }) {
-  // Split into sections by ## headings
   const rawSections = texte.split(/\n(?=## )/);
   const sections: Array<{ title: string; content: string }> = [];
 
   for (const raw of rawSections) {
-    const firstNewline = raw.indexOf("\n");
-    if (raw.startsWith("## ") && firstNewline !== -1) {
-      const title   = raw.slice(3, firstNewline).trim();
-      const content = nettoyerContenu(raw.slice(firstNewline + 1));
-      if (content) sections.push({ title, content });
+    const nl = raw.indexOf("\n");
+    if (raw.startsWith("## ") && nl !== -1) {
+      sections.push({ title: raw.slice(3, nl).trim(), content: raw.slice(nl + 1).trim() });
     } else {
-      // Preamble before first ## or lone text
-      const cleaned = nettoyerContenu(raw.replace(/^##?\s?/gm, ""));
-      if (cleaned) sections.push({ title: "", content: cleaned });
+      const content = raw.replace(/^#{1,3}\s?/gm, "").trim();
+      if (content) sections.push({ title: "", content });
     }
   }
 
   if (sections.length === 0) {
     return (
       <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
-        {nettoyerContenu(texte)}
+        {texte.replace(/#{1,6}\s/g, "").replace(/\*\*/g, "").replace(/\*/g, "")}
       </p>
     );
   }
@@ -1038,20 +1082,24 @@ function ResumeText({ texte }: { texte: string }) {
   return (
     <div className="space-y-3">
       {sections.map((s, i) => {
-        const icon = SECTION_ICONS[s.title] ?? "article";
+        const meta = s.title ? getSectionMeta(s.title) : SECTION_META["default"];
+        const isFormulas = s.title.toLowerCase().includes("formule");
+        const html = formatSectionContent(s.content, isFormulas);
         return (
-          <div key={i} className="bg-surface-container rounded-2xl overflow-hidden">
+          <div key={i}
+            className="rounded-2xl overflow-hidden shadow-sm"
+            style={{ borderLeft: `4px solid ${meta.borderColor}`, backgroundColor: meta.bgColor }}>
             {s.title && (
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-outline-variant/15" style={{ backgroundColor: "#FF6B0012" }}>
-                <span className="material-symbols-outlined text-[18px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-                <p className="font-extrabold text-sm" style={{ color: "#FF6B00" }}>{s.title}</p>
+              <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+                <span className="material-symbols-outlined text-[18px]"
+                  style={{ color: meta.borderColor, fontVariationSettings: "'FILL' 1" }}>
+                  {meta.icon}
+                </span>
+                <p className="font-extrabold text-sm" style={{ color: meta.titleColor }}>{s.title}</p>
               </div>
             )}
-            <div className="px-4 py-3 space-y-1.5">
-              {s.content.split("\n").filter(l => l.trim()).map((line, j) => (
-                <p key={j} className="text-sm text-on-surface leading-relaxed">{line.trim()}</p>
-              ))}
-            </div>
+            <div className="px-4 pb-4 pt-1 text-on-surface"
+              dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         );
       })}
