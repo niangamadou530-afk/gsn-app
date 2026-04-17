@@ -1,33 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-const LEARN_PATHS_BY_SERIE: Record<string, string[]> = {
-  L1: ["Marketing Digital", "Design Graphique", "Entrepreneuriat"],
-  L2: ["Marketing Digital", "Design Graphique", "Entrepreneuriat"],
-  S1: ["Développement Web", "Maintenance Informatique", "Finance & Comptabilité"],
-  S2: ["Développement Web", "Maintenance Informatique", "Entrepreneuriat"],
-  S3: ["Maintenance Informatique", "Développement Web", "Entrepreneuriat"],
-  S4: ["Entrepreneuriat", "Marketing Digital", "Finance & Comptabilité"],
-  G:  ["Finance & Comptabilité", "Marketing Digital", "Entrepreneuriat"],
-  BFEM: ["Développement Web", "Marketing Digital", "Design Graphique"],
-};
+import Link from "next/link";
 
 type Etablissement = {
-  nom: string;
-  type: string;
-  filiere: string;
-  pourquoi: string;
-  conditions_acces: string;
-  lien_gsn: boolean;
+  nom: string; type: string; filiere: string;
+  pourquoi: string; conditions_acces: string; lien_gsn: boolean;
 };
-
 type OrientationResult = {
-  moyenne: number;
-  mention: string;
+  moyenne: number; mention: string;
   orientation_principale: string;
   notes_extraites?: Record<string, number>;
   etablissements_recommandes: Etablissement[];
@@ -38,210 +21,170 @@ type OrientationResult = {
 export default function OrientationPage() {
   const router = useRouter();
   const [examType, setExamType] = useState("");
-  const [serie, setSerie] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [serie, setSerie]       = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<OrientationResult | null>(null);
-  const [analysisError, setAnalysisError] = useState("");
+  const [result, setResult]     = useState<OrientationResult | null>(null);
+  const [error, setError]       = useState("");
   const [fileName, setFileName] = useState("");
+  const [loading, setLoading]   = useState(true);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
-      const { data: stu } = await supabase.from("prep_students")
-        .select("exam_type, serie").eq("user_id", user.id).limit(1);
-      if (stu?.[0]) {
-        setExamType(stu[0].exam_type ?? "BAC");
-        setSerie(stu[0].serie ?? "");
-      }
-      setLoading(false);
-    }
-    load();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) { router.push("/login"); return; }
+      supabase.from("prep_students").select("exam_type, serie").eq("user_id", user.id).maybeSingle()
+        .then(({ data }) => {
+          if (data) { setExamType(data.exam_type ?? "BAC"); setSerie(data.serie ?? ""); }
+          setLoading(false);
+        });
+    });
   }, [router]);
 
-  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    setAnalysisError("");
-    setResult(null);
+  async function analyze(file: File) {
     setAnalyzing(true);
-
+    setError("");
+    setFileName(file.name);
     try {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("examType", examType);
       fd.append("serie", serie);
-
       const res = await fetch("/api/prep-orientation", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setResult(data);
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Erreur serveur"); }
+      setResult(await res.json());
     } catch (err: unknown) {
-      setAnalysisError(err instanceof Error ? err.message : "Erreur lors de l'analyse.");
+      setError(err instanceof Error ? err.message : "Erreur inconnue");
     } finally {
       setAnalyzing(false);
     }
   }
 
-  const serieKey = serie || (examType === "BFEM" ? "BFEM" : "S1");
-  const defaultLearnPaths = LEARN_PATHS_BY_SERIE[serieKey] ?? LEARN_PATHS_BY_SERIE["BFEM"];
-
-  function mentionColor(mention: string) {
-    if (mention?.includes("Excellent") || mention?.includes("Très")) return "text-green-700 bg-green-100";
-    if (mention?.includes("Bien")) return "text-blue-700 bg-blue-100";
-    if (mention?.includes("Assez")) return "text-yellow-700 bg-yellow-100";
-    return "text-red-700 bg-red-100";
-  }
-
   if (loading) return (
-    <main className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-    </main>
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    </div>
   );
 
-  const learnPaths = result?.parcours_gsn_learn?.length ? result.parcours_gsn_learn : defaultLearnPaths;
-
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-28">
-      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center gap-3">
-        <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
-          <span className="material-symbols-outlined text-[22px]">arrow_back</span>
-        </Link>
-        <p className="font-bold text-on-surface">Orientation après l&apos;examen</p>
+    <main className="min-h-screen bg-surface text-on-surface pb-8">
+      <header className="px-6 pt-8 pb-4">
+        <h1 className="text-2xl font-extrabold">Orientation</h1>
+        <p className="text-on-surface-variant text-sm">Upload ton relevé de notes pour des recommandations personnalisées</p>
       </header>
 
-      <div className="max-w-xl mx-auto px-6 py-6 space-y-6">
+      <div className="px-6 space-y-4">
 
-        {/* Hero */}
-        <div className="rounded-2xl p-6 text-white space-y-2" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
-          <span className="material-symbols-outlined text-[40px] text-white/80" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
-          <h1 className="text-xl font-extrabold">Ton avenir après le {examType || "BAC"}</h1>
-          <p className="text-white/80 text-sm">Upload ton relevé de notes — l&apos;IA analyse et recommande les meilleures universités sénégalaises.</p>
-        </div>
-
-        {/* Upload section */}
-        <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-4">
-          <div className="flex items-start gap-3">
-            <span className="material-symbols-outlined text-[28px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>upload_file</span>
-            <div>
-              <p className="font-bold text-on-surface">Télécharge ton relevé de notes</p>
-              <p className="text-xs text-on-surface-variant mt-0.5">PDF ou image (JPG/PNG) · Groq IA analyse tes résultats</p>
-            </div>
-          </div>
-
-          {analyzing ? (
-            <div className="flex flex-col items-center gap-3 py-6">
-              <div className="w-10 h-10 rounded-full border-3 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent", borderWidth: 3 }} />
-              <p className="text-sm font-bold text-on-surface">Analyse en cours…</p>
-              <p className="text-xs text-on-surface-variant">L&apos;IA lit ton relevé et recherche les meilleures orientations</p>
-            </div>
-          ) : (
-            <label className={`flex flex-col items-center justify-center gap-3 w-full py-8 rounded-xl border-2 border-dashed cursor-pointer transition-all ${fileName ? "border-green-400 bg-green-50" : "border-outline-variant/40 hover:border-primary"}`}>
-              <span className="material-symbols-outlined text-[36px]" style={{ color: fileName ? "#22c55e" : "#FF6B00", fontVariationSettings: "'FILL' 1" }}>
-                {fileName ? "check_circle" : "cloud_upload"}
-              </span>
-              <div className="text-center">
-                {fileName ? (
-                  <>
-                    <p className="font-bold text-green-700 text-sm">{fileName}</p>
-                    <p className="text-xs text-green-600">Fichier sélectionné · Cliquer pour changer</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-semibold text-on-surface text-sm">Choisir mon relevé</p>
-                    <p className="text-xs text-on-surface-variant">PDF, JPG ou PNG</p>
-                  </>
-                )}
-              </div>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="sr-only" onChange={handleFileUpload} />
-            </label>
-          )}
-
-          {analysisError && (
-            <p className="text-xs text-red-600 font-medium bg-red-50 px-3 py-2 rounded-xl">{analysisError}</p>
-          )}
-        </section>
-
-        {/* AI Results */}
-        {result && (
+        {!result && (
           <>
-            {/* Moyenne + mention */}
-            <section className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-on-surface-variant">Moyenne générale</p>
-                  <p className="text-3xl font-black text-on-surface">{result.moyenne}<span className="text-lg text-on-surface-variant">/20</span></p>
-                </div>
-                <span className={`text-sm font-black px-3 py-1.5 rounded-full ${mentionColor(result.mention)}`}>{result.mention}</span>
-              </div>
-              {result.notes_extraites && Object.keys(result.notes_extraites).length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2 border-t border-outline-variant/20">
-                  {Object.entries(result.notes_extraites).map(([subj, note]) => (
-                    <span key={subj} className="text-[11px] bg-surface-container px-2 py-0.5 rounded-full text-on-surface-variant font-medium">
-                      {subj}: <strong>{note}/20</strong>
-                    </span>
-                  ))}
-                </div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={analyzing}
+              className="w-full h-40 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 flex flex-col items-center justify-center gap-3 active:scale-[0.98] transition-transform disabled:opacity-60">
+              {analyzing ? (
+                <>
+                  <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+                  <p className="text-sm text-on-surface-variant">Analyse en cours…</p>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[40px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+                  <p className="font-bold text-on-surface">Upload ton relevé de notes</p>
+                  <p className="text-sm text-on-surface-variant">Photo ou PDF · IA Vision</p>
+                </>
               )}
-              <div className="bg-primary/5 rounded-xl p-3">
-                <p className="text-xs text-on-surface leading-relaxed">{result.message_personnalise}</p>
-              </div>
-            </section>
+            </button>
+            <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) analyze(f); }} />
+            {error && <p className="text-red-500 text-sm">{error}</p>}
 
-            {/* Établissements */}
-            <section className="space-y-3">
-              <h2 className="text-lg font-bold text-on-surface">Établissements recommandés 🇸🇳</h2>
-              {result.etablissements_recommandes?.map((etab, i) => (
-                <div key={i} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <p className="font-bold text-on-surface text-sm">{etab.nom}</p>
-                      <p className="text-[11px] text-on-surface-variant">{etab.type} · {etab.filiere}</p>
-                    </div>
-                    {etab.lien_gsn && (
-                      <span className="shrink-0 text-[10px] font-black px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: "#FF6B00" }}>GSN</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-on-surface-variant leading-relaxed">{etab.pourquoi}</p>
-                  <p className="text-[11px] text-outline font-medium">📋 {etab.conditions_acces}</p>
-                </div>
-              ))}
-            </section>
+            <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+              <p className="font-bold text-on-surface text-sm mb-1">Comment ça marche ?</p>
+              <ol className="space-y-1 text-sm text-on-surface-variant">
+                <li>1. Prends une photo de ton bulletin de notes</li>
+                <li>2. L'IA analyse tes résultats ({examType}{serie ? " " + serie : ""})</li>
+                <li>3. Tu reçois des recommandations d'orientation au Sénégal</li>
+              </ol>
+            </div>
           </>
         )}
 
-        {/* GSN Learn — always visible */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-bold text-on-surface">Parcours GSN Learn recommandés</h2>
-          <p className="text-sm text-on-surface-variant">
-            {result ? "Selon ton profil analysé :" : `Selon ta série ${serie || "BAC"} :`}
-          </p>
-          {learnPaths.map((path, i) => (
-            <div key={i} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-                </div>
-                <div>
-                  <p className="font-bold text-on-surface text-sm">{path}</p>
-                  <p className="text-[11px] text-on-surface-variant">Formation certifiante · 4-6 mois</p>
+        {result && (
+          <>
+            {/* Moyenne */}
+            <div className="rounded-2xl p-5 text-white text-center" style={{ backgroundColor: result.moyenne >= 14 ? "#22c55e" : result.moyenne >= 10 ? "#f97316" : "#ef4444" }}>
+              <p className="text-5xl font-black">{result.moyenne.toFixed(2)}/20</p>
+              <p className="text-lg font-semibold opacity-90 mt-1">{result.mention}</p>
+              {result.orientation_principale && (
+                <p className="text-sm opacity-80 mt-1">{result.orientation_principale}</p>
+              )}
+            </div>
+
+            {/* Notes extraites */}
+            {result.notes_extraites && Object.keys(result.notes_extraites).length > 0 && (
+              <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+                <p className="font-bold text-on-surface text-sm mb-3">Notes extraites</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(result.notes_extraites).map(([m, n]) => (
+                    <div key={m} className="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2">
+                      <span className="text-xs text-on-surface truncate">{m}</span>
+                      <span className={`text-xs font-black ${n >= 10 ? "text-green-700" : "text-red-700"}`}>{n}/20</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <Link href={`/learn/onboarding?domain=${encodeURIComponent(path)}`}
-                className="text-xs font-bold text-primary hover:underline shrink-0">
-                Commencer →
-              </Link>
-            </div>
-          ))}
+            )}
 
-          <Link href="/learn/onboarding"
-            className="block w-full py-4 text-center font-black text-white rounded-2xl shadow-lg"
-            style={{ backgroundColor: "#1a73e8" }}>
-            Voir toutes les formations GSN Learn →
-          </Link>
-        </section>
+            {/* Message */}
+            {result.message_personnalise && (
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4">
+                <p className="text-blue-800 text-sm leading-relaxed">{result.message_personnalise}</p>
+              </div>
+            )}
+
+            {/* Établissements */}
+            {result.etablissements_recommandes?.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Établissements recommandés</p>
+                <div className="space-y-3">
+                  {result.etablissements_recommandes.map((e, i) => (
+                    <div key={i} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-bold text-on-surface">{e.nom}</p>
+                        {e.lien_gsn && (
+                          <span className="text-[10px] font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-full whitespace-nowrap">GSN Learn</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-on-surface-variant">{e.type} · {e.filiere}</p>
+                      <p className="text-sm text-on-surface">{e.pourquoi}</p>
+                      <p className="text-xs text-on-surface-variant">{e.conditions_acces}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* GSN Learn */}
+            {result.parcours_gsn_learn?.length > 0 && (
+              <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-4">
+                <p className="font-bold text-on-surface text-sm mb-2">Parcours GSN Learn recommandés</p>
+                <div className="flex flex-wrap gap-2">
+                  {result.parcours_gsn_learn.map(p => (
+                    <span key={p} className="text-xs font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full">{p}</span>
+                  ))}
+                </div>
+                <Link href="/learn" className="mt-3 block text-center text-sm font-bold text-primary underline">
+                  Voir GSN Learn →
+                </Link>
+              </div>
+            )}
+
+            <button onClick={() => { setResult(null); setFileName(""); }}
+              className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: "#FF6B00" }}>
+              Analyser un autre relevé
+            </button>
+          </>
+        )}
 
       </div>
     </main>

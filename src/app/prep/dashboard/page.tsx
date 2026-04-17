@@ -5,202 +5,190 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const BAC_DATE = "2026-06-30";
+const BAC_DATE  = "2026-06-30";
+const BFEM_DATE = "2026-07-15";
 
-type SubjectLevel = { level: string; score: number };
-
-type Student = {
-  exam_type: string;
-  serie: string | null;
-  level_per_subject: Record<string, SubjectLevel>;
-  positioning_done?: boolean;
-};
-
-function daysUntilBAC(): number {
-  return Math.max(0, Math.ceil((new Date(BAC_DATE).getTime() - Date.now()) / 86400000));
+function daysUntil(dateStr: string): number {
+  return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
 }
 
+function countdownColor(days: number): string {
+  if (days > 60) return "#22c55e";
+  if (days > 30) return "#f97316";
+  return "#ef4444";
+}
+
+type Student = {
+  prenom: string | null;
+  exam_type: string;
+  serie: string | null;
+  ecole: string | null;
+};
+
 export default function PrepDashboardPage() {
-  const router = useRouter();
-  const [student, setStudent] = useState<Student | null>(null);
-  const [userName, setUserName] = useState("Élève");
-  const [playerXP, setPlayerXP] = useState(0);
-  const [playerLevel, setPlayerLevel] = useState("Novice");
-  const [loading, setLoading] = useState(true);
+  const router  = useRouter();
+  const [student, setStudent]   = useState<Student | null>(null);
+  const [loading, setLoading]   = useState(true);
+  const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [flashCount, setFlashCount] = useState(0);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
 
-  async function load() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.replace("/login"); return; }
+      const { data: stu } = await supabase
+        .from("prep_students")
+        .select("prenom, exam_type, serie, ecole")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    const [{ data: profile }, { data: stu }, { data: stats }] = await Promise.all([
-      supabase.from("users").select("name").eq("id", user.id).single(),
-      supabase.from("prep_students").select("*").eq("user_id", user.id).limit(1),
-      supabase.from("prep_player_stats").select("total_xp, current_level").eq("user_id", user.id).maybeSingle(),
-    ]);
+      if (!stu) { router.push("/prep/onboarding"); return; }
+      setStudent(stu);
 
-    setUserName(profile?.name?.split(" ")[0] ?? "Élève");
+      // Dernier score quiz
+      const { data: quizData } = await supabase
+        .from("quiz_results")
+        .select("score, total")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    if (!stu?.[0]) { router.replace("/prep/onboarding"); return; }
+      if (quizData) setQuizScore(Math.round((quizData.score / quizData.total) * 100));
 
-    setStudent(stu[0] as Student);
-    setPlayerXP(stats?.total_xp ?? 0);
-    setPlayerLevel(stats?.current_level ?? "Novice");
-    setLoading(false);
-  }
+      // Flashcards maîtrisées
+      const { count } = await supabase
+        .from("flashcards")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("maitrisee", true);
 
-  const dl = daysUntilBAC();
-
-  function levelEmoji(l: string) {
-    const map: Record<string, string> = {
-      "Maître BAC": "👑", "Brillant": "💎", "Expert": "🔥",
-      "Confirmé": "⭐", "Apprenti": "📚", "Novice": "🌱",
-    };
-    return map[l] ?? "🌱";
-  }
-
-  function levelColor(l: string) {
-    if (l === "Fort") return "bg-green-100 text-green-700";
-    if (l === "Moyen") return "bg-yellow-100 text-yellow-700";
-    return "bg-red-100 text-red-700";
-  }
+      setFlashCount(count ?? 0);
+      setLoading(false);
+    }
+    load();
+  }, [router]);
 
   if (loading) return (
-    <main className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-    </main>
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    </div>
   );
 
-  return (
-    <main className="min-h-screen bg-surface text-on-surface pb-28">
+  const examDate  = student?.exam_type === "BFEM" ? BFEM_DATE : BAC_DATE;
+  const examLabel = student?.exam_type === "BFEM" ? "BFEM" : "BAC";
+  const days      = daysUntil(examDate);
+  const cdColor   = countdownColor(days);
+  const prenom    = student?.prenom ?? "Élève";
 
+  return (
+    <main className="min-h-screen bg-surface text-on-surface">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-primary">GSN</span>
-          <span className="text-xs font-black px-2 py-0.5 rounded-full text-white" style={{ backgroundColor: "#FF6B00" }}>PREP</span>
+      <header className="px-6 pt-8 pb-4 flex items-center justify-between">
+        <div>
+          <p className="text-on-surface-variant text-sm">Bonjour,</p>
+          <h1 className="text-2xl font-extrabold text-on-surface">{prenom} 👋</h1>
+          {student?.serie && (
+            <p className="text-xs text-on-surface-variant mt-0.5">{examLabel} · Série {student.serie}{student.ecole ? ` · ${student.ecole}` : ""}</p>
+          )}
         </div>
-        <Link href="/dashboard" className="text-xs text-on-surface-variant hover:text-on-surface font-medium">← GSN</Link>
+        <button
+          onClick={() => supabase.auth.signOut().then(() => router.push("/login"))}
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors">
+          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">logout</span>
+        </button>
       </header>
 
-      <div className="max-w-2xl mx-auto px-6 py-6 space-y-6">
+      <div className="px-6 space-y-4 pb-8">
 
-        {/* Greeting + BAC countdown */}
-        <section className="space-y-3">
-          <div>
-            <p className="text-sm text-on-surface-variant font-medium">Tableau de bord</p>
-            <h1 className="text-2xl font-extrabold text-on-surface">Bonjour, <span className="text-primary">{userName} 👋</span></h1>
+        {/* Compte à rebours */}
+        <div className="rounded-2xl p-5 text-white overflow-hidden relative" style={{ backgroundColor: cdColor }}>
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_80%_20%,white,transparent)]" />
+          <p className="text-sm font-semibold opacity-90">Compte à rebours {examLabel}</p>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-5xl font-black">J-{days}</span>
+            <span className="text-lg font-semibold opacity-80 mb-1">jours</span>
           </div>
-          <div className="rounded-2xl p-5 text-white shadow-lg" style={{ background: "linear-gradient(135deg, #FF6B00, #FF8C40)" }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-sm font-medium">BAC — 30 juin 2026</p>
-                <p className="text-4xl font-black">J-{dl}</p>
-                <p className="text-white/90 text-sm font-semibold mt-0.5">
-                  {student?.exam_type}{student?.serie ? " série " + student.serie : ""}
-                </p>
-              </div>
-              <span className="material-symbols-outlined text-[56px] text-white/30" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
-            </div>
-          </div>
-        </section>
+          <p className="text-xs opacity-75 mt-1">{examLabel} · {student?.exam_type === "BFEM" ? "15 juillet 2026" : "30 juin 2026"}</p>
+        </div>
 
-        {/* XP card */}
-        <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-yellow-50 flex items-center justify-center text-2xl">
-              {levelEmoji(playerLevel)}
-            </div>
-            <div>
-              <p className="font-black text-on-surface">{playerLevel}</p>
-              <p className="text-xs text-on-surface-variant">{playerXP} XP accumulés</p>
-            </div>
+        {/* Générer avec l'IA — CTA principal */}
+        <Link href="/prep/generer"
+          className="flex items-center gap-4 p-5 rounded-2xl text-white shadow-lg active:scale-[0.98] transition-transform"
+          style={{ background: "linear-gradient(135deg, #FF6B00, #FF9500)" }}>
+          <span className="material-symbols-outlined text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+          <div className="flex-1">
+            <p className="font-black text-lg">Générer avec l'IA</p>
+            <p className="text-sm opacity-85">Flashcards · Quiz · Résumé</p>
           </div>
-          <Link href="/prep/classement"
-            className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
-            Classement
-            <span className="material-symbols-outlined text-[14px]">arrow_forward_ios</span>
-          </Link>
-        </section>
+          <span className="material-symbols-outlined text-[24px] opacity-80">chevron_right</span>
+        </Link>
 
-        {/* Quiz IA CTA */}
-        <Link href="/prep/quiz"
-          className="flex items-center gap-4 p-4 rounded-2xl shadow-sm text-white"
-          style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-white text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
+        {/* Stats rapides */}
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard
+            icon="quiz"
+            label="Dernier quiz"
+            value={quizScore !== null ? `${quizScore}%` : "—"}
+            sub="Score"
+            color="#6366f1"
+          />
+          <StatCard
+            icon="style"
+            label="Flashcards"
+            value={String(flashCount)}
+            sub="Maîtrisées"
+            color="#10b981"
+          />
+        </div>
+
+        {/* Coach IA */}
+        <Link href="/prep/coach"
+          className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 active:scale-[0.98] transition-transform">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xl"
+            style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>
+            🤖
           </div>
           <div className="flex-1">
-            <p className="font-black text-white">Quiz IA adaptatif</p>
-            <p className="text-white/80 text-xs mt-0.5">
-              {student?.positioning_done ? "Continuer mes révisions" : "Commencer le quiz de positionnement"}
-            </p>
+            <p className="font-bold text-on-surface">Coach IA Personnel</p>
+            <p className="text-xs text-on-surface-variant">Conseils basés sur tes résultats</p>
           </div>
-          <span className="material-symbols-outlined text-white/70">arrow_forward_ios</span>
+          <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
         </Link>
 
-        {/* Boîte à outils */}
-        <section className="space-y-3">
-          <h2 className="text-lg font-bold text-on-surface">Boîte à outils</h2>
+        {/* Accès rapides */}
+        <div>
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Accès rapides</p>
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { href: "/prep/resumeur",    icon: "auto_stories",    label: "Résumeur",         desc: "Cours → résumé IA",    color: "text-orange-500", bg: "bg-orange-50" },
-              { href: "/prep/flashcards",  icon: "style",           label: "Flashcards",       desc: "Mémorisation active",  color: "text-purple-600", bg: "bg-purple-50" },
-              { href: "/prep/programme",   icon: "calendar_month",  label: "Programme",        desc: "Plan de révision",     color: "text-blue-600",   bg: "bg-blue-50"   },
-              { href: "/prep/soft-skills", icon: "self_improvement",label: "Bien-être",        desc: "Stress & Pomodoro",    color: "text-red-500",    bg: "bg-red-50"    },
-              { href: "/prep/bibliotheque",icon: "library_books",   label: "Épreuves",         desc: "Sujets & corrigés",    color: "text-primary",    bg: "bg-primary/5" },
-              { href: "/prep/classement",  icon: "emoji_events",    label: "Classement",       desc: "Top Sénégal",          color: "text-yellow-600", bg: "bg-yellow-50" },
-            ].map(item => (
-              <Link key={item.href} href={item.href}
-                className="bg-surface-container-lowest rounded-2xl p-3 shadow-sm hover:shadow-md transition-all active:scale-[0.97] space-y-2">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${item.bg}`}>
-                  <span className={`material-symbols-outlined text-[20px] ${item.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>{item.icon}</span>
-                </div>
-                <div>
-                  <p className="font-bold text-on-surface text-xs">{item.label}</p>
-                  <p className="text-[10px] text-on-surface-variant leading-tight">{item.desc}</p>
-                </div>
-              </Link>
-            ))}
+            <QuickLink href="/prep/epreuves"  icon="description"  label="Épreuves" color="#f59e0b" />
+            <QuickLink href="/prep/classement" icon="leaderboard"  label="Classement" color="#3b82f6" />
+            <QuickLink href="/prep/progression" icon="trending_up" label="Progrès" color="#10b981" />
           </div>
-        </section>
-
-        {/* Progression par matière */}
-        {student?.level_per_subject && Object.keys(student.level_per_subject).length > 0 && (
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-on-surface">Mes matières</h2>
-              <Link href="/prep/programme" className="text-xs text-primary font-bold hover:underline">Voir programme →</Link>
-            </div>
-            <div className="space-y-2">
-              {Object.entries(student.level_per_subject).map(([subj, info]) => (
-                <div key={subj} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm flex items-center justify-between gap-3">
-                  <p className="text-sm font-bold text-on-surface flex-1">{subj}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-20 h-2 bg-surface-container rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${info.score}%`, backgroundColor: info.score >= 67 ? "#22c55e" : info.score >= 34 ? "#f59e0b" : "#ef4444" }} />
-                    </div>
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${levelColor(info.level)}`}>{info.level}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Orientation CTA */}
-        <Link href="/prep/orientation"
-          className="flex items-center gap-3 p-4 rounded-2xl border-2 bg-primary/5 border-primary/20 hover:border-primary transition-colors">
-          <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>explore</span>
-          <div>
-            <p className="font-bold text-on-surface text-sm">Orientation après le BAC</p>
-            <p className="text-xs text-on-surface-variant">Upload ton relevé · Universités sénégalaises · GSN Learn</p>
-          </div>
-          <span className="material-symbols-outlined text-on-surface-variant ml-auto">arrow_forward_ios</span>
-        </Link>
+        </div>
 
       </div>
     </main>
+  );
+}
+
+function StatCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string; sub: string; color: string }) {
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+      <span className="material-symbols-outlined text-[20px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <p className="text-2xl font-black text-on-surface mt-2">{value}</p>
+      <p className="text-xs text-on-surface-variant">{sub}</p>
+      <p className="text-[11px] text-on-surface-variant/60 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function QuickLink({ href, icon, label, color }: { href: string; icon: string; label: string; color: string }) {
+  return (
+    <Link href={href}
+      className="flex flex-col items-center gap-2 p-3 rounded-xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
+      <span className="material-symbols-outlined text-[24px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <span className="text-[11px] font-semibold text-on-surface text-center">{label}</span>
+    </Link>
   );
 }
