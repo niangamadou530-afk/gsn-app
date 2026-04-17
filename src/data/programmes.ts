@@ -521,18 +521,28 @@ export const PROGRAMMES: {
   }
 };
 
-export function getMatieres(examType: string, serie?: string): string[] {
-  if (examType === "BFEM") return Object.keys(PROGRAMMES.BFEM);
-  if (examType === "BAC" && serie && PROGRAMMES.BAC[serie]) {
-    return Object.keys(PROGRAMMES.BAC[serie]);
-  }
-  return [];
+export function getMatieres(examen: string, serie?: string): string[] {
+  if (examen === "BFEM") return Object.keys(PROGRAMMES.BFEM);
+  if (!serie) return [];
+  const serieData = PROGRAMMES.BAC[serie as keyof typeof PROGRAMMES.BAC];
+  if (!serieData) return [];
+  return Object.keys(serieData);
 }
 
-export function getChapitres(examType: string, serie: string | undefined, matiere: string): string[] {
-  if (examType === "BFEM") return PROGRAMMES.BFEM[matiere]?.chapitres ?? ["Autre"];
-  if (examType === "BAC" && serie && PROGRAMMES.BAC[serie]) {
-    return PROGRAMMES.BAC[serie][matiere]?.chapitres ?? ["Autre"];
+export function getChapitres(examen: string, serie: string, matiere: string): string[] {
+  if (examen === "BFEM") {
+    const m = PROGRAMMES.BFEM[matiere as keyof typeof PROGRAMMES.BFEM];
+    return m?.chapitres ?? ["Autre"];
   }
-  return ["Autre"];
+  const serieData = PROGRAMMES.BAC[serie as keyof typeof PROGRAMMES.BAC];
+  if (!serieData) return ["Autre"];
+  const matiereData = (serieData as Record<string, { chapitres: string[] }>)[matiere];
+  return matiereData?.chapitres ?? ["Autre"];
 }
+
+export function getProgramme(examen: string, serie: string, matiere: string, chapitre?: string): string {
+  const chapitres = getChapitres(examen, serie, matiere);
+  return `Matière: ${matiere} | Série: ${serie} | Examen: ${examen}${chapitre ? ` | Chapitre: ${chapitre}` : ""} | Chapitres du programme: ${chapitres.filter(c => c !== "Autre").join(", ")}`;
+}
+
+export const MATIERES_BY_SERIE = PROGRAMMES;
