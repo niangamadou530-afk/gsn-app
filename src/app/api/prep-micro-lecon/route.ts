@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { getProgramme } from "@/data/programmes";
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
@@ -12,16 +10,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Paramètres manquants." }, { status: 400 });
     }
 
-    const prog = getProgramme(subject, serie ?? "S1");
-    const programmeContenu = prog?.contenu ?? `Programme de ${subject}`;
-
-    const prompt = `Tu es un professeur sénégalais expert en ${subject}. Génère une micro-leçon claire et concise sur ce chapitre.
+    const prompt = `Tu es un professeur sénégalais expert en ${subject}. Génère une micro-leçon claire et concise sur ce chapitre, fidèle au programme officiel du BAC sénégalais.
 
 Matière: ${subject} | Série: ${serie}
 Chapitre à expliquer: ${chapter}
-
-Programme officiel de référence:
-${programmeContenu.slice(0, 2000)}
 
 Réponds UNIQUEMENT avec ce JSON (sans markdown, sans explication):
 {

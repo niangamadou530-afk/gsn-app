@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { getProgramme } from "@/data/programmes";
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
@@ -12,8 +10,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Paramètres manquants." }, { status: 400 });
     }
 
-    const prog = getProgramme(subject, serie ?? "S1");
-    const chapitres = prog?.chapitres?.join(", ") ?? subject;
+    const chapitres = subject;
 
     const wrongChapters = questions
       .filter((q: { is_correct: boolean; chapter?: string }) => !q.is_correct && q.chapter)

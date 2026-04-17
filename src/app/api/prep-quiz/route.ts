@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import { getProgramme } from "@/data/programmes";
 
 /* ══════════════════════════════════════════════════════════
    Programmes officiels BAC / BFEM Sénégal (Office du BAC)
@@ -314,17 +313,11 @@ export async function POST(req: Request) {
   const { subject, examType, serie = "", questionCount, count, annee } = body;
   const n = Math.min(count || questionCount || 10, 20);
 
-  // First try new programmes.ts, fallback to inline data
+  // Use inline fallback data
   const serieKey = serie || (examType === "BFEM" ? "BFEM" : "S1");
-  const prog = getProgramme(subject, serieKey);
-  let programSection = "";
-  if (prog) {
-    programSection = `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${prog.contenu.slice(0, 2500)}\n`;
-  } else {
-    const subjectProgs = PROGRAMMES_OFFICIELS[subject] ?? {};
-    const progForSerie = subjectProgs[serieKey] ?? subjectProgs[Object.keys(subjectProgs)[0]] ?? "";
-    programSection = progForSerie ? `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${progForSerie}\n` : "";
-  }
+  const subjectProgs = PROGRAMMES_OFFICIELS[subject] ?? {};
+  const progForSerie = subjectProgs[serieKey] ?? subjectProgs[Object.keys(subjectProgs)[0]] ?? "";
+  const programSection = progForSerie ? `\nPROGRAMME OFFICIEL (Office du BAC Sénégal) :\n${progForSerie}\n` : "";
 
   const anneeContext = annee ? ` (session ${annee})` : "";
 

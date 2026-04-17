@@ -108,7 +108,7 @@ Règles :
             { type: "text", text: orientationPrompt("(voir image du relevé ci-dessus)") },
           ],
         }],
-        model: "llama-3.2-11b-vision-preview",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         max_tokens: 2000,
         temperature: 0.2,
       });
