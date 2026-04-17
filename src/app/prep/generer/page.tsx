@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres } from "@/data/programmes";
 
@@ -30,8 +30,9 @@ interface YoutubeVideo { videoId: string; title: string; thumbnail: string; }
 
 /* ─── Component ─────────────────────────────────────────── */
 
-export default function GenererPage() {
-  const router = useRouter();
+function GenererPageInner() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
 
   // Profile
   const [examType, setExamType] = useState("");
@@ -90,9 +91,19 @@ export default function GenererPage() {
             setSerie(data.serie ?? "");
             setPrenom(data.prenom ?? "");
           }
+
+          // Pre-fill from programme page deep-link
+          const pMat  = searchParams.get("matiere");
+          const pChap = searchParams.get("chapitre");
+          if (pMat) {
+            setMatiereB(pMat);
+            if (pChap) setChapitreB(pChap);
+            setMode("B");
+            setPhase("setup_b");
+          }
         });
     });
-  }, [router]);
+  }, [router, searchParams]);
 
   /* ── Helpers ── */
   function matieres(): string[] { return getMatieres(examType, serie); }
@@ -898,5 +909,17 @@ function VideoSection({
         </div>
       ))}
     </div>
+  );
+}
+
+export default function GenererPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      </div>
+    }>
+      <GenererPageInner />
+    </Suspense>
   );
 }

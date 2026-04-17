@@ -161,9 +161,9 @@ export default function PrepDashboardPage() {
         <div>
           <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Accès rapides</p>
           <div className="grid grid-cols-3 gap-3">
-            <QuickLink href="/prep/epreuves"  icon="description"  label="Épreuves" color="#f59e0b" />
+            <QuickLink href="/prep/programme"  icon="menu_book"    label="Programme"  color="#FF6B00" />
             <QuickLink href="/prep/classement" icon="leaderboard"  label="Classement" color="#3b82f6" />
-            <QuickLink href="/prep/progression" icon="trending_up" label="Progrès" color="#10b981" />
+            <QuickLink href="/prep/progression" icon="trending_up" label="Progrès"    color="#10b981" />
           </div>
         </div>
 

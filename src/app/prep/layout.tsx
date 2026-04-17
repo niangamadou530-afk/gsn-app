@@ -6,9 +6,9 @@ import Link from "next/link";
 const NAV_ITEMS = [
   { href: "/prep/dashboard",   icon: "home",         label: "Accueil"     },
   { href: "/prep/generer",     icon: "auto_awesome",  label: "Générer"     },
+  { href: "/prep/programme",   icon: "menu_book",     label: "Programme"   },
   { href: "/prep/progression", icon: "trending_up",   label: "Progrès"     },
   { href: "/prep/classement",  icon: "leaderboard",   label: "Classement"  },
-  { href: "/prep/orientation", icon: "explore",       label: "Orientation" },
 ];
 
 export default function PrepLayout({ children }: { children: React.ReactNode }) {
