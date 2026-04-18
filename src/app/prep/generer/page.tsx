@@ -594,9 +594,9 @@ function GenererPageInner() {
             className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
             style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
             <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{flipped ? "Réponse" : "Question"}</p>
-            <p className="text-white font-bold text-lg text-center leading-relaxed">
-              {flipped ? card.verso : card.recto}
-            </p>
+            {flipped ? <VersoContent verso={card.verso} /> : (
+              <p className="text-white font-bold text-lg text-center leading-relaxed">{card.recto}</p>
+            )}
             <p className="text-xs text-white/50 mt-2">Toucher pour retourner</p>
           </div>
 
@@ -844,9 +844,9 @@ function GenererPageInner() {
               className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
               style={{ backgroundColor: libCardFlipped ? "#1e293b" : "#FF6B00" }}>
               <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{libCardFlipped ? "Réponse" : "Question"}</p>
-              <p className="text-white font-bold text-lg text-center leading-relaxed">
-                {libCardFlipped ? card.verso : card.recto}
-              </p>
+              {libCardFlipped ? <VersoContent verso={card.verso} /> : (
+                <p className="text-white font-bold text-lg text-center leading-relaxed">{card.recto}</p>
+              )}
               <p className="text-xs text-white/50 mt-2">Toucher pour retourner</p>
             </div>
 
@@ -991,6 +991,20 @@ function GenererPageInner() {
 }
 
 /* ─── Sub-components ───────────────────────────────────── */
+
+/* Affiche le verso d'une flashcard : si ||| présent, sépare EN (gras) et FR (italique sous) */
+function VersoContent({ verso }: { verso: string }) {
+  if (verso.includes("|||")) {
+    const [en, fr] = verso.split("|||").map(s => s.trim());
+    return (
+      <div className="text-center space-y-2">
+        <p className="text-white font-bold text-lg leading-relaxed">{en}</p>
+        <p className="text-white/70 text-sm italic leading-relaxed">{fr}</p>
+      </div>
+    );
+  }
+  return <p className="text-white font-bold text-lg text-center leading-relaxed">{verso}</p>;
+}
 
 function LibLoader() {
   return (

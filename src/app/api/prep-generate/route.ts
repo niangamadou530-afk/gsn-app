@@ -35,17 +35,17 @@ function flashcardsPrompt(matiere: string, chapitre: string, examType: string, s
     const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
     return `You are an English teacher for the Senegalese ${examType}.
 Generate 12 flashcards for English${ctx} ${src}.
-RECTO: question or key notion in ENGLISH ONLY.
-VERSO: answer in English, then a separator line "---", then explanation in French below.
-Example verso: "It is used to express a completed action.\n---\nS'utilise pour exprimer une action accomplie."
+RECTO: question or key notion in ENGLISH ONLY. One short sentence.
+VERSO: English answer, then the separator |||, then French explanation. All on one line, no line breaks.
 
 Return ONLY this JSON:
 {
   "flashcards": [
-    { "recto": "What is the Present Perfect used for?", "verso": "It expresses a past action with a present result.\n---\nExprimer une action passée avec un résultat présent." }
+    { "recto": "What is the Present Perfect used for?", "verso": "It expresses a past action with a present result. ||| S'utilise pour exprimer une action passée avec un résultat présent." }
   ]
 }
-Exactly 12 flashcards. Recto MUST be in English only.`;
+CRITICAL: The verso value must be a single-line string with no line breaks. Use ||| as the only separator.
+Exactly 12 flashcards. Recto in English only.`;
   }
 
   const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
