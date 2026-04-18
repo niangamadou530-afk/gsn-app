@@ -97,31 +97,3 @@ body {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* ── GSN PREP dark theme ─────────────────────────────────── */
-.prep-dark {
-  --color-primary:                    #00C9A7;
-  --color-on-primary:                 #003328;
-  --color-primary-container:          rgba(0,201,167,0.15);
-  --color-on-primary-container:       #00C9A7;
-  --color-surface:                    #0A0A0F;
-  --color-surface-dim:                #0A0A0F;
-  --color-surface-bright:             #14141F;
-  --color-surface-variant:            #1A1A28;
-  --color-surface-container-lowest:   #111118;
-  --color-surface-container-low:      #14141F;
-  --color-surface-container:          #16161F;
-  --color-surface-container-high:     #1A1A28;
-  --color-surface-container-highest:  #1E1E2C;
-  --color-on-surface:                 #FFFFFF;
-  --color-on-surface-variant:         #A0A0B0;
-  --color-background:                 #0A0A0F;
-  --color-on-background:              #FFFFFF;
-  --color-outline:                    rgba(255,255,255,0.15);
-  --color-outline-variant:            rgba(255,255,255,0.08);
-  --color-error:                      #FF5B79;
-  --color-on-error:                   #000000;
-  --color-inverse-surface:            #E0E0F0;
-  --color-inverse-on-surface:         #111118;
-}
-.prep-dark body { background-color: #0A0A0F; }

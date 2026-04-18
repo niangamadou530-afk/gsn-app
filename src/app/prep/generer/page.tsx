@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres } from "@/data/programmes";
@@ -291,19 +291,18 @@ function GenererPageInner() {
   }
 
   async function saveResume(texte: string, mat: string, chap: string) {
-    if (!texte) { console.warn("[saveResume] texte vide, abandon"); return; }
-    // Toujours récupérer un user_id frais depuis l'auth
+    if (!texte) return;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { console.warn("[saveResume] utilisateur non connecté"); return; }
-    console.log("[saveResume] insertion →", { user_id: user.id, matiere: mat, chapitre: chap, len: texte.length });
+    if (!user) { console.error("saveResume: utilisateur non connecté"); return; }
+    console.log("saveResume: insertion pour", user.id, mat, chap, texte.slice(0, 80));
     const { error } = await supabase.from("prep_resumes").insert({
       user_id: user.id, matiere: mat, chapitre: chap,
       contenu: texte,
     });
     if (error) {
-      console.error("[saveResume] erreur Supabase:", error.message, error.details, error.hint);
+      console.error("saveResume: erreur Supabase", error.code, error.message, error.details);
     } else {
-      console.log("[saveResume] OK");
+      console.log("saveResume: succès");
       setResumeSaved(true);
     }
   }
@@ -473,7 +472,7 @@ function GenererPageInner() {
           disabled={!fileA || !matiereA}
           onClick={generate}
           className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+          style={{ backgroundColor: "#FF6B00" }}>
           Générer {genLabel}
         </button>
       </div>
@@ -538,7 +537,7 @@ function GenererPageInner() {
             disabled={!matiereB}
             onClick={generate}
             className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
-            style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+            style={{ backgroundColor: "#FF6B00" }}>
             Générer {genLabel}
           </button>
         </div>
@@ -549,7 +548,7 @@ function GenererPageInner() {
   // ── GENERATING ──
   if (phase === "generating") return (
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6 p-6">
-      <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#00C9A7", borderTopColor: "transparent" }} />
+      <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       <div className="text-center">
         <p className="font-black text-xl text-on-surface">Génération en cours…</p>
         <p className="text-on-surface-variant text-sm mt-1">L'IA prépare ton {genLabel.toLowerCase()}</p>
@@ -568,26 +567,26 @@ function GenererPageInner() {
 
           {/* Confirmation sauvegarde */}
           {flashSaved && (
-            <div className="flex items-center gap-2 rounded-xl px-4 py-2.5" style={{ backgroundColor: "rgba(0,201,167,0.08)", border: "1px solid rgba(0,201,167,0.2)" }}>
-              <span className="material-symbols-outlined text-[18px]" style={{ color: "#00C9A7", fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-sm font-semibold" style={{ color: "#00C9A7" }}>Flashcards sauvegardées</p>
+            <div className="flex items-center gap-2 bg-green-50 border-2 border-green-200 rounded-xl px-4 py-2.5">
+              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-green-700 font-semibold text-sm">Flashcards sauvegardées</p>
             </div>
           )}
 
           {/* Progress */}
           <div className="flex items-center justify-between text-sm text-on-surface-variant">
             <span>{currentCard + 1} / {flashcards.length}</span>
-            <span className="font-semibold" style={{ color: "#00C9A7" }}>{mastered} maîtrisées</span>
+            <span className="text-green-600 font-semibold">{mastered} maîtrisées</span>
           </div>
           <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full transition-all" style={{ width: `${(mastered / flashcards.length) * 100}%`, backgroundColor: "#00C9A7" }} />
+            <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / flashcards.length) * 100}%` }} />
           </div>
 
           {/* Card */}
           <div
             onClick={() => setFlipped(f => !f)}
             className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: flipped ? "#14141F" : "#00C9A7", border: `1px solid ${flipped ? "rgba(255,255,255,0.07)" : "transparent"}` }}>
+            style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
             <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{flipped ? "Réponse" : "Question"}</p>
             <p className="text-white font-bold text-lg text-center leading-relaxed">
               {flipped ? card.verso : card.recto}
@@ -599,10 +598,7 @@ function GenererPageInner() {
           <div className="flex gap-3">
             <button
               onClick={() => toggleMaitrised(currentCard)}
-              className="flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97]"
-              style={card.maitrisee
-                ? { backgroundColor: "rgba(0,201,167,0.12)", color: "#00C9A7", border: "1px solid rgba(0,201,167,0.3)" }
-                : { backgroundColor: "rgba(255,255,255,0.05)", color: "#A0A0B0", border: "1px solid rgba(255,255,255,0.08)" }}>
+              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
               {card.maitrisee ? "✓ Maîtrisée" : "Je maîtrise"}
             </button>
             <button
@@ -651,10 +647,10 @@ function GenererPageInner() {
         <div className="flex-1 px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-on-surface-variant">{qcmCurrent + 1} / {qcmQuestions.length}</span>
-            <span className="text-sm font-bold" style={{ color: "#00C9A7" }}>Score : {qcmScore}</span>
+            <span className="text-sm font-bold text-green-600">Score : {qcmScore}</span>
           </div>
           <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full transition-all" style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#00C9A7" }} />
+            <div className="h-full transition-all" style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#FF6B00" }} />
           </div>
 
           <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
@@ -663,19 +659,18 @@ function GenererPageInner() {
 
           <div className="space-y-2.5">
             {q.choices.map(choice => {
-              let choiceStyle: React.CSSProperties = { border: "1px solid rgba(255,255,255,0.08)" };
+              let style = "border-outline-variant bg-surface-container-lowest text-on-surface";
               if (qcmShowAnswer) {
-                if (choice === q.correct_answer) choiceStyle = { backgroundColor: "rgba(0,201,167,0.1)", border: "1px solid rgba(0,201,167,0.4)", color: "#00C9A7" };
-                else if (choice === selected) choiceStyle = { backgroundColor: "rgba(255,91,121,0.1)", border: "1px solid rgba(255,91,121,0.4)", color: "#FF5B79" };
+                if (choice === q.correct_answer) style = "border-green-400 bg-green-50 text-green-800";
+                else if (choice === selected) style = "border-red-400 bg-red-50 text-red-800";
               } else if (choice === selected) {
-                choiceStyle = { backgroundColor: "rgba(0,201,167,0.08)", border: "1px solid rgba(0,201,167,0.3)", color: "#00C9A7" };
+                style = "border-primary bg-primary/5 text-primary";
               }
               return (
                 <button key={choice}
                   onClick={() => !qcmShowAnswer && handleQcmAnswer(choice)}
                   disabled={qcmShowAnswer}
-                  className="w-full text-left p-4 rounded-xl font-medium transition-all text-white"
-                  style={choiceStyle}>
+                  className={`w-full text-left p-4 rounded-xl border-2 font-medium transition-all ${style}`}>
                   {choice}
                 </button>
               );
@@ -683,9 +678,9 @@ function GenererPageInner() {
           </div>
 
           {qcmShowAnswer && (
-            <div className="rounded-xl p-4" style={{ backgroundColor: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)" }}>
-              <p className="text-sm font-semibold" style={{ color: "#a5b4fc" }}>Explication</p>
-              <p className="text-sm mt-1" style={{ color: "#A0A0B0" }}>{q.explanation}</p>
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+              <p className="text-blue-800 text-sm font-semibold">Explication</p>
+              <p className="text-blue-700 text-sm mt-1">{q.explanation}</p>
             </div>
           )}
 
@@ -693,7 +688,7 @@ function GenererPageInner() {
             <button
               onClick={qcmNext}
               className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-              style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+              style={{ backgroundColor: "#FF6B00" }}>
               {qcmCurrent + 1 >= qcmQuestions.length ? "Voir le résultat" : "Question suivante →"}
             </button>
           )}
@@ -726,7 +721,7 @@ function GenererPageInner() {
           onClick={evaluateRedaction}
           disabled={redactionEvaluating || redactionQs.some((_, i) => !redactionAnswers[i]?.trim())}
           className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 active:scale-[0.98] transition-transform"
-          style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+          style={{ backgroundColor: "#FF6B00" }}>
           {redactionEvaluating ? "Évaluation en cours…" : "Soumettre et évaluer"}
         </button>
       </div>
@@ -747,13 +742,9 @@ function GenererPageInner() {
         <PageHeader title={`Résultat · ${activeMat()}`} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
-          <div className="rounded-2xl p-6 text-center"
-            style={{
-              backgroundColor: "rgba(255,255,255,0.04)",
-              border: `1px solid ${pct >= 60 ? "rgba(0,201,167,0.3)" : pct >= 40 ? "rgba(255,184,0,0.3)" : "rgba(255,91,121,0.3)"}`,
-            }}>
-            <p className="text-5xl font-black" style={{ color: pct >= 60 ? "#00C9A7" : pct >= 40 ? "#FFB800" : "#FF5B79" }}>{finalScore}/{total}</p>
-            <p className="text-lg font-semibold mt-1" style={{ color: "#A0A0B0" }}>{pct}% · {activeMat()}</p>
+          <div className="rounded-2xl p-6 text-center text-white" style={{ backgroundColor: pct >= 60 ? "#22c55e" : pct >= 40 ? "#f97316" : "#ef4444" }}>
+            <p className="text-5xl font-black">{finalScore}/{total}</p>
+            <p className="text-lg font-semibold opacity-90 mt-1">{pct}% · {activeMat()}</p>
           </div>
 
           {isRedaction && redactionFeedback.length > 0 && (
@@ -776,7 +767,7 @@ function GenererPageInner() {
           <button
             onClick={() => setPhase("home")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+            style={{ backgroundColor: "#FF6B00" }}>
             Nouvelle génération
           </button>
         </div>
@@ -795,9 +786,9 @@ function GenererPageInner() {
         <div className="flex-1 px-6 py-4 space-y-4">
 
           {resumeSaved && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl" style={{ backgroundColor: "rgba(0,201,167,0.08)", border: "1px solid rgba(0,201,167,0.2)" }}>
-              <span className="material-symbols-outlined text-[18px]" style={{ color: "#00C9A7", fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-sm font-semibold" style={{ color: "#00C9A7" }}>Résumé sauvegardé ✓</p>
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 border border-green-200">
+              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-sm font-semibold text-green-700">Résumé sauvegardé ✓</p>
             </div>
           )}
 
@@ -812,7 +803,7 @@ function GenererPageInner() {
           <button
             onClick={() => setPhase("home")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: "#00C9A7", color: "#003328" }}>
+            style={{ backgroundColor: "#FF6B00" }}>
             Nouvelle génération
           </button>
         </div>
@@ -835,17 +826,17 @@ function GenererPageInner() {
 
             <div className="flex items-center justify-between text-sm text-on-surface-variant">
               <span>{libCardIdx + 1} / {libDeck.length}</span>
-              <span className="font-semibold" style={{ color: "#00C9A7" }}>{mastered} maîtrisées</span>
+              <span className="text-green-600 font-semibold">{mastered} maîtrisées</span>
             </div>
             <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full transition-all" style={{ width: `${(mastered / libDeck.length) * 100}%`, backgroundColor: "#00C9A7" }} />
+              <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / libDeck.length) * 100}%` }} />
             </div>
 
             {/* Même carte flip que la génération */}
             <div
               onClick={() => setLibCardFlipped(f => !f)}
               className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-              style={{ backgroundColor: libCardFlipped ? "#14141F" : "#00C9A7", border: `1px solid ${libCardFlipped ? "rgba(255,255,255,0.07)" : "transparent"}` }}>
+              style={{ backgroundColor: libCardFlipped ? "#1e293b" : "#FF6B00" }}>
               <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{libCardFlipped ? "Réponse" : "Question"}</p>
               <p className="text-white font-bold text-lg text-center leading-relaxed">
                 {libCardFlipped ? card.verso : card.recto}
@@ -856,10 +847,7 @@ function GenererPageInner() {
             <div className="flex gap-3">
               <button
                 onClick={() => { toggleFlashMaitrisee(card.id, card.maitrisee); }}
-                className="flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97]"
-                style={card.maitrisee
-                  ? { backgroundColor: "rgba(0,201,167,0.12)", color: "#00C9A7", border: "1px solid rgba(0,201,167,0.3)" }
-                  : { backgroundColor: "rgba(255,255,255,0.05)", color: "#A0A0B0", border: "1px solid rgba(255,255,255,0.08)" }}>
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
                 {card.maitrisee ? "✓ Maîtrisée" : "Je maîtrise"}
               </button>
               <button
@@ -901,14 +889,14 @@ function GenererPageInner() {
                   key={group}
                   onClick={() => { setLibDeck(cards); setLibDeckTitle(group); setLibCardIdx(0); setLibCardFlipped(false); }}
                   className="w-full flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl shadow-sm text-left active:scale-[0.98] transition-transform">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(0,201,167,0.12)" }}>
-                    <span className="material-symbols-outlined text-[20px]" style={{ color: "#00C9A7", fontVariationSettings: "'FILL' 1" }}>style</span>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#FF6B0020" }}>
+                    <span className="material-symbols-outlined text-[20px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>style</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-on-surface text-sm truncate">{group}</p>
                     <p className="text-xs text-on-surface-variant mt-0.5">{cards.length} cartes · {done} maîtrisées</p>
                     <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1.5">
-                      <div className="h-full" style={{ width: `${cards.length > 0 ? (done / cards.length) * 100 : 0}%`, backgroundColor: "#00C9A7" }} />
+                      <div className="h-full bg-green-500" style={{ width: `${cards.length > 0 ? (done / cards.length) * 100 : 0}%` }} />
                     </div>
                   </div>
                   <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
@@ -934,12 +922,7 @@ function GenererPageInner() {
               const pct = Math.round((q.score / q.total) * 100);
               return (
                 <div key={q.id} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0"
-                    style={{
-                      backgroundColor: pct >= 60 ? "rgba(0,201,167,0.12)" : pct >= 40 ? "rgba(255,184,0,0.12)" : "rgba(255,91,121,0.12)",
-                      color: pct >= 60 ? "#00C9A7" : pct >= 40 ? "#FFB800" : "#FF5B79",
-                      border: `1px solid ${pct >= 60 ? "rgba(0,201,167,0.3)" : pct >= 40 ? "rgba(255,184,0,0.3)" : "rgba(255,91,121,0.3)"}`,
-                    }}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0 ${pct >= 60 ? "bg-green-500" : pct >= 40 ? "bg-orange-400" : "bg-red-500"}`}>
                     {pct}%
                   </div>
                   <div className="flex-1 min-w-0">
@@ -973,8 +956,8 @@ function GenererPageInner() {
                   <button
                     onClick={() => setExpandedResume(isOpen ? null : r.id)}
                     className="w-full flex items-center gap-3 p-4 text-left">
-                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "rgba(0,201,167,0.12)" }}>
-                      <span className="material-symbols-outlined text-[18px]" style={{ color: "#00C9A7", fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-amber-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-on-surface text-sm truncate">{r.matiere ?? "Résumé"}</p>
@@ -1006,7 +989,7 @@ function GenererPageInner() {
 function LibLoader() {
   return (
     <div className="flex justify-center py-12">
-      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#00C9A7", borderTopColor: "transparent" }} />
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
     </div>
   );
 }
@@ -1026,14 +1009,14 @@ function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }
 type SectionMeta = { icon: string; borderColor: string; bgColor: string; titleColor: string };
 
 const SECTION_META: Record<string, SectionMeta> = {
-  "introduction":   { icon: "info",      borderColor: "#94a3b8", bgColor: "rgba(148,163,184,0.07)", titleColor: "#94a3b8" },
-  "notions":        { icon: "lightbulb", borderColor: "#60a5fa", bgColor: "rgba(96,165,250,0.07)",  titleColor: "#60a5fa" },
-  "définitions":    { icon: "book_2",    borderColor: "#00C9A7", bgColor: "rgba(0,201,167,0.07)",   titleColor: "#00C9A7" },
-  "formules":       { icon: "functions", borderColor: "#a78bfa", bgColor: "rgba(167,139,250,0.07)", titleColor: "#a78bfa" },
-  "exemples":       { icon: "science",   borderColor: "#34d399", bgColor: "rgba(52,211,153,0.07)",  titleColor: "#34d399" },
-  "examens":        { icon: "star",      borderColor: "#FF5B79", bgColor: "rgba(255,91,121,0.07)",  titleColor: "#FF5B79" },
-  "points":         { icon: "checklist", borderColor: "#34d399", bgColor: "rgba(52,211,153,0.07)",  titleColor: "#34d399" },
-  "default":        { icon: "article",   borderColor: "#818cf8", bgColor: "rgba(129,140,248,0.07)", titleColor: "#818cf8" },
+  "introduction":   { icon: "info",      borderColor: "#94a3b8", bgColor: "#f1f5f9", titleColor: "#475569" },
+  "notions":        { icon: "lightbulb", borderColor: "#3b82f6", bgColor: "#eff6ff", titleColor: "#1d4ed8" },
+  "définitions":    { icon: "book_2",    borderColor: "#FF6B00", bgColor: "#fff7ed", titleColor: "#c2410c" },
+  "formules":       { icon: "functions", borderColor: "#8b5cf6", bgColor: "#f5f3ff", titleColor: "#6d28d9" },
+  "exemples":       { icon: "science",   borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
+  "examens":        { icon: "star",      borderColor: "#ef4444", bgColor: "#fef2f2", titleColor: "#b91c1c" },
+  "points":         { icon: "checklist", borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
+  "default":        { icon: "article",   borderColor: "#6366f1", bgColor: "#eef2ff", titleColor: "#4338ca" },
 };
 
 function getSectionMeta(title: string): SectionMeta {
@@ -1064,15 +1047,15 @@ function formatSectionContent(raw: string, isFormulas: boolean): string {
     html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
     html = html.replace(/_(.*?)_/g, "<em>$1</em>");
     html = html.replace(/`(.*?)`/g,
-      "<code style=\"background:rgba(167,139,250,0.12);color:#a78bfa;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.85em\">$1</code>");
+      "<code style=\"background:#fef9c3;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.85em\">$1</code>");
 
     if (isBullet) {
       if (!inList) { out.push("<ul style=\"padding:0;margin:4px 0;list-style:none\">"); inList = true; }
-      out.push(`<li style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;font-size:0.875rem;line-height:1.6"><span style="color:#00C9A7;font-weight:900;flex-shrink:0;margin-top:1px">•</span><span>${html}</span></li>`);
+      out.push(`<li style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;font-size:0.875rem;line-height:1.6"><span style="color:#FF6B00;font-weight:900;flex-shrink:0;margin-top:1px">•</span><span>${html}</span></li>`);
     } else {
       if (inList) { out.push("</ul>"); inList = false; }
       if (isFormulas && /[=+×÷∑∫√²³]/.test(text)) {
-        out.push(`<p style="background:rgba(167,139,250,0.1);border-left:3px solid #a78bfa;color:#a78bfa;border-radius:0 6px 6px 0;padding:6px 10px;font-weight:600;font-family:monospace;font-size:0.875rem;margin:4px 0">${html}</p>`);
+        out.push(`<p style="background:#fef9c3;border-left:3px solid #8b5cf6;border-radius:0 6px 6px 0;padding:6px 10px;font-weight:600;font-family:monospace;font-size:0.875rem;margin:4px 0">${html}</p>`);
       } else {
         out.push(`<p style="margin:4px 0;font-size:0.875rem;line-height:1.65">${html}</p>`);
       }
@@ -1161,7 +1144,7 @@ function GenTypeSelector({
           <button key={t.key}
             onClick={() => setGenType(t.key)}
             className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all ${genType === t.key ? "border-primary bg-primary/5" : "border-outline-variant"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ color: genType === t.key ? "#00C9A7" : "#5A5A70", fontVariationSettings: genType === t.key ? "'FILL' 1" : "'FILL' 0" }}>
+            <span className="material-symbols-outlined text-[22px]" style={{ color: genType === t.key ? "#FF6B00" : undefined, fontVariationSettings: genType === t.key ? "'FILL' 1" : "'FILL' 0" }}>
               {t.icon}
             </span>
             <span className={`text-xs font-bold ${genType === t.key ? "text-primary" : "text-on-surface-variant"}`}>{t.label}</span>
@@ -1249,7 +1232,7 @@ export default function GenererPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#00C9A7", borderTopColor: "transparent" }} />
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       </div>
     }>
       <GenererPageInner />

@@ -12,16 +12,23 @@ function daysUntil(dateStr: string): number {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
 }
 
-const A = "#00C9A7";          // accent teal
-const C = "#111118";          // card bg
-const B = "rgba(255,255,255,0.07)"; // border
+function countdownColor(days: number): string {
+  if (days > 60) return "#22c55e";
+  if (days > 30) return "#f97316";
+  return "#ef4444";
+}
 
-type Student = { prenom: string | null; exam_type: string; serie: string | null; ecole: string | null };
+type Student = {
+  prenom: string | null;
+  exam_type: string;
+  serie: string | null;
+  ecole: string | null;
+};
 
 export default function PrepDashboardPage() {
-  const router = useRouter();
-  const [student, setStudent]     = useState<Student | null>(null);
-  const [loading, setLoading]     = useState(true);
+  const router  = useRouter();
+  const [student, setStudent]   = useState<Student | null>(null);
+  const [loading, setLoading]   = useState(true);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [flashCount, setFlashCount] = useState(0);
 
@@ -31,21 +38,31 @@ export default function PrepDashboardPage() {
       if (!user) { router.push("/login"); return; }
 
       const { data: stu } = await supabase
-        .from("prep_students").select("prenom, exam_type, serie, ecole")
-        .eq("user_id", user.id).maybeSingle();
+        .from("prep_students")
+        .select("prenom, exam_type, serie, ecole")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (!stu) { router.push("/prep/onboarding"); return; }
       setStudent(stu);
 
+      // Dernier score quiz
       const { data: quizData } = await supabase
-        .from("quiz_results").select("score, total")
-        .eq("user_id", user.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        .from("quiz_results")
+        .select("score, total")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (quizData) setQuizScore(Math.round((quizData.score / quizData.total) * 100));
 
+      // Flashcards maîtrisées
       const { count } = await supabase
-        .from("flashcards").select("id", { count: "exact", head: true })
-        .eq("user_id", user.id).eq("maitrisee", true);
+        .from("flashcards")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("maitrisee", true);
 
       setFlashCount(count ?? 0);
       setLoading(false);
@@ -54,122 +71,126 @@ export default function PrepDashboardPage() {
   }, [router]);
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0F" }}>
-      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: A, borderTopColor: "transparent" }} />
+    <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
     </div>
   );
 
+  const examDate  = student?.exam_type === "BFEM" ? BFEM_DATE : BAC_DATE;
   const examLabel = student?.exam_type === "BFEM" ? "BFEM" : "BAC";
-  const days      = daysUntil(student?.exam_type === "BFEM" ? BFEM_DATE : BAC_DATE);
+  const days      = daysUntil(examDate);
+  const cdColor   = countdownColor(days);
   const prenom    = student?.prenom ?? "Élève";
 
   return (
-    <main className="min-h-screen text-white" style={{ backgroundColor: "#0A0A0F" }}>
-
-      {/* Greeting */}
-      <div className="px-6 pt-10 pb-2 flex items-start justify-between">
+    <main className="min-h-screen bg-surface text-on-surface">
+      {/* Header */}
+      <header className="px-6 pt-8 pb-4 flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium" style={{ color: "#A0A0B0" }}>Bonjour,</p>
-          <h1 className="text-2xl font-black text-white mt-0.5">{prenom} 👋</h1>
-          {(student?.serie || student?.ecole) && (
-            <p className="text-xs mt-1 font-medium" style={{ color: "#5A5A70" }}>
-              {examLabel}{student.serie ? ` · Série ${student.serie}` : ""}{student.ecole ? ` · ${student.ecole}` : ""}
-            </p>
+          <p className="text-on-surface-variant text-sm">Bonjour,</p>
+          <h1 className="text-2xl font-extrabold text-on-surface">{prenom} 👋</h1>
+          {student?.serie && (
+            <p className="text-xs text-on-surface-variant mt-0.5">{examLabel} · Série {student.serie}{student.ecole ? ` · ${student.ecole}` : ""}</p>
           )}
         </div>
         <button
           onClick={() => supabase.auth.signOut().then(() => router.push("/login"))}
-          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-95"
-          style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-          <span className="material-symbols-outlined text-[18px]" style={{ color: "#A0A0B0" }}>logout</span>
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors">
+          <span className="material-symbols-outlined text-on-surface-variant text-[20px]">logout</span>
         </button>
-      </div>
+      </header>
 
-      <div className="px-6 pt-6 pb-24 space-y-4">
+      <div className="px-6 space-y-4 pb-8">
 
-        {/* Countdown */}
-        <div className="rounded-2xl p-5" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#A0A0B0" }}>
-            Compte à rebours · {examLabel}
-          </p>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-6xl font-black" style={{ color: A }}>J-{days}</span>
-            <span className="text-lg font-semibold" style={{ color: "#A0A0B0" }}>jours</span>
+        {/* Compte à rebours */}
+        <div className="rounded-2xl p-5 text-white overflow-hidden relative" style={{ backgroundColor: cdColor }}>
+          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_80%_20%,white,transparent)]" />
+          <p className="text-sm font-semibold opacity-90">Compte à rebours {examLabel}</p>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-5xl font-black">J-{days}</span>
+            <span className="text-lg font-semibold opacity-80 mb-1">jours</span>
           </div>
-          <div className="mt-3 h-1 w-full rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.08)" }}>
-            <div className="h-full rounded-full transition-all"
-              style={{ width: `${Math.min(100, Math.max(2, 100 - (days / 365) * 100))}%`, backgroundColor: A }} />
-          </div>
-          <p className="text-xs mt-1.5 font-medium" style={{ color: "#5A5A70" }}>
-            {examLabel} · {student?.exam_type === "BFEM" ? "15 juillet 2026" : "30 juin 2026"}
-          </p>
+          <p className="text-xs opacity-75 mt-1">{examLabel} · {student?.exam_type === "BFEM" ? "15 juillet 2026" : "30 juin 2026"}</p>
         </div>
 
-        {/* CTA Générer */}
+        {/* Générer avec l'IA — CTA principal */}
         <Link href="/prep/generer"
-          className="flex items-center gap-4 p-5 rounded-2xl active:scale-[0.98] transition-transform"
-          style={{ backgroundColor: A, color: "#003328" }}>
-          <span className="material-symbols-outlined text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+          className="flex items-center gap-4 p-5 rounded-2xl text-white shadow-lg active:scale-[0.98] transition-transform"
+          style={{ background: "linear-gradient(135deg, #FF6B00, #FF9500)" }}>
+          <span className="material-symbols-outlined text-[36px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
           <div className="flex-1">
             <p className="font-black text-lg">Générer avec l'IA</p>
-            <p className="text-sm opacity-75 font-medium">Flashcards · Quiz · Résumé</p>
+            <p className="text-sm opacity-85">Flashcards · Quiz · Résumé</p>
           </div>
-          <span className="material-symbols-outlined opacity-60">chevron_right</span>
+          <span className="material-symbols-outlined text-[24px] opacity-80">chevron_right</span>
         </Link>
 
-        {/* Stats */}
+        {/* Stats rapides */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-            <span className="material-symbols-outlined text-[18px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>quiz</span>
-            <p className="text-3xl font-black text-white mt-2">
-              {quizScore !== null ? `${quizScore}%` : "—"}
-            </p>
-            <p className="text-xs mt-0.5 font-semibold" style={{ color: "#A0A0B0" }}>Dernier quiz</p>
-          </div>
-          <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-            <span className="material-symbols-outlined text-[18px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>style</span>
-            <p className="text-3xl font-black text-white mt-2">{flashCount}</p>
-            <p className="text-xs mt-0.5 font-semibold" style={{ color: "#A0A0B0" }}>Flashcards maîtrisées</p>
-          </div>
+          <StatCard
+            icon="quiz"
+            label="Dernier quiz"
+            value={quizScore !== null ? `${quizScore}%` : "—"}
+            sub="Score"
+            color="#6366f1"
+          />
+          <StatCard
+            icon="style"
+            label="Flashcards"
+            value={String(flashCount)}
+            sub="Maîtrisées"
+            color="#10b981"
+          />
         </div>
 
         {/* Coach IA */}
         <Link href="/prep/coach"
-          className="flex items-center gap-4 p-4 rounded-2xl active:scale-[0.98] transition-transform"
-          style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0"
-            style={{ backgroundColor: "rgba(0,201,167,0.12)", border: "1px solid rgba(0,201,167,0.2)" }}>
+          className="flex items-center gap-4 p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/20 active:scale-[0.98] transition-transform">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-xl"
+            style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>
             🤖
           </div>
           <div className="flex-1">
-            <p className="font-bold text-white text-sm">Coach IA Personnel</p>
-            <p className="text-xs mt-0.5 font-medium" style={{ color: "#A0A0B0" }}>Conseils basés sur tes résultats</p>
+            <p className="font-bold text-on-surface">Coach IA Personnel</p>
+            <p className="text-xs text-on-surface-variant">Conseils basés sur tes résultats</p>
           </div>
-          <span className="material-symbols-outlined text-[20px]" style={{ color: "#5A5A70" }}>chevron_right</span>
+          <span className="material-symbols-outlined text-on-surface-variant">chevron_right</span>
         </Link>
 
         {/* Outils */}
         <div className="grid grid-cols-2 gap-3">
-          {[
-            { href: "/prep/soft-skills", icon: "self_improvement", label: "Bien-être & Organisation", desc: "Stress · Pomodoro · Planning" },
-            { href: "/prep/epreuves",    icon: "description",      label: "Épreuves & Corrigés",     desc: "Sujets officiels BAC/BFEM" },
-          ].map(t => (
-            <Link key={t.href} href={t.href}
-              className="flex items-start gap-3 p-3.5 rounded-2xl active:scale-[0.97] transition-transform"
-              style={{ backgroundColor: C, border: `1px solid ${B}` }}>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ backgroundColor: "rgba(0,201,167,0.08)" }}>
-                <span className="material-symbols-outlined text-[18px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>{t.icon}</span>
-              </div>
-              <div className="min-w-0">
-                <p className="font-bold text-white text-xs leading-tight">{t.label}</p>
-                <p className="text-[10px] mt-0.5 leading-tight" style={{ color: "#A0A0B0" }}>{t.desc}</p>
-              </div>
-            </Link>
-          ))}
+          <ToolCard href="/prep/soft-skills" icon="self_improvement" label="Bien-être & Organisation" desc="Stress · Pomodoro · Planning" color="#ef4444" bg="bg-red-50" />
+          <ToolCard href="/prep/epreuves"    icon="description"      label="Épreuves & Corrigés"     desc="Sujets officiels BAC/BFEM"  color="#f59e0b" bg="bg-amber-50" />
         </div>
 
       </div>
     </main>
+  );
+}
+
+function StatCard({ icon, label, value, sub, color }: { icon: string; label: string; value: string; sub: string; color: string }) {
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+      <span className="material-symbols-outlined text-[20px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <p className="text-2xl font-black text-on-surface mt-2">{value}</p>
+      <p className="text-xs text-on-surface-variant">{sub}</p>
+      <p className="text-[11px] text-on-surface-variant/60 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+
+function ToolCard({ href, icon, label, desc, color, bg }: { href: string; icon: string; label: string; desc: string; color: string; bg: string }) {
+  return (
+    <Link href={href}
+      className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest shadow-sm active:scale-[0.97] transition-transform">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${bg}`}>
+        <span className="material-symbols-outlined text-[20px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      </div>
+      <div className="min-w-0">
+        <p className="font-bold text-on-surface text-xs leading-tight">{label}</p>
+        <p className="text-[10px] text-on-surface-variant mt-0.5 leading-tight">{desc}</p>
+      </div>
+    </Link>
   );
 }
