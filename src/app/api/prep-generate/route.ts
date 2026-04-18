@@ -22,13 +22,33 @@ function parseJson(raw: string): unknown {
   return JSON.parse(match[0]);
 }
 
+const isAnglais = (m: string) => m.toLowerCase().includes("anglais") || m.toLowerCase().includes("english");
+
 /* ── Prompts ─────────────────────────────────────────────── */
 
 function flashcardsPrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean): string {
-  const ctx = chapitre ? `, sur le thème "${chapitre}"` : "";
   const src = fromDoc
-    ? "en te basant UNIQUEMENT sur le contenu du document fourni"
-    : `en te basant sur ta connaissance du programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
+    ? "based ONLY on the content of the provided document"
+    : `based on the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
+
+  if (isAnglais(matiere)) {
+    const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
+    return `You are an English teacher for the Senegalese ${examType}.
+Generate 12 flashcards for English${ctx} ${src}.
+RECTO: question or key notion in ENGLISH ONLY.
+VERSO: answer in English, then a separator line "---", then explanation in French below.
+Example verso: "It is used to express a completed action.\n---\nS'utilise pour exprimer une action accomplie."
+
+Return ONLY this JSON:
+{
+  "flashcards": [
+    { "recto": "What is the Present Perfect used for?", "verso": "It expresses a past action with a present result.\n---\nExprimer une action passée avec un résultat présent." }
+  ]
+}
+Exactly 12 flashcards. Recto MUST be in English only.`;
+  }
+
+  const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
   return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 12 flashcards pour ${matiere}${ctx} ${src}.
 Recto : notion ou question clé courte.
@@ -45,10 +65,49 @@ Exactement 12 flashcards. Tout en français.`;
 }
 
 function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean): string {
-  const ctx = chapitre ? `, sur le thème "${chapitre}"` : "";
   const src = fromDoc
-    ? "en te basant UNIQUEMENT sur le contenu du document fourni"
-    : `fidèle au programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
+    ? "based ONLY on the content of the provided document"
+    : `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
+
+  if (isAnglais(matiere)) {
+    const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
+    if (quizMode === "redaction") {
+      return `You are an English teacher for the Senegalese ${examType}.
+Generate 5 open-ended questions for English${ctx} ${src}.
+ALL questions must be in ENGLISH ONLY.
+
+Return ONLY this JSON:
+{
+  "questions": [
+    { "id": 1, "question": "Describe the difference between the Present Simple and Present Continuous." }
+  ]
+}
+Exactly 5 questions. ALL in English only.`;
+    }
+    return `You are an English teacher for the Senegalese ${examType}.
+Generate 10 multiple choice questions for English${ctx} ${src}.
+ALL questions and ALL answer choices must be in ENGLISH ONLY.
+
+ABSOLUTE RULE: each element in "choices" must be the COMPLETE TEXT of the answer, never a single letter.
+ABSOLUTE RULE: "correct_answer" must be the COMPLETE TEXT identical to one of the "choices" elements.
+
+Return ONLY this JSON:
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Which tense is used to describe a habitual action in the present?",
+      "choices": ["Present Simple", "Present Continuous", "Present Perfect", "Past Simple"],
+      "correct_answer": "Present Simple",
+      "explanation": "The Present Simple is used for habits and routines.",
+      "difficulty": "easy"
+    }
+  ]
+}
+Exactly 10 QCM questions with 4 choices each. ALL in English only.`;
+  }
+
+  const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
   if (quizMode === "redaction") {
     return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 5 questions de développement pour ${matiere}${ctx} ${src}.
@@ -86,12 +145,60 @@ Exactement 10 questions QCM avec 4 choix chacune. Tout en français.`;
 }
 
 function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean): string {
-  const ctx = chapitre ? ` — ${chapitre}` : "";
   const src = fromDoc
     ? "en te basant UNIQUEMENT sur le contenu du document fourni"
     : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
+
+  // Anglais : format bilingue
+  if (isAnglais(matiere)) {
+    const topicLine = chapitre
+      ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis.`
+      : `Matière : ${matiere}`;
+    return `Tu es un professeur d'anglais expert du ${examType} sénégalais.
+${topicLine}
+Génère un résumé bilingue complet ${src}.
+Réponds en texte brut structuré, pas en JSON.
+
+FORMAT OBLIGATOIRE pour chaque section :
+- Explications en français
+- Exemples en anglais en italique (*exemple en anglais*)
+- Traduction en français entre parenthèses
+
+Structure avec ces sections :
+
+## Introduction
+Présente le sujet en français, avec exemple en anglais et traduction.
+
+## Notions essentielles
+Explique les notions en français. Pour chaque notion : *English example* (traduction française).
+
+## Définitions importantes
+Définis les termes clés en français avec exemples anglais traduits.
+
+## Formules et règles grammaticales
+Donne les règles en français avec formules en anglais (*Subject + Verb + ...*) et exemples traduits.
+
+## Exemples concrets
+*English example sentence.* (Traduction française.)
+Pour chaque exemple : phrase anglaise puis traduction.
+
+## Ce qui tombe aux examens
+Conseils en français sur ce qui est évalué, avec exemples de questions en anglais.
+
+## Points clés à retenir
+5 points en français avec exemple anglais pour chacun.
+
+Sois précis et pédagogique.`;
+  }
+
+  // Autres matières
+  const topicLine = chapitre
+    ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis, pas un autre.`
+    : `Matière : ${matiere}`;
+
   return `Tu es un professeur expert du ${examType} sénégalais.
-Produis un résumé complet, détaillé et structuré pour ${matiere}${ctx} ${src}.
+${topicLine}
+Génère un résumé complet, détaillé et structuré ${src}.
 Réponds en texte brut structuré, pas en JSON.
 
 Structure ton résumé avec ces sections :
@@ -149,16 +256,16 @@ Exactement ${questions.length} éléments dans feedback. Tout en français.`;
 async function saveResumeServer(
   token: string | null,
   matiere: string, chapitre: string, contenu: string
-): Promise<boolean> {
+): Promise<{ saved: boolean; resumeId: string | null }> {
   if (!token || !contenu) {
-    console.error("saveResumeServer: token manquant ou contenu vide");
-    return false;
+    console.error("saveResumeServer: token manquant ou contenu vide", { hasToken: !!token, hasContenu: !!contenu });
+    return { saved: false, resumeId: null };
   }
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) {
     console.error("saveResumeServer: variables Supabase manquantes");
-    return false;
+    return { saved: false, resumeId: null };
   }
   const sb = createClient(supabaseUrl, supabaseKey, {
     global: { headers: { Authorization: `Bearer ${token}` } },
@@ -167,18 +274,20 @@ async function saveResumeServer(
   const { data: { user }, error: authErr } = await sb.auth.getUser(token);
   if (authErr || !user) {
     console.error("saveResumeServer: getUser échoué", authErr?.message);
-    return false;
+    return { saved: false, resumeId: null };
   }
-  console.log("saveResumeServer: insertion pour", user.id, matiere, chapitre);
-  const { error } = await sb.from("prep_resumes").insert({
-    user_id: user.id, matiere, chapitre, contenu,
-  });
+  console.log("saveResumeServer: insertion pour user_id=", user.id, "matiere=", matiere, "chapitre=", chapitre);
+  const { data: inserted, error } = await sb
+    .from("prep_resumes")
+    .insert({ user_id: user.id, matiere, chapitre, contenu })
+    .select("id")
+    .single();
   if (error) {
     console.error("saveResumeServer: erreur insert", error.code, error.message, error.details, error.hint);
-    return false;
+    return { saved: false, resumeId: null };
   }
-  console.log("saveResumeServer: succès");
-  return true;
+  console.log("saveResumeServer: succès, id=", inserted?.id);
+  return { saved: true, resumeId: inserted?.id ?? null };
 }
 
 /* ── Route ─────────────────────────────────────────────── */
@@ -205,6 +314,11 @@ export async function POST(req: Request) {
   const authHeader = req.headers.get("Authorization") ?? "";
   const jwtToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
+  // Log du thème pour debug
+  if (type === "resume") {
+    console.log("prep-generate resume: matiere=", matiere, "chapitre=", JSON.stringify(chapitre));
+  }
+
   try {
     const groq = groqClient();
 
@@ -228,7 +342,7 @@ export async function POST(req: Request) {
       let prompt: string;
       if (type === "flashcards")      prompt = flashcardsPrompt(matiere, "", examType, serie, true);
       else if (type === "quiz")       prompt = quizPrompt(matiere, "", examType, serie, quizMode, true);
-      else                            prompt = resumePrompt(matiere, "", examType, serie, true);
+      else                            prompt = resumePrompt(matiere, chapitre, examType, serie, true);
 
       let content: string;
 
@@ -270,8 +384,8 @@ export async function POST(req: Request) {
 
       if (isResume) {
         const texte = content.trim();
-        const saved = await saveResumeServer(jwtToken, matiere, "", texte);
-        return NextResponse.json({ texte, saved });
+        const { saved, resumeId } = await saveResumeServer(jwtToken, matiere, chapitre, texte);
+        return NextResponse.json({ texte, saved, resumeId });
       }
       return NextResponse.json(parseJson(content));
     }
@@ -286,8 +400,8 @@ export async function POST(req: Request) {
         temperature: 0.4,
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
-      const saved = await saveResumeServer(jwtToken, matiere, chapitre, texte);
-      return NextResponse.json({ texte, saved });
+      const { saved, resumeId } = await saveResumeServer(jwtToken, matiere, chapitre, texte);
+      return NextResponse.json({ texte, saved, resumeId });
     }
 
     let prompt: string;
