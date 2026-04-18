@@ -1006,17 +1006,17 @@ function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }
 
 /* ── Resume rich formatting ─────────────────────────────── */
 
-type SectionMeta = { icon: string; borderColor: string; bgColor: string; titleColor: string };
+type SectionMeta = { icon: string; borderColor: string; bgColor: string; titleColor: string; bulletColor: string };
 
 const SECTION_META: Record<string, SectionMeta> = {
-  "introduction":   { icon: "info",      borderColor: "#94a3b8", bgColor: "#f1f5f9", titleColor: "#475569" },
-  "notions":        { icon: "lightbulb", borderColor: "#3b82f6", bgColor: "#eff6ff", titleColor: "#1d4ed8" },
-  "définitions":    { icon: "book_2",    borderColor: "#FF6B00", bgColor: "#fff7ed", titleColor: "#c2410c" },
-  "formules":       { icon: "functions", borderColor: "#8b5cf6", bgColor: "#f5f3ff", titleColor: "#6d28d9" },
-  "exemples":       { icon: "science",   borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
-  "examens":        { icon: "star",      borderColor: "#ef4444", bgColor: "#fef2f2", titleColor: "#b91c1c" },
-  "points":         { icon: "checklist", borderColor: "#10b981", bgColor: "#f0fdf4", titleColor: "#047857" },
-  "default":        { icon: "article",   borderColor: "#6366f1", bgColor: "#eef2ff", titleColor: "#4338ca" },
+  "introduction":   { icon: "info",      borderColor: "#64748b", bgColor: "#f8fafc", titleColor: "#334155", bulletColor: "#64748b" },
+  "notions":        { icon: "lightbulb", borderColor: "#2563eb", bgColor: "#eff6ff", titleColor: "#1d4ed8", bulletColor: "#3b82f6" },
+  "définitions":    { icon: "book_2",    borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "formules":       { icon: "functions", borderColor: "#7c3aed", bgColor: "#f5f3ff", titleColor: "#6d28d9", bulletColor: "#8b5cf6" },
+  "exemples":       { icon: "science",   borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  "examens":        { icon: "star",      borderColor: "#dc2626", bgColor: "#fef2f2", titleColor: "#b91c1c", bulletColor: "#ef4444" },
+  "points":         { icon: "checklist", borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  "default":        { icon: "article",   borderColor: "#4f46e5", bgColor: "#eef2ff", titleColor: "#4338ca", bulletColor: "#6366f1" },
 };
 
 function getSectionMeta(title: string): SectionMeta {
@@ -1031,7 +1031,9 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function formatSectionContent(raw: string, isFormulas: boolean): string {
+function formatSectionContent(raw: string, meta: SectionMeta): string {
+  const isFormulas = meta.icon === "functions";
+  const isDefinitions = meta.icon === "book_2";
   const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
   const out: string[] = [];
   let inList = false;
@@ -1040,24 +1042,40 @@ function formatSectionContent(raw: string, isFormulas: boolean): string {
     const isBullet = /^[-*+•]\s/.test(line) || /^\d+\.\s/.test(line);
     let text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
 
-    // Escape then apply inline formatting
     let html = escapeHtml(text);
-    html = html.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+
+    // **bold** and *italic*
+    html = html.replace(/\*\*(.*?)\*\*/g, `<strong style="font-weight:700;color:inherit">$1</strong>`);
     html = html.replace(/\*(.*?)\*/g, "<em>$1</em>");
-    html = html.replace(/__(.*?)__/g, "<strong>$1</strong>");
-    html = html.replace(/_(.*?)_/g, "<em>$1</em>");
+
+    // ==underline== → souligné coloré
+    html = html.replace(/==(.*?)==/g,
+      `<u style="text-decoration-color:${meta.borderColor};text-underline-offset:3px;font-weight:600">$1</u>`);
+
+    // `code`
     html = html.replace(/`(.*?)`/g,
-      "<code style=\"background:#fef9c3;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.85em\">$1</code>");
+      `<code style="background:#fef9c3;color:#7c3aed;padding:1px 5px;border-radius:4px;font-family:monospace;font-size:0.82em;font-weight:600">$1</code>`);
+
+    // Dans une section définitions : "Terme : définition" → terme souligné+gras
+    if (isDefinitions && /^[^:]+:/.test(text)) {
+      html = html.replace(/^([^:]+:)/, `<strong style="font-weight:700;text-decoration:underline;text-decoration-color:${meta.borderColor};text-underline-offset:3px">$1</strong>`);
+    }
 
     if (isBullet) {
-      if (!inList) { out.push("<ul style=\"padding:0;margin:4px 0;list-style:none\">"); inList = true; }
-      out.push(`<li style="display:flex;align-items:flex-start;gap:7px;margin:4px 0;font-size:0.875rem;line-height:1.6"><span style="color:#FF6B00;font-weight:900;flex-shrink:0;margin-top:1px">•</span><span>${html}</span></li>`);
+      if (!inList) { out.push(`<ul style="padding:0;margin:6px 0;list-style:none">`); inList = true; }
+      out.push(`<li style="display:flex;align-items:flex-start;gap:8px;margin:5px 0;font-size:0.875rem;line-height:1.65">` +
+        `<span style="color:${meta.bulletColor};font-weight:900;font-size:1rem;flex-shrink:0;margin-top:0px">•</span>` +
+        `<span>${html}</span></li>`);
     } else {
       if (inList) { out.push("</ul>"); inList = false; }
-      if (isFormulas && /[=+×÷∑∫√²³]/.test(text)) {
-        out.push(`<p style="background:#fef9c3;border-left:3px solid #8b5cf6;border-radius:0 6px 6px 0;padding:6px 10px;font-weight:600;font-family:monospace;font-size:0.875rem;margin:4px 0">${html}</p>`);
+
+      // Formule : toute ligne avec opérateur OU dans section formules
+      const isFormuleLine = isFormulas || /[=×÷∑∫√²³±≤≥≠∝]/.test(text) || /\d+[+\-*/]\d+/.test(text);
+      if (isFormuleLine && text.length > 3) {
+        out.push(`<p style="background:#fef9c3;border-left:4px solid ${meta.borderColor};border-radius:0 8px 8px 0;` +
+          `padding:8px 12px;font-weight:700;font-family:monospace;font-size:0.875rem;margin:6px 0;color:#1e1b4b">${html}</p>`);
       } else {
-        out.push(`<p style="margin:4px 0;font-size:0.875rem;line-height:1.65">${html}</p>`);
+        out.push(`<p style="margin:5px 0;font-size:0.875rem;line-height:1.7;color:#1e293b">${html}</p>`);
       }
     }
   }
@@ -1074,14 +1092,14 @@ function ResumeText({ texte }: { texte: string }) {
     if (raw.startsWith("## ") && nl !== -1) {
       sections.push({ title: raw.slice(3, nl).trim(), content: raw.slice(nl + 1).trim() });
     } else {
-      const content = raw.replace(/^#{1,3}\s?/gm, "").trim();
+      const content = raw.replace(/^#{1,6}\s?/gm, "").trim();
       if (content) sections.push({ title: "", content });
     }
   }
 
   if (sections.length === 0) {
     return (
-      <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
+      <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "#334155" }}>
         {texte.replace(/#{1,6}\s/g, "").replace(/\*\*/g, "").replace(/\*/g, "")}
       </p>
     );
@@ -1091,22 +1109,25 @@ function ResumeText({ texte }: { texte: string }) {
     <div className="space-y-3">
       {sections.map((s, i) => {
         const meta = s.title ? getSectionMeta(s.title) : SECTION_META["default"];
-        const isFormulas = s.title.toLowerCase().includes("formule");
-        const html = formatSectionContent(s.content, isFormulas);
+        const html = formatSectionContent(s.content, meta);
         return (
           <div key={i}
             className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ borderLeft: `4px solid ${meta.borderColor}`, backgroundColor: meta.bgColor }}>
+            style={{ borderLeft: `5px solid ${meta.borderColor}`, backgroundColor: meta.bgColor }}>
             {s.title && (
-              <div className="flex items-center gap-2 px-4 pt-3 pb-2">
-                <span className="material-symbols-outlined text-[18px]"
-                  style={{ color: meta.borderColor, fontVariationSettings: "'FILL' 1" }}>
-                  {meta.icon}
-                </span>
-                <p className="font-extrabold text-sm" style={{ color: meta.titleColor }}>{s.title}</p>
+              <div className="flex items-center gap-2.5 px-4 pt-4 pb-2"
+                style={{ borderBottom: `1px solid ${meta.borderColor}20` }}>
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: `${meta.borderColor}18` }}>
+                  <span className="material-symbols-outlined text-[16px]"
+                    style={{ color: meta.borderColor, fontVariationSettings: "'FILL' 1" }}>
+                    {meta.icon}
+                  </span>
+                </div>
+                <p className="font-black text-base leading-tight" style={{ color: meta.titleColor }}>{s.title}</p>
               </div>
             )}
-            <div className="px-4 pb-4 pt-1 text-on-surface"
+            <div className="px-4 pb-4 pt-3"
               dangerouslySetInnerHTML={{ __html: html }} />
           </div>
         );
