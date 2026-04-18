@@ -96,7 +96,16 @@ export default function CoachPage() {
       const systemPrompt = `Tu es le Coach IA personnel de ${profile?.prenom ?? "l'élève"}, préparant le ${exam}${serie ? " série " + serie : ""} au Sénégal.
 J-${days} avant le ${exam}. Scores par matière : ${statsStr}.
 Tu parles toujours par le prénom. Tu donnes des conseils basés sur les vraies données.
-Tu es motivant, bienveillant, précis. Réponses courtes (3-5 phrases max). Tout en français.${programmeContext}`;
+Tu es motivant, bienveillant, précis. Réponses courtes (3-5 phrases max). Tout en français.
+IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. Pas d'astérisques, pas de dièses, pas d'underscores, pas de backticks. Uniquement du texte brut avec des retours à la ligne simples.${programmeContext}`;
+
+      const nettoyer = (t: string) => t
+        .replace(/#{1,6}\s/g, "")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/`{1,3}[^`]*`{1,3}/g, "")
+        .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
+        .trim();
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",
@@ -104,7 +113,8 @@ Tu es motivant, bienveillant, précis. Réponses courtes (3-5 phrases max). Tout
         body: JSON.stringify({ systemPrompt, message: userMsg, history: messages.slice(-6) }),
       });
       const data = await res.json();
-      setMessages(prev => [...prev, { role: "assistant", content: data.message ?? "Désolé, je n'ai pas pu répondre." }]);
+      const rawMsg = data.message ?? "Désolé, je n'ai pas pu répondre.";
+      setMessages(prev => [...prev, { role: "assistant", content: nettoyer(rawMsg) }]);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Erreur de connexion, réessaie." }]);
     } finally {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { createClient } from "@supabase/supabase-js";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -65,16 +66,19 @@ Exactement 5 questions. Tout en français.`;
 Génère 10 questions QCM pour ${matiere}${ctx} ${src}.
 Difficulté progressive : 30% facile, 40% moyen, 30% difficile.
 
+RÈGLE ABSOLUE : dans "choices", chaque élément doit être le TEXTE COMPLET de l'option, jamais une lettre seule.
+RÈGLE ABSOLUE : "correct_answer" doit être le TEXTE COMPLET identique à l'un des éléments de "choices".
+
 Retourne UNIQUEMENT ce JSON :
 {
   "questions": [
     {
       "id": 1,
-      "question": "Énoncé ?",
-      "choices": ["Option A", "Option B", "Option C", "Option D"],
-      "correct_answer": "Option A",
-      "explanation": "Explication de la bonne réponse.",
-      "difficulty": "moyen"
+      "question": "Quel organite contient l'ADN de la cellule ?",
+      "choices": ["Le noyau cellulaire", "Les mitochondries", "La membrane plasmique", "Le cytoplasme"],
+      "correct_answer": "Le noyau cellulaire",
+      "explanation": "Le noyau contient l'ADN organisé en chromosomes.",
+      "difficulty": "facile"
     }
   ]
 }
@@ -140,6 +144,43 @@ Retourne UNIQUEMENT ce JSON :
 Exactement ${questions.length} éléments dans feedback. Tout en français.`;
 }
 
+/* ── Supabase server-side save ──────────────────────────── */
+
+async function saveResumeServer(
+  token: string | null,
+  matiere: string, chapitre: string, contenu: string
+): Promise<boolean> {
+  if (!token || !contenu) {
+    console.error("saveResumeServer: token manquant ou contenu vide");
+    return false;
+  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("saveResumeServer: variables Supabase manquantes");
+    return false;
+  }
+  const sb = createClient(supabaseUrl, supabaseKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+  const { data: { user }, error: authErr } = await sb.auth.getUser(token);
+  if (authErr || !user) {
+    console.error("saveResumeServer: getUser échoué", authErr?.message);
+    return false;
+  }
+  console.log("saveResumeServer: insertion pour", user.id, matiere, chapitre);
+  const { error } = await sb.from("prep_resumes").insert({
+    user_id: user.id, matiere, chapitre, contenu,
+  });
+  if (error) {
+    console.error("saveResumeServer: erreur insert", error.code, error.message, error.details, error.hint);
+    return false;
+  }
+  console.log("saveResumeServer: succès");
+  return true;
+}
+
 /* ── Route ─────────────────────────────────────────────── */
 
 export async function POST(req: Request) {
@@ -159,6 +200,10 @@ export async function POST(req: Request) {
   const quizMode  = (body.quizMode as string) || "qcm";
   const fileBase64 = body.fileBase64 as string | undefined;
   const fileType   = body.fileType as string | undefined;
+
+  // JWT pour sauvegarde côté serveur (uniquement pour resume)
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const jwtToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   try {
     const groq = groqClient();
@@ -223,7 +268,11 @@ export async function POST(req: Request) {
         content = completion.choices[0]?.message?.content ?? "";
       }
 
-      if (isResume) return NextResponse.json({ texte: content.trim() });
+      if (isResume) {
+        const texte = content.trim();
+        const saved = await saveResumeServer(jwtToken, matiere, "", texte);
+        return NextResponse.json({ texte, saved });
+      }
       return NextResponse.json(parseJson(content));
     }
 
@@ -236,7 +285,9 @@ export async function POST(req: Request) {
         max_tokens: 3000,
         temperature: 0.4,
       });
-      return NextResponse.json({ texte: (completion.choices[0]?.message?.content ?? "").trim() });
+      const texte = (completion.choices[0]?.message?.content ?? "").trim();
+      const saved = await saveResumeServer(jwtToken, matiere, chapitre, texte);
+      return NextResponse.json({ texte, saved });
     }
 
     let prompt: string;

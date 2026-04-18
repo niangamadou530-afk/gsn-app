@@ -218,9 +218,16 @@ function GenererPageInner() {
         };
       }
 
+      // Pour le résumé : inclure le token JWT pour la sauvegarde côté serveur
+      const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+      if (genType === "resume") {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.access_token) reqHeaders["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: reqHeaders,
         body: JSON.stringify(body),
       });
 
@@ -257,8 +264,7 @@ function GenererPageInner() {
         }
       } else {
         setResume(data);
-        setResumeSaved(false);
-        await saveResume(data.texte as string ?? "", mat, chap);
+        setResumeSaved(data.saved === true);
         await fetchVideos(mat, chap);
         setPhase("resume_result");
       }
@@ -792,7 +798,7 @@ function GenererPageInner() {
             </div>
           )}
 
-          <ResumeText texte={texte} />
+          <ResumeDisplay texte={texte} />
 
           <button
             onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
@@ -969,7 +975,7 @@ function GenererPageInner() {
                   </button>
                   {isOpen && (
                     <div className="border-t border-outline-variant/15 p-4">
-                      <ResumeText texte={r.contenu} />
+                      <ResumeDisplay texte={r.contenu} />
                     </div>
                   )}
                 </div>
@@ -1083,7 +1089,7 @@ function formatSectionContent(raw: string, meta: SectionMeta): string {
   return out.join("");
 }
 
-function ResumeText({ texte }: { texte: string }) {
+function ResumeDisplay({ texte }: { texte: string }) {
   const rawSections = texte.split(/\n(?=## )/);
   const sections: Array<{ title: string; content: string }> = [];
 
