@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const A  = "#00C9A7";
+const C  = "#111118";
+const B  = "rgba(255,255,255,0.07)";
+const T2 = "#A0A0B0";
+
 type QuizResult = { matiere: string; score: number; total: number; created_at: string };
 type FlashStat  = { matiere: string; total: number; maitrisee: number };
 
@@ -12,19 +17,10 @@ const BFEM_DATE = "2026-07-15";
 
 function daysUntil(d: string) { return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)); }
 
-function scoreColor(pct: number) {
-  if (pct >= 70) return { bg: "#dcfce7", text: "#15803d", bar: "#22c55e" };
-  if (pct >= 45) return { bg: "#fef9c3", text: "#854d0e", bar: "#eab308" };
-  return { bg: "#fee2e2", text: "#991b1b", bar: "#ef4444" };
-}
-
-function ScoreLabel({ pct }: { pct: number }) {
-  const c = scoreColor(pct);
-  return (
-    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: c.bg, color: c.text }}>
-      {pct}%
-    </span>
-  );
+function scoreColor(pct: number): string {
+  if (pct >= 70) return A;
+  if (pct >= 45) return "#FFB800";
+  return "#FF5B79";
 }
 
 export default function ProgressionPage() {
@@ -65,22 +61,16 @@ export default function ProgressionPage() {
   }, [router]);
 
   if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0F" }}>
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: A, borderTopColor: "transparent" }} />
     </div>
   );
 
-  const quizAvg = quiz.length
-    ? Math.round(quiz.reduce((s, q) => s + (q.score / q.total) * 100, 0) / quiz.length)
-    : null;
-
-  const flashMastered = flash.reduce((s, f) => s + f.maitrisee, 0);
-  const flashTotal    = flash.reduce((s, f) => s + f.total, 0);
-  const flashPct      = flashTotal > 0 ? Math.round((flashMastered / flashTotal) * 100) : null;
-
-  const globalScore = quizAvg !== null && flashPct !== null
-    ? Math.round((quizAvg + flashPct) / 2)
-    : (quizAvg ?? flashPct ?? 0);
+  const quizAvg    = quiz.length ? Math.round(quiz.reduce((s, q) => s + (q.score / q.total) * 100, 0) / quiz.length) : null;
+  const flashTotal = flash.reduce((s, f) => s + f.total, 0);
+  const flashMast  = flash.reduce((s, f) => s + f.maitrisee, 0);
+  const flashPct   = flashTotal > 0 ? Math.round((flashMast / flashTotal) * 100) : null;
+  const global     = quizAvg !== null && flashPct !== null ? Math.round((quizAvg + flashPct) / 2) : (quizAvg ?? flashPct ?? 0);
 
   const quizByMat: Record<string, number[]> = {};
   for (const q of quiz) {
@@ -88,109 +78,95 @@ export default function ProgressionPage() {
     quizByMat[q.matiere].push(Math.round((q.score / q.total) * 100));
   }
 
-  const examDate = examType === "BFEM" ? BFEM_DATE : BAC_DATE;
-  const days     = daysUntil(examDate);
-
-  const ringColor = globalScore >= 70 ? "#22c55e" : globalScore >= 45 ? "#f97316" : "#ef4444";
-  const circumference = 2 * Math.PI * 42;
+  const days = daysUntil(examType === "BFEM" ? BFEM_DATE : BAC_DATE);
+  const circ = 2 * Math.PI * 38;
 
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-8">
+    <main className="min-h-screen text-white pb-8" style={{ backgroundColor: "#0A0A0F" }}>
 
-      {/* Header gradient */}
-      <div className="px-6 pt-8 pb-5 relative overflow-hidden" style={{ background: "linear-gradient(145deg, #1e293b, #0f172a)" }}>
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 70% 50%, #FF6B00, transparent)" }} />
-        <div className="relative z-10">
-          <h1 className="text-2xl font-extrabold text-white">Mes Progrès</h1>
-          <p className="text-white/50 text-sm mt-0.5">Quiz · Flashcards · Évolution</p>
-        </div>
+      <div className="px-6 pt-10 pb-5">
+        <h1 className="text-2xl font-extrabold text-white">Mes Progrès</h1>
+        <p className="text-sm mt-0.5 font-medium" style={{ color: T2 }}>Quiz · Flashcards · Évolution</p>
       </div>
 
-      <div className="px-6 space-y-4 -mt-1 pt-4">
+      <div className="px-6 space-y-4">
 
-        {/* Score global + countdown côte à côte */}
+        {/* Score global + countdown */}
         <div className="grid grid-cols-2 gap-3">
-          {/* Score global */}
-          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex flex-col items-center">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Score Global</p>
+          <div className="rounded-2xl p-4 flex flex-col items-center" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: T2 }}>Score Global</p>
             <div className="relative w-20 h-20">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-surface-container)" strokeWidth="12" />
-                <circle cx="50" cy="50" r="42" fill="none" stroke={ringColor} strokeWidth="12"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={circumference * (1 - globalScore / 100)}
-                  strokeLinecap="round" />
+                <circle cx="50" cy="50" r="38" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="10" />
+                <circle cx="50" cy="50" r="38" fill="none" stroke={scoreColor(global)} strokeWidth="10"
+                  strokeDasharray={circ} strokeDashoffset={circ * (1 - global / 100)} strokeLinecap="round" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-black text-on-surface">{globalScore}%</span>
+                <span className="text-lg font-black text-white">{global}%</span>
               </div>
             </div>
-            <p className="text-[10px] text-on-surface-variant mt-2 text-center">
-              {quiz.length} quiz · {flashTotal} flashcards
+            <p className="text-[10px] mt-2 text-center" style={{ color: "#5A5A70" }}>
+              {quiz.length} quiz · {flashTotal} flash
             </p>
           </div>
 
-          {/* Countdown */}
-          <div className="rounded-2xl p-4 shadow-sm flex flex-col justify-between overflow-hidden relative"
-            style={{ background: days > 60 ? "linear-gradient(135deg,#22c55e,#16a34a)" : days > 30 ? "linear-gradient(135deg,#f97316,#ea580c)" : "linear-gradient(135deg,#ef4444,#dc2626)" }}>
-            <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, white, transparent)" }} />
-            <span className="material-symbols-outlined text-white/80 text-[22px] relative z-10" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
-            <div className="relative z-10">
-              <p className="text-white font-black text-3xl leading-none">J-{days}</p>
-              <p className="text-white/70 text-xs font-semibold mt-1">{examType} · {examType === "BFEM" ? "Juil. 2026" : "Juin 2026"}</p>
+          <div className="rounded-2xl p-4 flex flex-col justify-between" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+            <span className="material-symbols-outlined text-[20px]" style={{ color: T2, fontVariationSettings: "'FILL' 1" }}>timer</span>
+            <div>
+              <p className="text-4xl font-black" style={{ color: A }}>J-{days}</p>
+              <p className="text-xs font-semibold mt-1" style={{ color: T2 }}>{examType}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#5A5A70" }}>
+                {examType === "BFEM" ? "15 juil. 2026" : "30 juin 2026"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Stats détaillées */}
+        {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-surface-container-lowest rounded-2xl p-3.5 shadow-sm" style={{ borderLeft: "3px solid #6366f1" }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="material-symbols-outlined text-[16px]" style={{ color: "#6366f1", fontVariationSettings: "'FILL' 1" }}>quiz</span>
-              <p className="text-xs font-bold text-on-surface-variant">Moyenne quiz</p>
+          {[
+            { label: "Moy. quiz", val: quizAvg !== null ? `${quizAvg}%` : "—", sub: `${quiz.length} quiz`, icon: "quiz" },
+            { label: "Flashcards", val: flashPct !== null ? `${flashPct}%` : "—", sub: `${flashMast}/${flashTotal} maîtrisées`, icon: "style" },
+          ].map(s => (
+            <div key={s.label} className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+              <span className="material-symbols-outlined text-[16px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+              <p className="text-2xl font-black text-white mt-2">{s.val}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: T2 }}>{s.sub}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "#5A5A70" }}>{s.label}</p>
             </div>
-            <p className="text-2xl font-black text-on-surface">{quizAvg !== null ? `${quizAvg}%` : "—"}</p>
-            <p className="text-[10px] text-on-surface-variant mt-0.5">{quiz.length} quiz passés</p>
-          </div>
-          <div className="bg-surface-container-lowest rounded-2xl p-3.5 shadow-sm" style={{ borderLeft: "3px solid #10b981" }}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="material-symbols-outlined text-[16px]" style={{ color: "#10b981", fontVariationSettings: "'FILL' 1" }}>style</span>
-              <p className="text-xs font-bold text-on-surface-variant">Flashcards</p>
-            </div>
-            <p className="text-2xl font-black text-on-surface">{flashPct !== null ? `${flashPct}%` : "—"}</p>
-            <p className="text-[10px] text-on-surface-variant mt-0.5">{flashMastered}/{flashTotal} maîtrisées</p>
-          </div>
+          ))}
         </div>
 
         {/* Par matière */}
         {matieres.length > 0 ? (
           <div>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Par matière</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: T2 }}>Par matière</p>
             <div className="space-y-2.5">
               {matieres.map(m => {
                 const scores = quizByMat[m] ?? [];
-                const avg    = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-                const fData  = flash.find(f => f.matiere === m);
-                const fPct   = fData ? Math.round((fData.maitrisee / fData.total) * 100) : null;
-                const c      = avg !== null ? scoreColor(avg) : null;
+                const avg = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+                const fData = flash.find(f => f.matiere === m);
+                const fPct  = fData ? Math.round((fData.maitrisee / fData.total) * 100) : null;
+                const col   = avg !== null ? scoreColor(avg) : A;
 
                 return (
-                  <div key={m} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm"
-                    style={{ borderLeft: `3px solid ${c?.bar ?? "#94a3b8"}` }}>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <p className="font-bold text-on-surface text-sm">{m}</p>
+                  <div key={m} className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}`, borderLeft: `3px solid ${col}` }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-bold text-white text-sm">{m}</p>
                       <div className="flex gap-1.5">
-                        {avg !== null && <ScoreLabel pct={avg} />}
+                        {avg !== null && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: `${col}15`, color: col }}>{avg}%</span>
+                        )}
                         {fPct !== null && (
-                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            {fPct}% flash
-                          </span>
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: "rgba(255,255,255,0.06)", color: T2 }}>{fPct}% flash</span>
                         )}
                       </div>
                     </div>
                     {avg !== null && (
-                      <div className="h-1.5 bg-surface-container rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${avg}%`, backgroundColor: c?.bar }} />
+                      <div className="h-1 w-full rounded-full" style={{ backgroundColor: "rgba(255,255,255,0.06)" }}>
+                        <div className="h-full rounded-full transition-all" style={{ width: `${avg}%`, backgroundColor: col }} />
                       </div>
                     )}
                   </div>
@@ -199,35 +175,30 @@ export default function ProgressionPage() {
             </div>
           </div>
         ) : (
-          <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "linear-gradient(135deg,#FF6B00,#FF9500)" }}>
-              <span className="material-symbols-outlined text-white text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-            </div>
-            <p className="font-bold text-on-surface">Aucune activité encore</p>
-            <p className="text-sm text-on-surface-variant mt-1">Génère un quiz ou des flashcards pour voir tes progrès.</p>
+          <div className="rounded-2xl p-8 text-center" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+            <span className="material-symbols-outlined text-[32px]" style={{ color: "#5A5A70", fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <p className="font-bold text-white mt-3">Aucune activité encore</p>
+            <p className="text-sm mt-1" style={{ color: T2 }}>Génère un quiz ou des flashcards pour voir tes progrès.</p>
           </div>
         )}
 
         {/* Historique quiz */}
         {quiz.length > 0 && (
           <div>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Derniers quiz</p>
+            <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: T2 }}>Derniers quiz</p>
             <div className="space-y-2">
               {quiz.slice(0, 5).map((q, i) => {
                 const pct = Math.round((q.score / q.total) * 100);
-                const c   = scoreColor(pct);
+                const col = scoreColor(pct);
                 return (
-                  <div key={i} className="flex items-center gap-3 bg-surface-container-lowest rounded-xl p-3.5 shadow-sm"
-                    style={{ borderLeft: `3px solid ${c.bar}` }}>
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: c.bg }}>
-                      <span className="material-symbols-outlined text-[16px]" style={{ color: c.text, fontVariationSettings: "'FILL' 1" }}>quiz</span>
-                    </div>
+                  <div key={i} className="flex items-center gap-3 rounded-xl p-3.5"
+                    style={{ backgroundColor: C, border: `1px solid ${B}`, borderLeft: `3px solid ${col}` }}>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-on-surface text-sm truncate">{q.matiere}</p>
-                      <p className="text-xs text-on-surface-variant">{new Date(q.created_at).toLocaleDateString("fr-FR")}</p>
+                      <p className="font-semibold text-white text-sm truncate">{q.matiere}</p>
+                      <p className="text-xs" style={{ color: "#5A5A70" }}>{new Date(q.created_at).toLocaleDateString("fr-FR")}</p>
                     </div>
-                    <span className="text-sm font-black px-3 py-1 rounded-full" style={{ backgroundColor: c.bg, color: c.text }}>
+                    <span className="text-sm font-black px-3 py-1 rounded-full"
+                      style={{ backgroundColor: `${col}15`, color: col }}>
                       {q.score}/{q.total}
                     </span>
                   </div>

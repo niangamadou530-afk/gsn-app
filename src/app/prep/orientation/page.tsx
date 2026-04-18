@@ -5,19 +5,19 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 
+const A  = "#00C9A7";
+const C  = "#111118";
+const B  = "rgba(255,255,255,0.07)";
+const T2 = "#A0A0B0";
+
 type Etablissement = { nom: string; type: string; filiere: string; pourquoi: string; conditions_acces: string; lien_gsn: boolean };
 type OrientationResult = {
-  moyenne: number; mention: string;
-  orientation_principale: string;
+  moyenne: number; mention: string; orientation_principale: string;
   notes_extraites?: Record<string, number>;
   etablissements_recommandes: Etablissement[];
   parcours_gsn_learn: string[];
   message_personnalise: string;
 };
-
-const SECTION_TYPES: { key: keyof OrientationResult; label: string; icon: string; border: string; bg: string; titleColor: string }[] = [
-  { key: "message_personnalise", label: "Message personnalisé", icon: "person", border: "#3b82f6", bg: "#eff6ff", titleColor: "#1d4ed8" },
-];
 
 export default function OrientationPage() {
   const router = useRouter();
@@ -41,8 +41,7 @@ export default function OrientationPage() {
   }, [router]);
 
   async function analyze(file: File) {
-    setAnalyzing(true);
-    setError("");
+    setAnalyzing(true); setError("");
     try {
       const fd = new FormData();
       fd.append("file", file); fd.append("examType", examType); fd.append("serie", serie);
@@ -57,92 +56,91 @@ export default function OrientationPage() {
   }
 
   if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#0A0A0F" }}>
+      <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: A, borderTopColor: "transparent" }} />
     </div>
   );
 
-  const isBFEM = examType === "BFEM";
+  const isBFEM   = examType === "BFEM";
   const docLabel = isBFEM ? "bulletin général annuel" : "relevé de notes ou BAC";
 
+  const mentionBg = result
+    ? result.moyenne >= 14 ? "rgba(0,201,167,0.12)"
+      : result.moyenne >= 10 ? "rgba(255,184,0,0.12)"
+      : "rgba(255,91,121,0.12)"
+    : "";
   const mentionColor = result
-    ? result.moyenne >= 14 ? { grad: "linear-gradient(135deg,#22c55e,#16a34a)", ring: "#bbf7d0" }
-      : result.moyenne >= 10 ? { grad: "linear-gradient(135deg,#f97316,#ea580c)", ring: "#fed7aa" }
-      : { grad: "linear-gradient(135deg,#ef4444,#dc2626)", ring: "#fecaca" }
-    : null;
+    ? result.moyenne >= 14 ? A
+      : result.moyenne >= 10 ? "#FFB800"
+      : "#FF5B79"
+    : "";
 
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-8">
+    <main className="min-h-screen text-white pb-8" style={{ backgroundColor: "#0A0A0F" }}>
 
       {/* Header */}
-      <div className="px-6 pt-8 pb-5 relative overflow-hidden" style={{ background: "linear-gradient(145deg, #1e293b, #0f172a)" }}>
-        <div className="absolute inset-0 opacity-15" style={{ backgroundImage: "radial-gradient(circle at 70% 30%, #FF6B00, transparent)" }} />
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-2xl" style={{ background: "linear-gradient(135deg,#FF6B00,#FF9500)" }}>🎯</div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-white">Orientation</h1>
-            <p className="text-white/50 text-xs font-medium">{isBFEM ? "Lycées recommandés" : "Universités & Grandes écoles"}</p>
-          </div>
-        </div>
+      <div className="px-6 pt-10 pb-5">
+        <h1 className="text-2xl font-extrabold text-white">Orientation</h1>
+        <p className="text-sm mt-0.5 font-medium" style={{ color: T2 }}>
+          {isBFEM ? "Lycées recommandés · BFEM" : "Universités & Grandes écoles · BAC"}
+        </p>
       </div>
 
-      <div className="px-6 pt-4 space-y-4">
+      <div className="px-6 space-y-4">
 
         {!result && (
           <>
-            {/* Zone upload */}
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={analyzing}
-              className="w-full rounded-2xl border-2 border-dashed active:scale-[0.98] transition-transform disabled:opacity-60 overflow-hidden"
-              style={{ borderColor: "#FF6B00", backgroundColor: "#fff7ed" }}>
+            {/* Upload zone */}
+            <button onClick={() => fileRef.current?.click()} disabled={analyzing}
+              className="w-full rounded-2xl active:scale-[0.98] transition-transform disabled:opacity-50 flex flex-col items-center justify-center gap-4 py-12"
+              style={{ backgroundColor: C, border: `2px dashed rgba(0,201,167,0.3)` }}>
               {analyzing ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-10">
-                  <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-                  <p className="text-sm font-semibold text-on-surface-variant">Analyse IA en cours…</p>
-                  <p className="text-xs text-on-surface-variant/60">Cela peut prendre 10-20 secondes</p>
-                </div>
+                <>
+                  <div className="w-10 h-10 rounded-full border-2 border-t-transparent animate-spin"
+                    style={{ borderColor: A, borderTopColor: "transparent" }} />
+                  <p className="text-sm font-semibold" style={{ color: T2 }}>Analyse IA en cours…</p>
+                </>
               ) : (
-                <div className="flex flex-col items-center justify-center gap-3 py-10">
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: "linear-gradient(135deg,#FF6B00,#FF9500)" }}>
-                    <span className="material-symbols-outlined text-white text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+                <>
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: "rgba(0,201,167,0.12)", border: "1px solid rgba(0,201,167,0.2)" }}>
+                    <span className="material-symbols-outlined text-[28px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>upload_file</span>
                   </div>
                   <div className="text-center">
-                    <p className="font-extrabold text-on-surface text-base">Upload ton {docLabel}</p>
-                    <p className="text-sm text-on-surface-variant mt-0.5">Photo · PDF · IA Vision</p>
+                    <p className="font-bold text-white">Upload ton {docLabel}</p>
+                    <p className="text-sm mt-0.5" style={{ color: T2 }}>Photo · PDF · IA Vision</p>
                   </div>
-                  <p className="text-xs text-primary font-semibold bg-primary/10 px-3 py-1 rounded-full">Touche pour choisir un fichier</p>
-                </div>
+                  <span className="text-xs font-semibold px-3 py-1.5 rounded-full"
+                    style={{ backgroundColor: "rgba(0,201,167,0.10)", color: A }}>
+                    Touche pour choisir un fichier
+                  </span>
+                </>
               )}
             </button>
             <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) analyze(f); }} />
 
             {error && (
-              <div className="flex items-start gap-2 p-4 rounded-xl bg-red-50 border border-red-200">
-                <span className="material-symbols-outlined text-red-500 text-[18px] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>error</span>
-                <p className="text-red-700 text-sm">{error}</p>
+              <div className="flex items-start gap-2 p-4 rounded-xl"
+                style={{ backgroundColor: "rgba(255,91,121,0.08)", border: "1px solid rgba(255,91,121,0.2)" }}>
+                <span className="material-symbols-outlined text-[16px] mt-0.5" style={{ color: "#FF5B79", fontVariationSettings: "'FILL' 1" }}>error</span>
+                <p className="text-sm" style={{ color: "#FF5B79" }}>{error}</p>
               </div>
             )}
 
             {/* Comment ça marche */}
-            <div className="rounded-2xl overflow-hidden shadow-sm" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#eff6ff" }}>
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-blue-100">
-                <span className="material-symbols-outlined text-[18px] text-blue-600" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
-                <p className="font-extrabold text-sm text-blue-700">Comment ça marche ?</p>
-              </div>
-              <div className="px-4 py-3 space-y-2">
+            <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+              <p className="font-bold text-white text-sm mb-3">Comment ça marche ?</p>
+              <div className="space-y-3">
                 {[
                   `Prends une photo de ton ${docLabel}`,
                   `L'IA analyse tes résultats (${examType}${serie ? " " + serie : ""})`,
-                  `Tu reçois des recommandations ${isBFEM ? "de lycée (séries L et S)" : "personnalisées au Sénégal"}`,
+                  `Tu reçois des recommandations ${isBFEM ? "de lycée" : "personnalisées"}`,
                 ].map((step, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ backgroundColor: "#3b82f6" }}>
-                      <span className="text-white font-black text-xs">{i + 1}</span>
-                    </div>
-                    <p className="text-sm text-blue-800 leading-relaxed">{step}</p>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-black"
+                      style={{ backgroundColor: "rgba(0,201,167,0.12)", color: A }}>{i + 1}</div>
+                    <p className="text-sm" style={{ color: T2 }}>{step}</p>
                   </div>
                 ))}
               </div>
@@ -150,73 +148,67 @@ export default function OrientationPage() {
           </>
         )}
 
-        {result && mentionColor && (
+        {result && (
           <>
             {/* Moyenne */}
-            <div className="rounded-2xl p-6 text-white text-center relative overflow-hidden shadow-lg" style={{ background: mentionColor.grad }}>
-              <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, white, transparent)" }} />
-              <p className="text-6xl font-black relative z-10">{result.moyenne.toFixed(2)}<span className="text-2xl">/20</span></p>
-              <p className="text-xl font-bold opacity-90 mt-1 relative z-10">{result.mention}</p>
+            <div className="rounded-2xl p-6 text-center" style={{ backgroundColor: mentionBg, border: `1px solid ${mentionColor}30` }}>
+              <p className="text-6xl font-black" style={{ color: mentionColor }}>
+                {result.moyenne.toFixed(2)}<span className="text-2xl text-white">/20</span>
+              </p>
+              <p className="text-lg font-bold mt-1 text-white">{result.mention}</p>
               {result.orientation_principale && (
-                <div className="mt-3 bg-white/20 rounded-xl px-4 py-2 relative z-10 inline-block">
-                  <p className="text-sm font-semibold opacity-95">{result.orientation_principale}</p>
-                </div>
+                <p className="text-sm mt-2" style={{ color: T2 }}>{result.orientation_principale}</p>
               )}
             </div>
 
-            {/* Notes extraites */}
+            {/* Notes */}
             {result.notes_extraites && Object.keys(result.notes_extraites).length > 0 && (
-              <div className="rounded-2xl overflow-hidden shadow-sm" style={{ borderLeft: "4px solid #8b5cf6", backgroundColor: "#f5f3ff" }}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-purple-100">
-                  <span className="material-symbols-outlined text-[18px] text-purple-600" style={{ fontVariationSettings: "'FILL' 1" }}>assignment</span>
-                  <p className="font-extrabold text-sm text-purple-700">Notes extraites</p>
-                </div>
-                <div className="px-4 py-3 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}` }}>
+                <p className="font-bold text-white text-sm mb-3">Notes extraites</p>
+                <div className="grid grid-cols-2 gap-2">
                   {Object.entries(result.notes_extraites).map(([m, n]) => (
-                    <div key={m} className="flex items-center justify-between bg-white/70 rounded-xl px-3 py-2.5 shadow-sm">
-                      <span className="text-xs text-on-surface font-medium truncate">{m}</span>
-                      <span className={`text-xs font-black ml-2 ${n >= 10 ? "text-green-700" : "text-red-600"}`}>{n}/20</span>
+                    <div key={m} className="flex items-center justify-between rounded-xl px-3 py-2.5"
+                      style={{ backgroundColor: "rgba(255,255,255,0.04)", border: `1px solid ${B}` }}>
+                      <span className="text-xs text-white truncate">{m}</span>
+                      <span className="text-xs font-black ml-2" style={{ color: n >= 10 ? A : "#FF5B79" }}>{n}/20</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Message personnalisé */}
+            {/* Message */}
             {result.message_personnalise && (
-              <div className="rounded-2xl overflow-hidden shadow-sm" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#eff6ff" }}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-blue-100">
-                  <span className="material-symbols-outlined text-[18px] text-blue-600" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
-                  <p className="font-extrabold text-sm text-blue-700">Analyse personnalisée</p>
+              <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}`, borderLeft: `3px solid ${A}` }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-[16px]" style={{ color: A, fontVariationSettings: "'FILL' 1" }}>person</span>
+                  <p className="font-bold text-white text-sm">Analyse personnalisée</p>
                 </div>
-                <div className="px-4 py-3">
-                  <p className="text-sm text-blue-900 leading-relaxed">{result.message_personnalise}</p>
-                </div>
+                <p className="text-sm" style={{ color: T2 }}>{result.message_personnalise}</p>
               </div>
             )}
 
             {/* Établissements */}
             {result.etablissements_recommandes?.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Établissements recommandés</p>
+                <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: T2 }}>
+                  Établissements recommandés
+                </p>
                 <div className="space-y-3">
                   {result.etablissements_recommandes.map((e, i) => (
-                    <div key={i} className="rounded-2xl overflow-hidden shadow-sm"
-                      style={{ borderLeft: "4px solid #10b981", backgroundColor: "#f0fdf4" }}>
-                      <div className="flex items-start gap-2 px-4 py-3 border-b border-green-100">
-                        <span className="material-symbols-outlined text-[18px] text-green-600 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+                    <div key={i} className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}`, borderLeft: `3px solid ${A}` }}>
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-extrabold text-sm text-green-800">{e.nom}</p>
-                          <p className="text-xs text-green-700/70 font-medium">{e.type} · {e.filiere}</p>
+                          <p className="font-bold text-white text-sm">{e.nom}</p>
+                          <p className="text-xs mt-0.5 font-medium" style={{ color: T2 }}>{e.type} · {e.filiere}</p>
                         </div>
                         {e.lien_gsn && (
-                          <span className="text-[10px] font-bold bg-primary/15 text-primary px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">GSN Learn</span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: "rgba(0,201,167,0.12)", color: A }}>GSN Learn</span>
                         )}
                       </div>
-                      <div className="px-4 py-3 space-y-1.5">
-                        <p className="text-sm text-green-900 leading-relaxed">{e.pourquoi}</p>
-                        <p className="text-xs text-green-700/70">{e.conditions_acces}</p>
-                      </div>
+                      <p className="text-sm mt-2" style={{ color: T2 }}>{e.pourquoi}</p>
+                      <p className="text-xs mt-1" style={{ color: "#5A5A70" }}>{e.conditions_acces}</p>
                     </div>
                   ))}
                 </div>
@@ -225,27 +217,23 @@ export default function OrientationPage() {
 
             {/* GSN Learn */}
             {result.parcours_gsn_learn?.length > 0 && (
-              <div className="rounded-2xl overflow-hidden shadow-sm" style={{ borderLeft: "4px solid #FF6B00", backgroundColor: "#fff7ed" }}>
-                <div className="flex items-center gap-2 px-4 py-3 border-b border-orange-100">
-                  <span className="material-symbols-outlined text-[18px] text-[#FF6B00]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-                  <p className="font-extrabold text-sm text-[#c2410c]">Parcours GSN Learn recommandés</p>
+              <div className="rounded-2xl p-4" style={{ backgroundColor: C, border: `1px solid ${B}`, borderLeft: `3px solid ${A}` }}>
+                <p className="font-bold text-white text-sm mb-3">Parcours GSN Learn recommandés</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {result.parcours_gsn_learn.map(p => (
+                    <span key={p} className="text-xs font-bold px-3 py-1.5 rounded-full"
+                      style={{ backgroundColor: "rgba(0,201,167,0.10)", color: A }}>{p}</span>
+                  ))}
                 </div>
-                <div className="px-4 py-3">
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {result.parcours_gsn_learn.map(p => (
-                      <span key={p} className="text-xs font-bold bg-primary/15 text-primary px-3 py-1.5 rounded-full">{p}</span>
-                    ))}
-                  </div>
-                  <Link href="/learn" className="flex items-center gap-1.5 text-sm font-bold text-primary">
-                    Voir GSN Learn <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                  </Link>
-                </div>
+                <Link href="/learn" className="flex items-center gap-1 text-sm font-bold" style={{ color: A }}>
+                  Voir GSN Learn <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </Link>
               </div>
             )}
 
             <button onClick={() => setResult(null)}
-              className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform shadow-lg"
-              style={{ backgroundColor: "#FF6B00" }}>
+              className="w-full py-4 font-black rounded-2xl active:scale-[0.98] transition-transform"
+              style={{ backgroundColor: A, color: "#003328" }}>
               {isBFEM ? "Analyser un autre bulletin" : "Analyser un autre relevé"}
             </button>
           </>
