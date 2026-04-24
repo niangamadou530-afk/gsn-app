@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getMatieres, getChapitres } from "@/data/programmes";
+import { getMatieres, getMatiereData } from "@/data/programmes";
 
 const BAC_DATE  = "2026-06-30";
 const BFEM_DATE = "2026-07-15";
@@ -85,9 +85,14 @@ export default function CoachPage() {
       for (const mat of matieresList) {
         const keywords = mat.toLowerCase().split(/[\s-]+/).filter(k => k.length > 3);
         if (keywords.some(k => msgLower.includes(k))) {
-          const chapitres = getChapitres(exam, serie || "", mat).filter(c => c !== "Autre");
-          if (chapitres.length > 0) {
-            programmeContext = `\n\nPROGRAMME OFFICIEL ${mat.toUpperCase()} (${exam}${serie ? " " + serie : ""}) :\n${chapitres.map(c => `• ${c}`).join("\n")}`;
+          const data = getMatiereData(exam, serie || "", mat);
+          const chapitres = (data?.chapitres ?? []).filter(c => c !== "Autre");
+          if (chapitres.length > 0 || data?.examFormat) {
+            const parts = [`\n\nPROGRAMME OFFICIEL ${mat.toUpperCase()} (${exam}${serie ? " " + serie : ""}) :`];
+            if (data?.examFormat) parts.push(`Format épreuve : ${data.examFormat}`);
+            if (data?.pointsCles?.length) parts.push(`Points souvent évalués : ${data.pointsCles.join(" | ")}`);
+            if (chapitres.length > 0) parts.push(`Chapitres : ${chapitres.map(c => `• ${c}`).join(", ")}`);
+            programmeContext = parts.join("\n");
           }
           break;
         }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getMatiereData } from "@/data/programmes";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -26,10 +27,20 @@ const isAnglais = (m: string) => m.toLowerCase().includes("anglais") || m.toLowe
 
 /* ── Prompts ─────────────────────────────────────────────── */
 
+function buildProgCtx(matiere: string, chapitre: string, examType: string, serie: string): string {
+  const data = getMatiereData(examType, serie, matiere);
+  if (!data) return "";
+  const parts: string[] = [];
+  if (data.examFormat) parts.push(`Format de l'épreuve : ${data.examFormat}`);
+  if (data.pointsCles?.length) parts.push(`Points souvent évalués : ${data.pointsCles.join(" ; ")}`);
+  return parts.length ? `\n[PROGRAMME OFFICIEL — ${examType}${serie ? " " + serie : ""}]\n${parts.join("\n")}\n` : "";
+}
+
 function flashcardsPrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean): string {
   const src = fromDoc
     ? "based ONLY on the content of the provided document"
     : `based on the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
+  const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
 
   if (isAnglais(matiere)) {
     const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
@@ -37,7 +48,7 @@ function flashcardsPrompt(matiere: string, chapitre: string, examType: string, s
 Generate 12 flashcards for English${ctx} ${src}.
 RECTO: question or key notion in ENGLISH ONLY. One short sentence.
 VERSO: English answer, then the separator |||, then French explanation. All on one line, no line breaks.
-
+${progCtx}
 Return ONLY this JSON:
 {
   "flashcards": [
@@ -45,7 +56,7 @@ Return ONLY this JSON:
   ]
 }
 CRITICAL: The verso value must be a single-line string with no line breaks. Use ||| as the only separator.
-Exactly 12 flashcards. Recto in English only.`;
+Exactly 12 flashcards. Recto in English only. Focus on what is evaluated in the exam.`;
   }
 
   const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
@@ -54,28 +65,29 @@ Génère 12 flashcards pour ${matiere}${ctx} ${src}.
 Recto : notion ou question clé courte.
 Verso : explication claire et complète.
 Contenu fidèle au programme officiel sénégalais.
-
+${progCtx}
 Retourne UNIQUEMENT ce JSON :
 {
   "flashcards": [
     { "recto": "Question ou notion ?", "verso": "Réponse complète et claire." }
   ]
 }
-Exactement 12 flashcards. Tout en français.`;
+Exactement 12 flashcards. Tout en français. Privilégie les notions souvent évaluées aux examens.`;
 }
 
 function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean): string {
   const src = fromDoc
     ? "based ONLY on the content of the provided document"
     : `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
+  const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
 
   if (isAnglais(matiere)) {
     const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
     if (quizMode === "redaction") {
       return `You are an English teacher for the Senegalese ${examType}.
 Generate 5 open-ended questions for English${ctx} ${src}.
-ALL questions must be in ENGLISH ONLY.
-
+ALL questions must be in ENGLISH ONLY. Focus on what is evaluated in the exam.
+${progCtx}
 Return ONLY this JSON:
 {
   "questions": [
@@ -87,7 +99,8 @@ Exactly 5 questions. ALL in English only.`;
     return `You are an English teacher for the Senegalese ${examType}.
 Generate 10 multiple choice questions for English${ctx} ${src}.
 ALL questions and ALL answer choices must be in ENGLISH ONLY.
-
+Focus on what is most evaluated in the actual exam.
+${progCtx}
 ABSOLUTE RULE: each element in "choices" must be the COMPLETE TEXT of the answer, never a single letter.
 ABSOLUTE RULE: "correct_answer" must be the COMPLETE TEXT identical to one of the "choices" elements.
 
@@ -111,8 +124,8 @@ Exactly 10 QCM questions with 4 choices each. ALL in English only.`;
   if (quizMode === "redaction") {
     return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 5 questions de développement pour ${matiere}${ctx} ${src}.
-Questions ouvertes qui demandent une rédaction argumentée.
-
+Questions ouvertes qui demandent une rédaction argumentée, du type de celles qui tombent au ${examType}.
+${progCtx}
 Retourne UNIQUEMENT ce JSON :
 {
   "questions": [
@@ -124,7 +137,8 @@ Exactement 5 questions. Tout en français.`;
   return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 10 questions QCM pour ${matiere}${ctx} ${src}.
 Difficulté progressive : 30% facile, 40% moyen, 30% difficile.
-
+Porte sur les notions réellement évaluées au ${examType} sénégalais.
+${progCtx}
 RÈGLE ABSOLUE : dans "choices", chaque élément doit être le TEXTE COMPLET de l'option, jamais une lettre seule.
 RÈGLE ABSOLUE : "correct_answer" doit être le TEXTE COMPLET identique à l'un des éléments de "choices".
 
@@ -148,6 +162,7 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
   const src = fromDoc
     ? "en te basant UNIQUEMENT sur le contenu du document fourni"
     : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
+  const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
 
   // Anglais : format bilingue
   if (isAnglais(matiere)) {
@@ -158,7 +173,7 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
 ${topicLine}
 Génère un résumé bilingue complet ${src}.
 Réponds en texte brut structuré, pas en JSON.
-
+${progCtx}
 FORMAT OBLIGATOIRE pour chaque section :
 - Explications en français
 - Exemples en anglais en italique (*exemple en anglais*)
@@ -200,7 +215,7 @@ Sois précis et pédagogique.`;
 ${topicLine}
 Génère un résumé complet, détaillé et structuré ${src}.
 Réponds en texte brut structuré, pas en JSON.
-
+${progCtx}
 Structure ton résumé avec ces sections :
 
 ## Introduction
