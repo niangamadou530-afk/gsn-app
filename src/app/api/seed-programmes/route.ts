@@ -5,11 +5,12 @@ import { PROGRAMMES } from "@/data/programmes";
 
 const SEED_KEY = "gsn-prep-seed-2024";
 
+// Utilise la service role key pour bypasser RLS (seed admin uniquement)
 function sb() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 function groqClient() {
@@ -23,10 +24,22 @@ function sleep(ms: number) {
 }
 
 function parseJson(raw: string): unknown {
-  const cleaned = raw.replace(/```json|```/g, "").replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ").trim();
+  // 1. Retire markdown backticks
+  let cleaned = raw.replace(/```json|```/g, "");
+  // 2. Remplace les caractères de contrôle hors JSON (sauf \t, \n, \r)
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
+  // 3. Extrait le bloc JSON
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Pas de JSON dans la réponse");
-  return JSON.parse(match[0]);
+  let jsonStr = match[0];
+  // 4. Échappe les newlines/tabs littéraux à l'intérieur des strings JSON
+  jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (strVal) =>
+    strVal
+      .replace(/\n/g, "\\n")
+      .replace(/\r/g, "\\r")
+      .replace(/\t/g, "\\t")
+  );
+  return JSON.parse(jsonStr);
 }
 
 type ContenuRow = {
