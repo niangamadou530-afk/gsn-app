@@ -112,10 +112,37 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
         .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
         .trim();
 
+      // Détecter la matière et le chapitre dans le message pour enrichir le contexte DB
+      let detectedMatiere = "";
+      let detectedChapitre = "";
+      for (const mat of matieresList) {
+        const keywords = mat.toLowerCase().split(/[\s-]+/).filter(k => k.length > 3);
+        if (keywords.some(k => msgLower.includes(k))) {
+          detectedMatiere = mat;
+          // Cherche un chapitre mentionné dans le message
+          const data = getMatiereData(exam, serie || "", mat);
+          for (const ch of data?.chapitres ?? []) {
+            if (ch !== "Autre" && msgLower.includes(ch.toLowerCase().slice(0, 10))) {
+              detectedChapitre = ch;
+              break;
+            }
+          }
+          break;
+        }
+      }
+
       const res = await fetch("/api/prep-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ systemPrompt, message: userMsg, history: messages.slice(-6) }),
+        body: JSON.stringify({
+          systemPrompt,
+          message: userMsg,
+          history: messages.slice(-6),
+          matiere: detectedMatiere,
+          chapitre: detectedChapitre,
+          examen: exam,
+          serie: serie || "",
+        }),
       });
       const data = await res.json();
       const rawMsg = data.message ?? "Désolé, je n'ai pas pu répondre.";

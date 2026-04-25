@@ -9,6 +9,13 @@ const groqClient = () => {
   return new Groq({ apiKey });
 };
 
+function sbClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
 function sysJson() {
   return { role: "system" as const, content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown ni backticks." };
 }
@@ -25,6 +32,35 @@ function parseJson(raw: string): unknown {
 
 const isAnglais = (m: string) => m.toLowerCase().includes("anglais") || m.toLowerCase().includes("english");
 
+/* ── Contenu officiel Supabase ───────────────────────────── */
+
+type ContenuOfficiel = { contenu: string; points_cles: string[] | null; formules: string[] | null } | null;
+
+async function fetchContenu(examType: string, serie: string, matiere: string, chapitre: string): Promise<ContenuOfficiel> {
+  if (!chapitre || chapitre === "Autre") return null;
+  try {
+    const { data } = await sbClient()
+      .from("programmes_contenu")
+      .select("contenu, points_cles, formules")
+      .eq("examen", examType)
+      .eq("serie", serie)
+      .eq("matiere", matiere)
+      .eq("chapitre", chapitre)
+      .maybeSingle();
+    return data as ContenuOfficiel;
+  } catch {
+    return null;
+  }
+}
+
+function buildContenuCtx(contenu: ContenuOfficiel): string {
+  if (!contenu?.contenu) return "";
+  const parts = [`\n\nCONTENU OFFICIEL DU PROGRAMME SÉNÉGALAIS:\n${contenu.contenu}`];
+  if (contenu.points_cles?.length) parts.push(`\nPOINTS CLÉS:\n${contenu.points_cles.join("\n")}`);
+  if (contenu.formules?.length)    parts.push(`\nFORMULES:\n${contenu.formules.join("\n")}`);
+  return parts.join("");
+}
+
 /* ── Prompts ─────────────────────────────────────────────── */
 
 function buildProgCtx(matiere: string, chapitre: string, examType: string, serie: string): string {
@@ -36,7 +72,7 @@ function buildProgCtx(matiere: string, chapitre: string, examType: string, serie
   return parts.length ? `\n[PROGRAMME OFFICIEL — ${examType}${serie ? " " + serie : ""}]\n${parts.join("\n")}\n` : "";
 }
 
-function flashcardsPrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean): string {
+function flashcardsPrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
   const src = fromDoc
     ? "based ONLY on the content of the provided document"
     : `based on the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
@@ -48,7 +84,7 @@ function flashcardsPrompt(matiere: string, chapitre: string, examType: string, s
 Generate 12 flashcards for English${ctx} ${src}.
 RECTO: question or key notion in ENGLISH ONLY. One short sentence.
 VERSO: English answer, then the separator |||, then French explanation. All on one line, no line breaks.
-${progCtx}
+${progCtx}${contenuCtx}
 Return ONLY this JSON:
 {
   "flashcards": [
@@ -65,7 +101,7 @@ Génère 12 flashcards pour ${matiere}${ctx} ${src}.
 Recto : notion ou question clé courte.
 Verso : explication claire et complète.
 Contenu fidèle au programme officiel sénégalais.
-${progCtx}
+${progCtx}${contenuCtx}
 Retourne UNIQUEMENT ce JSON :
 {
   "flashcards": [
@@ -75,7 +111,7 @@ Retourne UNIQUEMENT ce JSON :
 Exactement 12 flashcards. Tout en français. Privilégie les notions souvent évaluées aux examens.`;
 }
 
-function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean): string {
+function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean, contenuCtx = ""): string {
   const src = fromDoc
     ? "based ONLY on the content of the provided document"
     : `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
@@ -87,7 +123,7 @@ function quizPrompt(matiere: string, chapitre: string, examType: string, serie: 
       return `You are an English teacher for the Senegalese ${examType}.
 Generate 5 open-ended questions for English${ctx} ${src}.
 ALL questions must be in ENGLISH ONLY. Focus on what is evaluated in the exam.
-${progCtx}
+${progCtx}${contenuCtx}
 Return ONLY this JSON:
 {
   "questions": [
@@ -100,7 +136,7 @@ Exactly 5 questions. ALL in English only.`;
 Generate 10 multiple choice questions for English${ctx} ${src}.
 ALL questions and ALL answer choices must be in ENGLISH ONLY.
 Focus on what is most evaluated in the actual exam.
-${progCtx}
+${progCtx}${contenuCtx}
 ABSOLUTE RULE: each element in "choices" must be the COMPLETE TEXT of the answer, never a single letter.
 ABSOLUTE RULE: "correct_answer" must be the COMPLETE TEXT identical to one of the "choices" elements.
 
@@ -125,7 +161,7 @@ Exactly 10 QCM questions with 4 choices each. ALL in English only.`;
     return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 5 questions de développement pour ${matiere}${ctx} ${src}.
 Questions ouvertes qui demandent une rédaction argumentée, du type de celles qui tombent au ${examType}.
-${progCtx}
+${progCtx}${contenuCtx}
 Retourne UNIQUEMENT ce JSON :
 {
   "questions": [
@@ -138,7 +174,7 @@ Exactement 5 questions. Tout en français.`;
 Génère 10 questions QCM pour ${matiere}${ctx} ${src}.
 Difficulté progressive : 30% facile, 40% moyen, 30% difficile.
 Porte sur les notions réellement évaluées au ${examType} sénégalais.
-${progCtx}
+${progCtx}${contenuCtx}
 RÈGLE ABSOLUE : dans "choices", chaque élément doit être le TEXTE COMPLET de l'option, jamais une lettre seule.
 RÈGLE ABSOLUE : "correct_answer" doit être le TEXTE COMPLET identique à l'un des éléments de "choices".
 
@@ -158,7 +194,7 @@ Retourne UNIQUEMENT ce JSON :
 Exactement 10 questions QCM avec 4 choix chacune. Tout en français.`;
 }
 
-function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean): string {
+function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
   const src = fromDoc
     ? "en te basant UNIQUEMENT sur le contenu du document fourni"
     : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
@@ -173,7 +209,7 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
 ${topicLine}
 Génère un résumé bilingue complet ${src}.
 Réponds en texte brut structuré, pas en JSON.
-${progCtx}
+${progCtx}${contenuCtx}
 FORMAT OBLIGATOIRE pour chaque section :
 - Explications en français
 - Exemples en anglais en italique (*exemple en anglais*)
@@ -215,7 +251,7 @@ Sois précis et pédagogique.`;
 ${topicLine}
 Génère un résumé complet, détaillé et structuré ${src}.
 Réponds en texte brut structuré, pas en JSON.
-${progCtx}
+${progCtx}${contenuCtx}
 Structure ton résumé avec ces sections :
 
 ## Introduction
@@ -337,6 +373,12 @@ export async function POST(req: Request) {
   try {
     const groq = groqClient();
 
+    // Récupérer le contenu officiel du chapitre en base (mode B uniquement, pas document)
+    const contenuOfficiel = (mode !== "document" && chapitre && chapitre !== "Autre")
+      ? await fetchContenu(examType, serie, matiere, chapitre)
+      : null;
+    const contenuCtx = buildContenuCtx(contenuOfficiel);
+
     /* ── Evaluate rédaction ── */
     if (mode === "evaluate") {
       const questions = body.questions as Array<{ id: number; question: string }>;
@@ -405,9 +447,9 @@ export async function POST(req: Request) {
       return NextResponse.json(parseJson(content));
     }
 
-    /* ── Knowledge mode (Mode B) ── */
+    /* ── Knowledge mode (Mode B) — contenuCtx injecté ── */
     if (type === "resume") {
-      const prompt = resumePrompt(matiere, chapitre, examType, serie, false);
+      const prompt = resumePrompt(matiere, chapitre, examType, serie, false, contenuCtx);
       const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: "llama-3.1-8b-instant",
@@ -420,8 +462,8 @@ export async function POST(req: Request) {
     }
 
     let prompt: string;
-    if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false);
-    else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false);
+    if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false, contenuCtx);
+    else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false, contenuCtx);
 
     const completion = await groq.chat.completions.create({
       messages: [sysJson(), { role: "user", content: prompt }],

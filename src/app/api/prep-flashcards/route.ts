@@ -1,5 +1,44 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { createClient } from "@supabase/supabase-js";
+
+/* ── Supabase + contenu officiel ───────────────────────── */
+
+function sbClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+type ContenuOfficiel = { contenu: string; points_cles: string[] | null; formules: string[] | null } | null;
+
+async function fetchContenu(examType: string, serie: string, matiere: string, chapitre: string): Promise<ContenuOfficiel> {
+  if (!chapitre || chapitre === "Autre") return null;
+  try {
+    const { data } = await sbClient()
+      .from("programmes_contenu")
+      .select("contenu, points_cles, formules")
+      .eq("examen", examType)
+      .eq("serie", serie)
+      .eq("matiere", matiere)
+      .eq("chapitre", chapitre)
+      .maybeSingle();
+    return data as ContenuOfficiel;
+  } catch {
+    return null;
+  }
+}
+
+function buildContenuCtx(contenu: ContenuOfficiel): string {
+  if (!contenu?.contenu) return "";
+  const parts = [`\n\nCONTENU OFFICIEL DU PROGRAMME SÉNÉGALAIS:\n${contenu.contenu}`];
+  if (contenu.points_cles?.length) parts.push(`\nPOINTS CLÉS:\n${contenu.points_cles.join("\n")}`);
+  if (contenu.formules?.length)    parts.push(`\nFORMULES:\n${contenu.formules.join("\n")}`);
+  return parts.join("");
+}
+
+/* ── Route ─────────────────────────────────────────────── */
 
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
@@ -13,7 +52,15 @@ export async function POST(request: Request) {
   const count           = Math.min(body?.count || 10, 20);
   const programmeContenu: string = body?.programmeContenu || "";
 
-  const prompt = `Génère ${count} flashcards pour le chapitre "${chapter}" en ${subject}, niveau ${examType}${serie ? " série " + serie : ""}.${programmeContenu ? `\n\nPROGRAMME OFFICIEL DU CHAPITRE :\n${programmeContenu}\n\nBase-toi sur ce contenu pour générer des flashcards précises et fidèles au programme.` : ""}
+  // Récupérer contenu officiel depuis Supabase
+  const contenuOfficiel = await fetchContenu(examType, serie, subject, chapter);
+  const contenuCtx = buildContenuCtx(contenuOfficiel);
+
+  // Combiner : contenu DB (prioritaire) + contenu passé par le client (fallback)
+  const contexteFinal = contenuCtx
+    || (programmeContenu ? `\n\nPROGRAMME OFFICIEL DU CHAPITRE :\n${programmeContenu}\n\nBase-toi sur ce contenu pour générer des flashcards précises et fidèles au programme.` : "");
+
+  const prompt = `Génère ${count} flashcards pour le chapitre "${chapter}" en ${subject}, niveau ${examType}${serie ? " série " + serie : ""}.${contexteFinal}
 
 Retourne UNIQUEMENT ce JSON valide :
 {
@@ -36,7 +83,7 @@ Règles :
 - explication : contexte, exemple d'application, astuce mnémotechnique
 - Exactement ${count} flashcards
 - Mix de difficultés : 30% facile, 40% moyen, 30% difficile
-- Adapté au programme officiel du ${examType}
+- Adapté au programme officiel du ${examType} sénégalais
 - Tout en français`;
 
   try {
