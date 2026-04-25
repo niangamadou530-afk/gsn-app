@@ -734,86 +734,721 @@ export const PROGRAMMES: {
     "S3": {
       "Mathématiques": {
         chapitres: [
+          "Barycentre de points pondérés",
+          "Géométrie plane : calcul vectoriel, isométries, similitudes",
+          "Produit scalaire et applications",
+          "Courbes paramétrées",
+          "Coniques : ellipse, parabole, hyperbole",
+          "Géométrie dans l'espace : vecteurs, plans, droites",
           "Probabilités et dénombrement : loi binomiale",
-          "Nombres complexes",
-          "Arithmétique",
-          "Suites numériques",
-          "Fonctions : limites, dérivation, étude",
-          "Calcul intégral",
-          "Géométrie analytique",
+          "Nombres complexes : forme algébrique, trigonométrique, exponentielle",
+          "Systèmes d'équations linéaires",
+          "Arithmétique : PGCD, congruences",
+          "Suites numériques : convergence, récurrence",
+          "Fonctions numériques : limites, continuité, dérivation",
+          "Fonctions logarithme et exponentielle",
+          "Calcul intégral : primitives, applications géométriques",
+          "Équations différentielles linéaires",
           "Autre"
         ],
         examFormat: "Épreuve de 4h (coef 4). Problème d'analyse + exercice de géométrie/probabilités.",
-        pointsCles: ["Étude de fonctions", "Calcul intégral", "Probabilités"]
+        pointsCles: [
+          "Étude de fonctions (ln, exp, dérivée, variations)",
+          "Calcul intégral : primitives, aires",
+          "Nombres complexes : opérations, forme trigonométrique",
+          "Probabilités : loi binomiale, espérance",
+          "Suites : terme général, récurrence"
+        ]
       },
       "Sciences Physiques": {
         chapitres: [
-          "Cinématique et dynamique",
-          "Électricité : circuits RLC, oscillations",
-          "Optique : interférences",
-          "Réactions nucléaires",
-          "Chimie organique", "Autre"
+          "Cinématique du point : vitesse, accélération, chute libre",
+          "Bases de la dynamique : lois de Newton",
+          "Applications : plan incliné, pendule, satellite",
+          "Gravitation universelle",
+          "Champ magnétique : propriétés, sources",
+          "Mouvement d'une particule chargée dans un champ magnétique",
+          "Loi de Laplace : force sur un conducteur",
+          "Induction magnétique : dipôle RL",
+          "Dipôle RC : charge et décharge",
+          "Oscillations électriques libres et forcées (RLC)",
+          "Oscillations mécaniques libres (pendule, ressort)",
+          "Interférences lumineuses : fentes de Young",
+          "Effet photoélectrique",
+          "Niveaux d'énergie de l'atome : spectre de l'hydrogène",
+          "Réactions nucléaires : fission, fusion, radioactivité",
+          "Alcools : nomenclature, propriétés, réactions",
+          "Amines : nomenclature, basicité",
+          "Acides carboxyliques et dérivés : estérification",
+          "Cinétique chimique : vitesse, facteurs",
+          "Autoprotolyse de l'eau, pH, indicateurs colorés",
+          "Réactions acide-base : dosage",
+          "Acides alpha-aminés et stéréochimie",
+          "Autre"
         ],
-        examFormat: "Épreuve de 4h (coef 5). Problème de physique + problème de chimie.",
-        pointsCles: ["Mécanique newtonienne", "Circuits électriques", "Réactions nucléaires"]
+        examFormat: "Épreuve de 4h (coef 5). Problème de physique (10 pts) + Problème de chimie (10 pts).",
+        pointsCles: [
+          "Lois de Newton : équation du mouvement",
+          "Circuits RLC : oscillations, résonance",
+          "Réactions nucléaires : écriture et bilan énergétique",
+          "Titrages acido-basiques",
+          "Interférences lumineuses : calcul de λ"
+        ]
       },
-      "Construction Mécanique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Philosophie": { chapitres: ["Autre"], examFormat: "Épreuve de 4h. Dissertation.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h. Résumé + commentaire.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Construction Mécanique": {
+        chapitres: [
+          "C1T : Conception de liaison pivot par roulement",
+          "C2T : Introduction à la transmission de puissance",
+          "C3T : Roues de friction",
+          "C4T : Engrenages",
+          "C5T : Transmission par liens flexibles",
+          "C6T : Variateurs de vitesses",
+          "C7T : Réducteurs et boîtes de vitesses",
+          "C8T : Accouplements",
+          "C9T : Systèmes de transformation de mouvement",
+          "C10T : Hydraulique et pneumatique",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Dossier technique avec analyse de solutions constructives.",
+        pointsCles: [
+          "Liaisons mécaniques et guidage en rotation",
+          "Transmissions de puissance (engrenages, courroies, chaînes)",
+          "Réducteurs : rapport de réduction, rendement",
+          "Systèmes bielle-manivelle, vis-écrou",
+          "Circuits hydrauliques et pneumatiques"
+        ]
+      },
+      "Philosophie": {
+        chapitres: [
+          "Les origines et la spécificité de la philosophie",
+          "Les grandes interrogations philosophiques",
+          "L'État", "L'art et le réel", "Le travail",
+          "Langage et communication", "Nature et culture",
+          "La liberté", "Conscient et inconscient", "Individu et société",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Dissertation ou explication de texte.",
+        pointsCles: ["Méthode dissertation", "Liberté, État, Travail"]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte littéraire + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: sciences, technology, environment",
+          "Grammar: all tenses, passive, reported speech",
+          "Conditionals", "Modal verbs",
+          "Writing: essay, formal letter", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices de langue + production écrite.",
+        pointsCles: ["Compréhension de texte", "Passif", "Production écrite"]
+      }
     },
 
     /* ── Série S4 (Sciences agro-environnementales) ── */
     "S4": {
-      "SVT": { chapitres: ["Autre"], examFormat: "Épreuve de 4h (coef 5).", pointsCles: [] },
-      "Sciences Physiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Mathématiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Phyto-technique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Écologie et Environnement": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Philosophie": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Mathématiques": {
+        chapitres: [
+          "Fonctions numériques : limites, continuité, dérivation",
+          "Fonction réciproque d'une fonction bijective",
+          "Fonctions logarithme et exponentielle",
+          "Fonctions puissances et irrationnelles",
+          "Primitives et calcul intégral : définition, propriétés",
+          "Applications du calcul intégral (aires, volumes)",
+          "Équations différentielles du 1er ordre",
+          "Suites numériques : convergence, limites",
+          "Probabilités : dénombrement, loi binomiale, espérance",
+          "Statistiques à deux variables : corrélation, régression linéaire",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Exercices d'analyse (fonctions, intégrales) + probabilités/statistiques.",
+        pointsCles: [
+          "Étude de fonctions (ln, exp) : dérivée, variations, tableau",
+          "Calcul intégral : primitives, aires entre deux courbes",
+          "Probabilités : loi binomiale, espérance, variance",
+          "Statistiques à deux variables : droite de régression",
+          "Suites : terme général, convergence"
+        ]
+      },
+      "Sciences Physiques": {
+        chapitres: [
+          "Cinématique du point : vitesse, accélération, mouvements",
+          "Bases de la dynamique : lois de Newton",
+          "Applications : plan incliné, pendule, satellite",
+          "Gravitation universelle",
+          "Champ magnétique : propriétés, sources",
+          "Induction magnétique : dipôle RL",
+          "Dipôle RC : charge et décharge",
+          "Oscillations électriques et mécaniques",
+          "Réactions nucléaires : radioactivité, fission, fusion",
+          "Alcools : propriétés, nomenclature, réactions",
+          "Acides carboxyliques et dérivés : estérification",
+          "Réactions acide-base : pH, dosage",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Problème de physique + problème de chimie.",
+        pointsCles: [
+          "Lois de Newton : équations du mouvement",
+          "Radioactivité : lois de conservation, demi-vie",
+          "Circuits RC/RL : charge, décharge, constante de temps",
+          "Estérification : équilibre, rendement",
+          "Titrages acido-basiques"
+        ]
+      },
+      "SVT": {
+        chapitres: [
+          "Organisation du système nerveux cérébro-spinal",
+          "Tissu nerveux : neurone, propriétés, influx nerveux",
+          "Activité cardiaque et régulation de la pression artérielle",
+          "Immunologie : réponse immunitaire, vaccins",
+          "Régulation de la glycémie : insuline, glucagon, diabète",
+          "Milieu intérieur : rein, homéostasie",
+          "Reproduction chez les mammifères",
+          "Génétique : lois de Mendel, hérédité",
+          "Hérédité humaine : maladies héréditaires",
+          "Notions fondamentales d'écologie : biocénose, biotope",
+          "Les ressources naturelles et leur gestion durable",
+          "L'aménagement de l'espace : agriculture durable",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 5). Exercice 1 (biologie : physiologie, immunologie) + Exercice 2 (écologie, agronomie). Documents à exploiter.",
+        pointsCles: [
+          "Transmission de l'influx nerveux : synapse, neurotransmetteurs",
+          "Immunité spécifique et non spécifique",
+          "Génétique mendélienne : croisements mono et dihybrides",
+          "Régulation glycémique : rôle pancréas et foie",
+          "Écologie : cycles biogéochimiques, ressources naturelles"
+        ]
+      },
+      "Phyto-technique": {
+        chapitres: [
+          "Le sol : composition, propriétés physico-chimiques, fertilité",
+          "Les plantes cultivées : principales cultures du Sénégal",
+          "Techniques de semis et de plantation",
+          "Irrigation et gestion de l'eau agricole",
+          "Engrais et fertilisation des sols",
+          "Protection des cultures : maladies, ravageurs, pesticides",
+          "Production végétale : céréales, légumineuses, tubercules",
+          "L'horticulture : maraîchage et arboriculture fruitière",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Analyse de situation agronomique, exploitation de données techniques.",
+        pointsCles: [
+          "Fertilité du sol et correction des déficiences",
+          "Calendrier cultural des principales cultures sénégalaises",
+          "Techniques d'irrigation : goutte-à-goutte, aspersion",
+          "Lutte intégrée contre les ravageurs",
+          "Calcul de doses d'engrais et de rendement"
+        ]
+      },
+      "Écologie et Environnement": {
+        chapitres: [
+          "Notions fondamentales d'écologie : écosystème, biome",
+          "Chaînes alimentaires et réseaux trophiques",
+          "Cycles biogéochimiques : carbone, azote, eau",
+          "Biodiversité : définition, niveaux, menaces",
+          "La dégradation des écosystèmes : désertification, déforestation",
+          "Les ressources naturelles renouvelables et non renouvelables",
+          "La gestion durable de l'environnement",
+          "Changements climatiques : causes, conséquences, adaptation",
+          "Législation environnementale au Sénégal",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 4). Étude de cas environnemental avec exploitation de données.",
+        pointsCles: [
+          "Structure et fonctionnement d'un écosystème",
+          "Impact de l'agriculture sur l'environnement",
+          "Désertification au Sénégal : causes et solutions",
+          "Biodiversité : menaces et conservation",
+          "Développement durable : principes et applications"
+        ]
+      },
+      "Philosophie": {
+        chapitres: [
+          "Les origines et la spécificité de la philosophie",
+          "Les grandes interrogations philosophiques",
+          "L'État", "L'art et le réel", "Le travail",
+          "Langage et communication", "Nature et culture",
+          "La liberté", "Conscient et inconscient", "Individu et société",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Dissertation ou explication de texte.",
+        pointsCles: ["Méthode dissertation", "Liberté, État, Travail", "Nature et culture"]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte littéraire + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: environment, agriculture, sciences",
+          "Grammar: all tenses, passive, reported speech",
+          "Conditionals", "Modal verbs",
+          "Writing: essay, formal letter", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices de langue + production écrite.",
+        pointsCles: ["Compréhension de texte", "Passif", "Production écrite"]
+      }
     },
 
-    /* ── Série S5 ── */
+    /* ── Série S5 (Sciences de l'alimentation et de la nutrition) ── */
     "S5": {
-      "SVT": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Sciences Physiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Mathématiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Techniques de transformation et de conservation": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Philosophie": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Mathématiques": {
+        chapitres: [
+          "Fonctions numériques : limites, dérivation, étude",
+          "Fonctions logarithme et exponentielle",
+          "Primitives et calcul intégral",
+          "Équations différentielles du 1er ordre",
+          "Suites numériques",
+          "Probabilités : dénombrement, loi binomiale",
+          "Statistiques à deux variables : corrélation, régression",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Exercices d'analyse et de statistiques.",
+        pointsCles: [
+          "Étude de fonctions (ln, exp)",
+          "Calcul intégral : primitives et aires",
+          "Probabilités : loi binomiale",
+          "Statistiques : régression linéaire"
+        ]
+      },
+      "Sciences Physiques": {
+        chapitres: [
+          "Cinématique et dynamique : lois de Newton",
+          "Thermodynamique : chaleur, échanges thermiques, calorimétrie",
+          "Réactions chimiques : cinétique, catalyse",
+          "Acides et bases : pH, dosage, solutions tampons",
+          "Oxydoréduction : piles électrochimiques",
+          "Glucides : structure, propriétés chimiques",
+          "Lipides : structure, propriétés, saponification",
+          "Protéines : acides aminés, liaisons peptidiques",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Problème de physique-chimie + chimie organique (alimentation).",
+        pointsCles: [
+          "Calorimétrie : calculs de chaleur échangée",
+          "Dosages acido-basiques et pH",
+          "Glucides : hydrolyse de l'amidon",
+          "Lipides : saponification, indice d'acide",
+          "Protéines : structure et dénaturation"
+        ]
+      },
+      "SVT": {
+        chapitres: [
+          "Digestion et absorption des nutriments",
+          "Alimentation et besoins nutritionnels de l'homme",
+          "Régulation de la glycémie : insuline, glucagon",
+          "Immunologie : défenses de l'organisme",
+          "Microbiologie alimentaire : bactéries, levures, moisissures",
+          "Fermentations : lactique, alcoolique",
+          "Hygiène alimentaire et maladies d'origine alimentaire (TIAC)",
+          "Génétique : hérédité et mutations",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 5). Exercices sur la physiologie digestive, microbiologie et nutrition.",
+        pointsCles: [
+          "Besoins nutritionnels : protéines, glucides, lipides, vitamines",
+          "Fermentations : conditions, micro-organismes, produits",
+          "Hygiène HACCP : points critiques de contrôle",
+          "Immunité et défenses contre les agents pathogènes",
+          "Régulation glycémique et diabète"
+        ]
+      },
+      "Techniques de transformation et de conservation": {
+        chapitres: [
+          "Composition et valeur nutritive des aliments",
+          "Altération des aliments : causes microbiologiques, enzymatiques",
+          "Techniques de conservation par la chaleur : pasteurisation, stérilisation",
+          "Conservation par le froid : réfrigération, congélation",
+          "Conservation par déshydratation : séchage, lyophilisation",
+          "Conservation par le sel, le sucre, les acides (fermentation)",
+          "Conditionnement et emballage des aliments",
+          "Procédés de transformation des céréales et légumineuses",
+          "Transformation laitière : pasteurisation, fromage, yaourt",
+          "Transformation de la viande et du poisson",
+          "Contrôle de qualité et analyse sensorielle",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Analyse de procédés de transformation/conservation + données techniques.",
+        pointsCles: [
+          "Traitements thermiques : pasteurisation (72°C/15s), stérilisation (121°C)",
+          "Chaîne du froid : températures de conservation",
+          "Activité de l'eau (aw) et conservation",
+          "Fermentations lactique et alcoolique",
+          "Normes d'hygiène et HACCP"
+        ]
+      },
+      "Philosophie": {
+        chapitres: [
+          "Les origines et la spécificité de la philosophie",
+          "Les grandes interrogations philosophiques",
+          "L'État", "Le travail", "Langage et communication",
+          "Nature et culture", "La liberté", "Individu et société",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Dissertation ou explication de texte.",
+        pointsCles: ["Méthode dissertation", "Liberté, État, Travail"]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: food, health, environment",
+          "Grammar: tenses, passive, reported speech",
+          "Conditionals", "Writing: essay, formal letter", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices + production écrite.",
+        pointsCles: ["Compréhension de texte", "Passif", "Production écrite"]
+      }
     },
 
-    /* ── Série F6 ── */
+    /* ── Série F6 (Chimie industrielle) ── */
     "F6": {
-      "Mathématiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Physique": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Chimie": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "TP de Chimie": { chapitres: ["Autre"], examFormat: "TP pratique.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Mathématiques": {
+        chapitres: [
+          "Fonctions numériques : limites, continuité, dérivation",
+          "Fonctions logarithme et exponentielle",
+          "Calcul intégral : primitives, intégrales définies",
+          "Équations différentielles linéaires du 1er ordre",
+          "Nombres complexes : forme algébrique, trigonométrique, exponentielle",
+          "Géométrie dans l'espace : produit scalaire, produit vectoriel",
+          "Statistiques à deux variables : corrélation, régression linéaire",
+          "Probabilités : dénombrement, loi binomiale",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Exercices de calcul différentiel, intégral + statistiques.",
+        pointsCles: [
+          "Primitives et équations différentielles (applications en chimie)",
+          "Nombres complexes : forme exponentielle",
+          "Statistiques : corrélation et régression (traitement de données exp.)",
+          "Calcul intégral : intégrale définie et ses applications",
+          "Fonctions ln et exp : propriétés et dérivées"
+        ]
+      },
+      "Physique": {
+        chapitres: [
+          "Électrostatique : loi de Coulomb, champ électrique",
+          "Courant électrique : loi d'Ohm, puissance, énergie",
+          "Circuits en régime continu : lois de Kirchhoff",
+          "Électromagnétisme : champ magnétique, induction",
+          "Dipôle RC et RL : régime transitoire",
+          "Oscillations électriques libres et forcées (RLC)",
+          "Thermodynamique : chaleur, dilatation, états de la matière",
+          "Optique : réflexion, réfraction, lentilles",
+          "Mécanique des fluides : pression, écoulement",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 5). Problème de physique (électricité + thermodynamique).",
+        pointsCles: [
+          "Lois de Kirchhoff : calcul de courants et tensions",
+          "Circuits RC/RL : constante de temps, régime transitoire",
+          "Thermodynamique : bilan énergétique",
+          "Optique : construction d'images, lentilles convergentes",
+          "Mécanique des fluides : poussée d'Archimède, Bernoulli"
+        ]
+      },
+      "Chimie": {
+        chapitres: [
+          "Cinétique chimique : vitesse de réaction, facteurs, catalyse",
+          "Équilibres chimiques : loi d'action de masse, Kéq",
+          "Acides et bases : théorie de Brønsted, pH, dosages",
+          "Oxydoréduction : potentiels d'électrode, piles, électrolyse",
+          "Chimie des solutions : solubilité, produit de solubilité",
+          "Chimie organique : nomenclature générale, isomérie",
+          "Alcools, aldéhydes, cétones : propriétés et réactions",
+          "Acides carboxyliques et dérivés : estérification, amidification",
+          "Amines et acides aminés : propriétés acido-basiques",
+          "Polymères : polyaddition, polycondensation",
+          "Chimie industrielle : procédés Haber, Contact, Solvay",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 5). Problème de chimie générale + chimie organique.",
+        pointsCles: [
+          "Cinétique : loi de vitesse, énergie d'activation (Arrhenius)",
+          "Équilibres : calcul de Kéq, déplacement d'équilibre (Le Chatelier)",
+          "Oxydoréduction : équations redox, électrolyse",
+          "Estérification : rendement, catalyse, facteurs",
+          "Polymérisation : monomère, motif, degré de polymérisation"
+        ]
+      },
+      "TP de Chimie": {
+        chapitres: [
+          "Techniques de base : filtration, distillation, recristallisation",
+          "Dosages acido-basiques : courbes de neutralisation",
+          "Dosages par oxydoréduction : permanganométrie, iodométrie",
+          "Synthèse organique : estérification, saponification",
+          "Identification de groupes fonctionnels",
+          "Chromatographie sur couche mince (CCM)",
+          "Spectrophotométrie et colorimétrie",
+          "Mesure de pH et conductimétrie",
+          "Autre"
+        ],
+        examFormat: "TP pratique de 4h (coef 3). Manipulation + compte-rendu expérimental.",
+        pointsCles: [
+          "Dosage acido-basique : point d'équivalence",
+          "Synthèse organique : calcul de rendement",
+          "Identification de fonctions chimiques : tests caractéristiques",
+          "Lecture et interprétation d'une courbe de dosage",
+          "Rédaction d'un protocole expérimental"
+        ]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: science, industry, technology",
+          "Grammar: tenses, passive, reported speech",
+          "Conditionals", "Writing: essay, formal letter", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices + production écrite.",
+        pointsCles: ["Compréhension de texte", "Passif", "Production écrite"]
+      }
     },
 
-    /* ── Série T1 ── */
+    /* ── Série T1 (Génie mécanique) ── */
     "T1": {
-      "Mathématiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Mécanique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Construction Mécanique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Analyse de fabrication et Étude d'outillage": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Mathématiques": {
+        chapitres: [
+          "Nombres complexes : forme algébrique, trigonométrique, exponentielle",
+          "Racines n-ièmes, équations dans C",
+          "Fonctions numériques : limites, continuité, dérivation",
+          "Fonctions logarithme, exponentielle et puissances",
+          "Calcul intégral : primitives, intégrales, applications",
+          "Équations différentielles linéaires du 1er ordre",
+          "Géométrie dans l'espace : vecteurs, produit scalaire, produit vectoriel",
+          "Produit mixte, volumes dans l'espace",
+          "Statistiques à deux variables : corrélation, régression",
+          "Probabilités : loi binomiale, espérance",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Exercices de calcul (analyse, géométrie) + statistiques.",
+        pointsCles: [
+          "Nombres complexes : forme exponentielle, formules d'Euler",
+          "Étude de fonctions (dérivée, variations, tableau de signe)",
+          "Calcul intégral : primitives et intégrales définies",
+          "Produit scalaire et vectoriel : applications géométriques",
+          "Équations différentielles : applications en mécanique/électricité"
+        ]
+      },
+      "Mécanique": {
+        chapitres: [
+          "Cinématique du point : position, vitesse, accélération",
+          "Cinématique du solide : translations, rotations",
+          "Dynamique : 2ème loi de Newton, équation du mouvement",
+          "Statique : équilibre des solides, conditions d'équilibre",
+          "Frottement : glissement, roulement",
+          "Travail et puissance : rendement des mécanismes",
+          "Énergie cinétique et théorème de l'énergie cinétique",
+          "Résistance des matériaux : traction, compression, flexion",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Problème de statique ou de dynamique avec application technique.",
+        pointsCles: [
+          "Équilibre d'un solide : bilan des forces, théorème des moments",
+          "Cinématique : calcul de vitesses et d'accélérations",
+          "Dynamique : application des lois de Newton",
+          "Travail, puissance, rendement",
+          "RDM : contrainte normale, flèche en flexion"
+        ]
+      },
+      "Construction Mécanique": {
+        chapitres: [
+          "Dessin technique : lecture et interprétation de plans",
+          "Cotation fonctionnelle et tolérances dimensionnelles",
+          "Liaisons mécaniques : nature, représentation normalisée",
+          "Guidage en rotation : roulements, paliers lisses",
+          "Guidage en translation : glissières, rails",
+          "Transmissions de puissance : engrenages, courroies, chaînes",
+          "Réducteurs : rapport de réduction, rendement",
+          "Systèmes bielle-manivelle, vis-écrou, came",
+          "Étanchéité, lubrification, maintenance",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Dossier technique avec analyse de solutions constructives et dessin.",
+        pointsCles: [
+          "Lecture de plans : vues, coupes, sections",
+          "Liaisons mécaniques : identification et représentation",
+          "Calcul du rapport de réduction d'un engrenage",
+          "Roulements : choix selon effort et vitesse",
+          "Cotation : ajustement, tolérance, jeu"
+        ]
+      },
+      "Analyse de fabrication et Étude d'outillage": {
+        chapitres: [
+          "Processus de fabrication : gamme d'usinage",
+          "Mise en position (MIP) et maintien en position (MAP)",
+          "Les opérations d'usinage : tournage, fraisage, perçage",
+          "Outillage de coupe : géométrie des outils, matériaux",
+          "Porte-pièces et porte-outils",
+          "Contrôle dimensionnel : instruments de mesure",
+          "Assemblage et montage : conditions de serrage",
+          "Moulage et fonderie : procédés de base",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 4). Analyse d'un processus de fabrication + étude d'outillage sur dossier.",
+        pointsCles: [
+          "Gamme d'usinage : ordre des opérations, choix des surfaces de référence",
+          "MIP/MAP : isostatisme, mécanismes de bridage",
+          "Géométrie des outils : angles de coupe, dépouille",
+          "Contrôle : micromètre, pied à coulisse, calibres",
+          "Tolérances géométriques : planéité, cylindricité, perpendicularité"
+        ]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: technology, mechanics, industry",
+          "Grammar: tenses, passive, reported speech",
+          "Conditionals", "Writing: essay, technical text", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices + production écrite.",
+        pointsCles: ["Compréhension de texte technique", "Passif", "Production écrite"]
+      }
     },
 
-    /* ── Série T2 ── */
+    /* ── Série T2 (Génie électronique/électrotechnique) ── */
     "T2": {
-      "Mathématiques": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Construction Électromécanique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Électronique et Électrotechnique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Schéma Automatique et Informatique": { chapitres: ["Autre"], examFormat: "Épreuve technique.", pointsCles: [] },
-      "Français": { chapitres: ["Autre"], examFormat: "Épreuve de 4h.", pointsCles: [] },
-      "Anglais": { chapitres: ["Autre"], examFormat: "Épreuve de 2h.", pointsCles: [] }
+      "Mathématiques": {
+        chapitres: [
+          "Nombres complexes : formes algébrique, trigonométrique, exponentielle",
+          "Racines n-ièmes d'un nombre complexe",
+          "Fonctions numériques : limites, continuité, dérivation",
+          "Fonctions logarithme, exponentielle et puissances",
+          "Calcul intégral : primitives, intégrales définies",
+          "Équations différentielles linéaires du 1er et 2ème ordre",
+          "Géométrie dans l'espace : produit scalaire, produit vectoriel",
+          "Statistiques à deux variables : corrélation, régression",
+          "Probabilités : loi binomiale, espérance",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 4). Exercices de calcul (analyse, nombres complexes) + statistiques.",
+        pointsCles: [
+          "Nombres complexes : forme exponentielle (applications circuits AC)",
+          "Équations différentielles : régimes transitoires",
+          "Calcul intégral : primitives et applications",
+          "Probabilités : loi binomiale",
+          "Statistiques : régression linéaire"
+        ]
+      },
+      "Construction Électromécanique": {
+        chapitres: [
+          "Moteurs électriques à courant continu : principe, courbes caractéristiques",
+          "Moteurs asynchrones triphasés : principe, glissement",
+          "Transformateurs : principe, rapport de transformation, pertes",
+          "Générateurs : alternateurs, dynamos",
+          "Démarrage des moteurs : étoile-triangle, variateurs",
+          "Protection des moteurs : disjoncteurs, fusibles, relais thermiques",
+          "Variateurs de vitesse : convertisseurs de fréquence",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Problème sur les machines électriques avec calculs.",
+        pointsCles: [
+          "Moteur asynchrone : couple, vitesse, glissement",
+          "Transformateur : rapport de transformation, rendement",
+          "Démarrage étoile-triangle : courant, couple de démarrage",
+          "Moteur DC : courbes caractéristiques (couple-vitesse)",
+          "Protection : calcul du courant de court-circuit"
+        ]
+      },
+      "Électronique et Électrotechnique": {
+        chapitres: [
+          "Les composants électroniques : diodes, transistors, thyristors",
+          "Redressement : monophasé et triphasé, pont de diodes",
+          "Amplificateurs opérationnels : montages fondamentaux",
+          "Filtres électroniques : RC, LC, passe-bas, passe-haut",
+          "Régulation : boucles ouvertes et fermées",
+          "Circuits triphasés : étoile, triangle, puissances",
+          "Compensation d'énergie réactive : facteur de puissance",
+          "Distribution électrique : câbles, protections, normes",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 5). Problème d'électronique + électrotechnique avec calculs et schémas.",
+        pointsCles: [
+          "Redressement : tension ondulée, valeur moyenne",
+          "Amplificateur opérationnel : montages inverseur et non-inverseur",
+          "Circuits triphasés : puissance active, réactive, apparente",
+          "Facteur de puissance : cos φ, compensation par condensateurs",
+          "Transistor en régime de commutation (saturé/bloqué)"
+        ]
+      },
+      "Schéma Automatique et Informatique": {
+        chapitres: [
+          "Analyse fonctionnelle : FAST, SADT, GRAFCET",
+          "Logique combinatoire : algèbre de Boole, tables de vérité",
+          "Logique séquentielle : bascules, compteurs, registres",
+          "Automates programmables industriels (API) : structure, programmation",
+          "Capteurs et actionneurs : classification, caractéristiques",
+          "Systèmes asservis en boucle fermée : régulateurs PID",
+          "Réseaux de communication industriels : protocoles",
+          "Informatique : algorithmes, programmation de base",
+          "Autre"
+        ],
+        examFormat: "Épreuve technique de 4h (coef 4). Analyse d'un système automatisé + GRAFCET + programmation API.",
+        pointsCles: [
+          "GRAFCET : étapes, transitions, divergences",
+          "Algèbre de Boole : simplification, logigramme",
+          "API : structure, langage ladder, FBD",
+          "Asservissement : erreur statique, régulateur P, PI, PID",
+          "Capteurs : tout ou rien, analogiques, numériques"
+        ]
+      },
+      "Français": {
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
+      },
+      "Anglais": {
+        chapitres: [
+          "Reading comprehension", "Vocabulary: electronics, computing, automation",
+          "Grammar: tenses, passive, reported speech",
+          "Conditionals", "Writing: essay, technical text", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices + production écrite.",
+        pointsCles: ["Compréhension de texte technique", "Passif", "Production écrite"]
+      }
     },
 
     /* ── Série G (Gestion/Économie) ── */
@@ -867,19 +1502,35 @@ export const PROGRAMMES: {
         pointsCles: []
       },
       "Philosophie": {
-        chapitres: ["Autre"],
-        examFormat: "Épreuve de 4h. Dissertation.",
-        pointsCles: []
+        chapitres: [
+          "Les origines et la spécificité de la philosophie",
+          "Les grandes interrogations philosophiques",
+          "L'État", "Le travail", "Langage et communication",
+          "Nature et culture", "La liberté", "Individu et société",
+          "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Dissertation ou explication de texte.",
+        pointsCles: ["Méthode dissertation", "Liberté, État, Travail"]
       },
       "Français": {
-        chapitres: ["Autre"],
-        examFormat: "Épreuve de 4h. Résumé + commentaire.",
-        pointsCles: []
+        chapitres: [
+          "Le Surréalisme", "Esthétique des genres : La poésie",
+          "Esthétique des genres : Le roman", "Esthétique des genres : Le théâtre",
+          "La dissertation littéraire", "Le commentaire composé",
+          "Le résumé de texte", "Autre"
+        ],
+        examFormat: "Épreuve de 4h (coef 2). Texte + résumé + commentaire + questions de langue.",
+        pointsCles: ["Résumé (1/4)", "Commentaire composé", "Dissertation littéraire"]
       },
       "Anglais": {
-        chapitres: ["Autre"],
-        examFormat: "Épreuve de 2h.",
-        pointsCles: []
+        chapitres: [
+          "Reading comprehension", "Vocabulary: business, economics, management",
+          "Grammar: tenses, passive, reported speech",
+          "Conditionals", "Modal verbs",
+          "Writing: formal letter, business report", "Autre"
+        ],
+        examFormat: "Épreuve de 2h (coef 2). Compréhension + exercices de langue + production écrite.",
+        pointsCles: ["Compréhension de texte", "Passif", "Lettre formelle/commerciale"]
       }
     }
   }
