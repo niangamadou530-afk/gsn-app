@@ -23,8 +23,11 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// Regex pour matcher une string JSON (compatible ES2017, sans flag s)
+const JSON_STR_RE = /"(?:[^"\\]|\\[\s\S])*"/g;
+
 function sanitizeJsonStrings(jsonStr: string): string {
-  return jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
+  return jsonStr.replace(JSON_STR_RE, (strVal) =>
     strVal
       .replace(/\n/g, "\\n")
       .replace(/\r/g, "\\r")
@@ -44,20 +47,20 @@ function parseJson(raw: string): unknown {
   // Pass 1: standard escape sanitization
   try { return JSON.parse(sanitizeJsonStrings(jsonStr)); } catch { /* fall through */ }
 
-  // Pass 2: nuclear — strip ALL backslashes from string values, collapse whitespace
+  // Pass 2: nuclear — strip ALL invalid backslashes, collapse whitespace
   try {
-    const nuclear = jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
+    const nuclear = jsonStr.replace(/"(?:[^"\\]|\\[\s\S])*"/g, (strVal) =>
       '"' + strVal.slice(1, -1)
         .replace(/[\n\r\t]/g, " ")
-        .replace(/\\./gs, (seq) =>
-          /^\\["\\/bfnrt]$/.test(seq) || /^\\u[0-9a-fA-F]{4}$/.test(seq) ? seq : seq[1]
+        .replace(/\\([\s\S])/g, (seq, ch) =>
+          /^["\\/bfnrt]$/.test(ch) ? seq : (/^u[0-9a-fA-F]{4}/.test(ch + "????") ? seq : ch)
         ) + '"'
     );
     return JSON.parse(nuclear);
   } catch { /* fall through */ }
 
   // Pass 3: extract fields by raw regex, ignore structure errors
-  const contenu = (jsonStr.match(/"contenu"\s*:\s*"((?:[^"\\]|\\.)*)"/s)?.[1] ?? "")
+  const contenu = (jsonStr.match(/"contenu"\s*:\s*"((?:[^"\\]|\\[\s\S])*)"/)?.[1] ?? "")
     .replace(/[\n\r\t\\]/g, " ").trim();
   if (!contenu) throw new Error("Pas de JSON dans la réponse");
   const rawArr = jsonStr.match(/"points_cles"\s*:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
