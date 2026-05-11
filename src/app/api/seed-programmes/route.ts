@@ -96,7 +96,11 @@ async function genererContenu(
   matiere: string,
   chapitre: string
 ): Promise<{ contenu: string; points_cles: string[]; formules: string[] }> {
-  const prompt = `Tu es un professeur expert du programme officiel sénégalais.
+  const makePrompt = (simple: boolean) => simple
+    ? `Réponds en JSON strict. Pas de formules LaTeX, pas de caractères spéciaux, pas de backslash.
+Génère pour ${examen}${serie ? ` série ${serie}` : ""} — ${matiere} — ${chapitre} :
+{"contenu":"texte de 200 mots sans backslash ni guillemets","points_cles":["p1","p2","p3","p4","p5"],"formules":[]}`
+    : `Tu es un professeur expert du programme officiel sénégalais.
 Génère un contenu pédagogique détaillé pour :
 - Examen : ${examen}${serie ? ` série ${serie}` : ""}
 - Matière : ${matiere}
@@ -112,25 +116,34 @@ Retourne UNIQUEMENT ce JSON valide (sans markdown) :
 }
 
 Si la matière n'a pas de formules (ex: Philosophie, Français, Histoire), renvoie formules: [].
-Exactement 5 points_cles. Tout en français.`;
+Exactement 5 points_cles. Tout en français. N'utilise pas de backslash dans le texte.`;
 
-  const completion = await groq.chat.completions.create({
-    messages: [
-      { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown ni backticks." },
-      { role: "user", content: prompt },
-    ],
-    model: "llama-3.1-8b-instant",
-    max_tokens: 1200,
-    temperature: 0.3,
-  });
-
-  const raw = completion.choices[0]?.message?.content ?? "";
-  const parsed = parseJson(raw) as { contenu?: string; points_cles?: string[]; formules?: string[] };
-  return {
-    contenu: parsed.contenu ?? "",
-    points_cles: Array.isArray(parsed.points_cles) ? parsed.points_cles.slice(0, 5) : [],
-    formules: Array.isArray(parsed.formules) ? parsed.formules : [],
-  };
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await sleep(3000);
+    try {
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown ni backticks ni backslash dans les valeurs." },
+          { role: "user", content: makePrompt(attempt === 2) },
+        ],
+        model: "llama-3.1-8b-instant",
+        max_tokens: attempt === 2 ? 800 : 1200,
+        temperature: attempt === 0 ? 0.3 : 0.1,
+      });
+      const raw = completion.choices[0]?.message?.content ?? "";
+      const parsed = parseJson(raw) as { contenu?: string; points_cles?: string[]; formules?: string[] };
+      if (!parsed.contenu) throw new Error("Contenu vide");
+      return {
+        contenu: parsed.contenu,
+        points_cles: Array.isArray(parsed.points_cles) ? parsed.points_cles.slice(0, 5) : [],
+        formules: Array.isArray(parsed.formules) ? parsed.formules : [],
+      };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
 }
 
 /* ── Route POST ─────────────────────────────────────────── */
