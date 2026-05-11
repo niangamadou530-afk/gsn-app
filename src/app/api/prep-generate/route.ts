@@ -67,8 +67,7 @@ function buildProgCtx(matiere: string, chapitre: string, examType: string, serie
   const data = getMatiereData(examType, serie, matiere);
   if (!data) return "";
   const parts: string[] = [];
-  if (data.examFormat) parts.push(`Format de l'épreuve : ${data.examFormat}`);
-  if (data.pointsCles?.length) parts.push(`Points souvent évalués : ${data.pointsCles.join(" ; ")}`);
+  if (data.coefficient) parts.push(`Coefficient : ${data.coefficient} | Durée : ${data.duree_epreuve}`);
   return parts.length ? `\n[PROGRAMME OFFICIEL — ${examType}${serie ? " " + serie : ""}]\n${parts.join("\n")}\n` : "";
 }
 

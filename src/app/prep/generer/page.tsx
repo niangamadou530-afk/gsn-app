@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getMatieres, getChapitres } from "@/data/programmes";
+import { getMatieres, getChapitres, getInfoMatiere } from "@/data/programmes";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -507,6 +507,31 @@ function GenererPageInner() {
               ))}
             </div>
           </div>
+
+          {/* Info matière */}
+          {matiereB && (() => {
+            const info = getInfoMatiere(examType, serie, matiereB);
+            if (!info) return null;
+            const nbChapitres = info.chapitres.filter(c => c !== "Autre").length;
+            return (
+              <div className="flex gap-3 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20 text-sm">
+                <div className="flex-1 text-center">
+                  <p className="text-on-surface-variant text-xs mb-0.5">Coefficient</p>
+                  <p className="font-black text-primary text-lg">{info.coefficient}</p>
+                </div>
+                <div className="w-px bg-primary/20" />
+                <div className="flex-1 text-center">
+                  <p className="text-on-surface-variant text-xs mb-0.5">Durée officielle</p>
+                  <p className="font-black text-primary text-lg">{info.duree_epreuve}</p>
+                </div>
+                <div className="w-px bg-primary/20" />
+                <div className="flex-1 text-center">
+                  <p className="text-on-surface-variant text-xs mb-0.5">Chapitres</p>
+                  <p className="font-black text-primary text-lg">{nbChapitres}</p>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Chapitre */}
           {matiereB && chaps.length > 1 && (

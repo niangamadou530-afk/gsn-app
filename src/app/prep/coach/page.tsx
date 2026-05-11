@@ -87,10 +87,9 @@ export default function CoachPage() {
         if (keywords.some(k => msgLower.includes(k))) {
           const data = getMatiereData(exam, serie || "", mat);
           const chapitres = (data?.chapitres ?? []).filter(c => c !== "Autre");
-          if (chapitres.length > 0 || data?.examFormat) {
+          if (chapitres.length > 0 || data?.coefficient) {
             const parts = [`\n\nPROGRAMME OFFICIEL ${mat.toUpperCase()} (${exam}${serie ? " " + serie : ""}) :`];
-            if (data?.examFormat) parts.push(`Format épreuve : ${data.examFormat}`);
-            if (data?.pointsCles?.length) parts.push(`Points souvent évalués : ${data.pointsCles.join(" | ")}`);
+            if (data?.coefficient) parts.push(`Coefficient : ${data.coefficient} | Durée : ${data.duree_epreuve}`);
             if (chapitres.length > 0) parts.push(`Chapitres : ${chapitres.map(c => `• ${c}`).join(", ")}`);
             programmeContext = parts.join("\n");
           }
