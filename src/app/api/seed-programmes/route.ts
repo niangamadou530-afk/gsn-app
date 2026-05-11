@@ -32,12 +32,16 @@ function parseJson(raw: string): unknown {
   const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Pas de JSON dans la réponse");
   let jsonStr = match[0];
-  // 4. Échappe les newlines/tabs littéraux à l'intérieur des strings JSON
-  jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/g, (strVal) =>
+  // 4. Sanitise les strings JSON : newlines littéraux + séquences d'échappement invalides
+  jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
     strVal
       .replace(/\n/g, "\\n")
       .replace(/\r/g, "\\r")
       .replace(/\t/g, "\\t")
+      // Supprime les séquences \X invalides (JSON n'accepte que \", \\, \/, \b, \f, \n, \r, \t, \uXXXX)
+      .replace(/\\([^"\\/bfnrtu])/g, "$1")
+      // Corrige \u non suivi de 4 chiffres hex
+      .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
   );
   return JSON.parse(jsonStr);
 }
@@ -194,8 +198,8 @@ export async function POST(req: Request) {
       results.errors.push(`${key}: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Throttle : 2s entre chaque appel Groq (≤30 RPM)
-    await sleep(2100);
+    // Throttle : 2.5s entre chaque appel Groq (réduit les 429 TPM)
+    await sleep(2500);
   }
 
   return NextResponse.json({
