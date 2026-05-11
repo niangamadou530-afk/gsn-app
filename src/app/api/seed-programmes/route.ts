@@ -23,27 +23,46 @@ function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function parseJson(raw: string): unknown {
-  // 1. Retire markdown backticks
-  let cleaned = raw.replace(/```json|```/g, "");
-  // 2. Remplace les caractères de contrôle hors JSON (sauf \t, \n, \r)
-  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
-  // 3. Extrait le bloc JSON
-  const match = cleaned.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("Pas de JSON dans la réponse");
-  let jsonStr = match[0];
-  // 4. Sanitise les strings JSON : newlines littéraux + séquences d'échappement invalides
-  jsonStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
+function sanitizeJsonStrings(jsonStr: string): string {
+  return jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
     strVal
       .replace(/\n/g, "\\n")
       .replace(/\r/g, "\\r")
       .replace(/\t/g, "\\t")
-      // Supprime les séquences \X invalides (JSON n'accepte que \", \\, \/, \b, \f, \n, \r, \t, \uXXXX)
       .replace(/\\([^"\\/bfnrtu])/g, "$1")
-      // Corrige \u non suivi de 4 chiffres hex
       .replace(/\\u(?![0-9a-fA-F]{4})/g, "u")
   );
-  return JSON.parse(jsonStr);
+}
+
+function parseJson(raw: string): unknown {
+  let cleaned = raw.replace(/```json|```/g, "");
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, " ");
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("Pas de JSON dans la réponse");
+  const jsonStr = match[0];
+
+  // Pass 1: standard escape sanitization
+  try { return JSON.parse(sanitizeJsonStrings(jsonStr)); } catch { /* fall through */ }
+
+  // Pass 2: nuclear — strip ALL backslashes from string values, collapse whitespace
+  try {
+    const nuclear = jsonStr.replace(/"(?:[^"\\]|\\.)*"/gs, (strVal) =>
+      '"' + strVal.slice(1, -1)
+        .replace(/[\n\r\t]/g, " ")
+        .replace(/\\./gs, (seq) =>
+          /^\\["\\/bfnrt]$/.test(seq) || /^\\u[0-9a-fA-F]{4}$/.test(seq) ? seq : seq[1]
+        ) + '"'
+    );
+    return JSON.parse(nuclear);
+  } catch { /* fall through */ }
+
+  // Pass 3: extract fields by raw regex, ignore structure errors
+  const contenu = (jsonStr.match(/"contenu"\s*:\s*"((?:[^"\\]|\\.)*)"/s)?.[1] ?? "")
+    .replace(/[\n\r\t\\]/g, " ").trim();
+  if (!contenu) throw new Error("Pas de JSON dans la réponse");
+  const rawArr = jsonStr.match(/"points_cles"\s*:\s*\[([\s\S]*?)\]/)?.[1] ?? "";
+  const points_cles = (rawArr.match(/"[^"]*"/g) ?? []).map(s => s.slice(1,-1)).slice(0,5);
+  return { contenu, points_cles, formules: [] };
 }
 
 type ContenuRow = {
