@@ -1,65 +1,181 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
-type ExamTab = "BAC" | "BFEM";
+type DocType = "epreuve" | "corrige" | "tous";
 
-const SITE_BAC  = "https://officedubac.sn/";
-const SITE_BFEM = "https://sunudaara.com/";
+interface Epreuve {
+  id: string;
+  annee: number;
+  serie: string;
+  matiere: string;
+  type: "epreuve" | "corrige";
+  url_storage: string | null;
+  url_originale: string;
+  nom_fichier: string | null;
+}
+
+const ANNEES  = [2025, 2024, 2023];
+const MATIERES = [
+  "Toutes",
+  "Mathématiques", "Sciences Physiques", "SVT",
+  "Philosophie", "Français", "Histoire-Géographie",
+  "Anglais", "Économie",
+];
 
 export default function EpreuvesPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<ExamTab>("BAC");
 
-  const site = tab === "BAC" ? SITE_BAC : SITE_BFEM;
-  const siteName = tab === "BAC" ? "officedubac.sn" : "sunudaara.com";
+  const [epreuves, setEpreuves]     = useState<Epreuve[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [annee, setAnnee]           = useState<number>(2025);
+  const [matiere, setMatiere]       = useState("Toutes");
+  const [docType, setDocType]       = useState<DocType>("tous");
+  const [selected, setSelected]     = useState<Epreuve | null>(null);
+  const [dbEmpty, setDbEmpty]       = useState(false);
+
+  useEffect(() => {
+    load();
+  }, [annee, matiere, docType]);
+
+  async function load() {
+    setLoading(true);
+    setSelected(null);
+    let q = supabase
+      .from("epreuves_bac")
+      .select("id, annee, serie, matiere, type, url_storage, url_originale, nom_fichier")
+      .eq("annee", annee)
+      .order("matiere");
+
+    if (matiere !== "Toutes") q = q.ilike("matiere", `%${matiere}%`);
+    if (docType !== "tous")   q = q.eq("type", docType);
+
+    const { data, error } = await q;
+    if (error) { console.error(error); setLoading(false); return; }
+    const rows = (data ?? []) as Epreuve[];
+    setEpreuves(rows);
+    setDbEmpty(rows.length === 0);
+    setLoading(false);
+  }
+
+  const pdfUrl = (e: Epreuve) => e.url_storage ?? e.url_originale;
 
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-8">
+    <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+      {/* Header */}
       <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.push("/prep/dashboard")} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
+        <button onClick={() => selected ? setSelected(null) : router.push("/prep/dashboard")}
+          className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
-        <h1 className="font-bold text-on-surface">Épreuves & Corrigés</h1>
+        <h1 className="font-bold text-on-surface">
+          {selected ? selected.matiere : "Épreuves & Corrigés BAC"}
+        </h1>
       </header>
 
-      <div className="px-6 py-4 space-y-5">
-
-        {/* BAC / BFEM */}
-        <div className="flex gap-2 bg-surface-container rounded-xl p-1">
-          {(["BAC", "BFEM"] as ExamTab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`flex-1 py-2.5 rounded-lg font-bold text-sm transition-all ${tab === t ? "bg-surface text-primary shadow-sm" : "text-on-surface-variant"}`}>
-              {t}
-            </button>
-          ))}
+      {/* Viewer PDF */}
+      {selected && (
+        <div className="flex flex-col flex-1">
+          <div className="px-4 py-2 flex items-center gap-2 bg-surface-container-lowest border-b border-outline-variant/20">
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${selected.type === "corrige" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}`}>
+              {selected.type === "corrige" ? "Corrigé" : "Épreuve"}
+            </span>
+            <span className="text-sm text-on-surface-variant">{selected.serie} · {selected.annee}</span>
+            <a href={pdfUrl(selected)} target="_blank" rel="noopener noreferrer"
+              className="ml-auto flex items-center gap-1 text-xs text-primary font-semibold">
+              <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+              Ouvrir
+            </a>
+          </div>
+          <iframe
+            src={pdfUrl(selected)}
+            className="flex-1 w-full"
+            style={{ minHeight: "calc(100vh - 120px)", border: "none" }}
+            title={selected.nom_fichier ?? "PDF"}
+          />
         </div>
+      )}
 
-        {/* Info */}
-        <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-2">
-          <p className="font-bold text-on-surface text-sm">Épreuves & Corrigés {tab}</p>
-          <p className="text-sm text-on-surface-variant">
-            {tab === "BAC"
-              ? "Toutes les épreuves et corrigés officiels du BAC sénégalais sont disponibles sur officedubac.sn. Navigue sur le site pour trouver ta série, matière et année."
-              : "Toutes les épreuves et corrigés du BFEM sont disponibles sur sunudaara.com. Navigue sur le site pour trouver ta matière et année."}
-          </p>
+      {/* Liste */}
+      {!selected && (
+        <div className="flex-1 px-4 py-4 space-y-4">
+
+          {/* Filtres année */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {ANNEES.map(a => (
+              <button key={a} onClick={() => setAnnee(a)}
+                className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all ${annee === a ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
+                {a}
+              </button>
+            ))}
+          </div>
+
+          {/* Filtres type */}
+          <div className="flex gap-2">
+            {(["tous", "epreuve", "corrige"] as DocType[]).map(t => (
+              <button key={t} onClick={() => setDocType(t)}
+                className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${docType === t ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
+                {t === "tous" ? "Tout" : t === "epreuve" ? "Épreuves" : "Corrigés"}
+              </button>
+            ))}
+          </div>
+
+          {/* Filtre matière */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {MATIERES.map(m => (
+              <button key={m} onClick={() => setMatiere(m)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${matiere === m ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
+                {m}
+              </button>
+            ))}
+          </div>
+
+          {/* Résultats */}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin"
+                style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+            </div>
+          ) : dbEmpty ? (
+            <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm">
+              <span className="material-symbols-outlined text-[40px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>description</span>
+              <p className="font-bold text-on-surface mt-2">Pas encore disponible</p>
+              <p className="text-sm text-on-surface-variant mt-1">
+                Les épreuves {annee} ne sont pas encore dans la base.{" "}
+                Lance le script Python pour les importer.
+              </p>
+              <button
+                onClick={() => window.open("https://www.officedubac.sn", "_blank")}
+                className="mt-4 px-4 py-2.5 rounded-xl font-bold text-sm text-white"
+                style={{ backgroundColor: "#FF6B00" }}>
+                Voir sur officedubac.sn
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-on-surface-variant">{epreuves.length} document{epreuves.length > 1 ? "s" : ""}</p>
+              {epreuves.map(e => (
+                <button key={e.id} onClick={() => setSelected(e)}
+                  className="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest shadow-sm text-left active:scale-[0.98] transition-transform">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${e.type === "corrige" ? "bg-green-100" : "bg-blue-100"}`}>
+                    <span className={`material-symbols-outlined text-[20px] ${e.type === "corrige" ? "text-green-600" : "text-blue-600"}`}
+                      style={{ fontVariationSettings: "'FILL' 1" }}>
+                      {e.type === "corrige" ? "check_circle" : "description"}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-on-surface text-sm truncate">{e.matiere}</p>
+                    <p className="text-xs text-on-surface-variant">{e.serie} · {e.type === "corrige" ? "Corrigé" : "Épreuve"}</p>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Bouton principal */}
-        <button
-          onClick={() => window.open(site, "_blank")}
-          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-white active:scale-[0.98] transition-transform"
-          style={{ backgroundColor: "#FF6B00" }}>
-          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>open_in_new</span>
-          Accéder aux épreuves
-        </button>
-
-        <p className="text-xs text-center text-on-surface-variant">
-          Ouvre <span className="font-semibold">{siteName}</span> dans un nouvel onglet
-        </p>
-
-      </div>
+      )}
     </main>
   );
 }
