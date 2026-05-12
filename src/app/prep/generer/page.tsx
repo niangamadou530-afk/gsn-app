@@ -835,6 +835,12 @@ function GenererPageInner() {
             </div>
           )}
 
+          {error && (
+            <div className="px-4 py-2.5 rounded-xl bg-red-50 border border-red-200">
+              <p className="text-sm font-semibold text-red-700">{error}</p>
+            </div>
+          )}
+
           <ResumeDisplay texte={texte} matiere={activeMat()} />
 
           <button
