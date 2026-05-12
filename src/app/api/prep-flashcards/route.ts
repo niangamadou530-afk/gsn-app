@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getCompetences } from "@/data/competences";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -56,9 +57,14 @@ export async function POST(request: Request) {
   const contenuOfficiel = await fetchContenu(examType, serie, subject, chapter);
   const contenuCtx = buildContenuCtx(contenuOfficiel);
 
-  // Combiner : contenu DB (prioritaire) + contenu passé par le client (fallback)
-  const contexteFinal = contenuCtx
-    || (programmeContenu ? `\n\nPROGRAMME OFFICIEL DU CHAPITRE :\n${programmeContenu}\n\nBase-toi sur ce contenu pour générer des flashcards précises et fidèles au programme.` : "");
+  const competences = getCompetences(subject, serie, chapter || "");
+  const contextCompetences = competences.length > 0
+    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE DE L'ÉDUCATION DU SÉNÉGAL\n(Ce sont les compétences EXACTES sur lesquelles l'élève sera évalué au BAC/BFEM)\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nINSTRUCTION STRICTE : Ton contenu doit porter EXCLUSIVEMENT sur ces compétences officielles. Ne génère rien qui ne soit pas dans cette liste. Chaque question, flashcard ou explication doit correspondre à au moins une compétence de cette liste.`
+    : "";
+
+  // Combiner : contenu DB (prioritaire) + contenu passé par le client (fallback) + compétences
+  const contexteFinal = (contenuCtx
+    || (programmeContenu ? `\n\nPROGRAMME OFFICIEL DU CHAPITRE :\n${programmeContenu}\n\nBase-toi sur ce contenu pour générer des flashcards précises et fidèles au programme.` : "")) + contextCompetences;
 
   const prompt = `Génère ${count} flashcards pour le chapitre "${chapter}" en ${subject}, niveau ${examType}${serie ? " série " + serie : ""}.${contexteFinal}
 

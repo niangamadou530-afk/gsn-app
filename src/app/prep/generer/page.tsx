@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres, getInfoMatiere } from "@/data/programmes";
+import { getCompetences } from "@/data/competences";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -546,6 +547,28 @@ function GenererPageInner() {
               </select>
             </div>
           )}
+
+          {/* Compétences exigibles */}
+          {matiereB && chapitreB && chapitreB !== "Autre" && (() => {
+            const comps = getCompetences(examType, serie, chapitreB);
+            if (comps.length === 0) return null;
+            return (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10">
+                  <span className="text-base">📋</span>
+                  <p className="font-bold text-primary text-xs">Ce qui sera évalué au {examType}</p>
+                </div>
+                <ul className="px-4 py-3 space-y-1.5">
+                  {comps.map((c, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
+                      <span className="text-primary font-black flex-shrink-0 text-xs mt-0.5">{i + 1}.</span>
+                      <span className="leading-relaxed">{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })()}
 
           {/* Thème libre */}
           {(showFree || chaps.length <= 1) && (

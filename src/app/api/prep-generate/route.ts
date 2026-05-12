@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getMatiereData } from "@/data/programmes";
+import { getCompetences } from "@/data/competences";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -378,6 +379,12 @@ export async function POST(req: Request) {
       : null;
     const contenuCtx = buildContenuCtx(contenuOfficiel);
 
+    const competences = getCompetences(matiere, serie, chapitre || "");
+    const contextCompetences = competences.length > 0
+      ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE DE L'ÉDUCATION DU SÉNÉGAL\n(Ce sont les compétences EXACTES sur lesquelles l'élève sera évalué au BAC/BFEM)\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nINSTRUCTION STRICTE : Ton contenu doit porter EXCLUSIVEMENT sur ces compétences officielles. Ne génère rien qui ne soit pas dans cette liste. Chaque question, flashcard ou explication doit correspondre à au moins une compétence de cette liste.`
+      : "";
+    const fullCtx = contenuCtx + contextCompetences;
+
     /* ── Evaluate rédaction ── */
     if (mode === "evaluate") {
       const questions = body.questions as Array<{ id: number; question: string }>;
@@ -446,9 +453,9 @@ export async function POST(req: Request) {
       return NextResponse.json(parseJson(content));
     }
 
-    /* ── Knowledge mode (Mode B) — contenuCtx injecté ── */
+    /* ── Knowledge mode (Mode B) — fullCtx injecté ── */
     if (type === "resume") {
-      const prompt = resumePrompt(matiere, chapitre, examType, serie, false, contenuCtx);
+      const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx);
       const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: "llama-3.1-8b-instant",
@@ -461,8 +468,8 @@ export async function POST(req: Request) {
     }
 
     let prompt: string;
-    if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false, contenuCtx);
-    else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false, contenuCtx);
+    if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false, fullCtx);
+    else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false, fullCtx);
 
     const completion = await groq.chat.completions.create({
       messages: [sysJson(), { role: "user", content: prompt }],

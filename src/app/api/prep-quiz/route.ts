@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getCompetences } from "@/data/competences";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -92,6 +93,11 @@ export async function POST(req: Request) {
   const contenuOfficiel = await fetchContenu(examType, serie, subject, chapitre);
   const contenuCtx = buildContenuCtx(contenuOfficiel);
 
+  const competences = getCompetences(subject, serie, chapitre || "");
+  const contextCompetences = competences.length > 0
+    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE DE L'ÉDUCATION DU SÉNÉGAL\n(Ce sont les compétences EXACTES sur lesquelles l'élève sera évalué au BAC/BFEM)\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nINSTRUCTION STRICTE : Ton contenu doit porter EXCLUSIVEMENT sur ces compétences officielles. Ne génère rien qui ne soit pas dans cette liste. Chaque question, flashcard ou explication doit correspondre à au moins une compétence de cette liste.`
+    : "";
+
   // Fallback inline si rien en base
   const serieKey = serie || (examType === "BFEM" ? "BFEM" : "S1");
   const subjectProgs = PROGRAMMES_OFFICIELS[subject] ?? {};
@@ -103,7 +109,7 @@ export async function POST(req: Request) {
   const anneeContext = annee ? ` (session ${annee})` : "";
   const chapitreContext = chapitre ? `, chapitre : "${chapitre}"` : "";
 
-  const prompt = `Génère ${n} questions d'examen pour la matière "${subject}"${chapitreContext}, niveau ${examType}${serie ? " série " + serie : ""}${anneeContext} au Sénégal.${programSection}${contenuCtx}
+  const prompt = `Génère ${n} questions d'examen pour la matière "${subject}"${chapitreContext}, niveau ${examType}${serie ? " série " + serie : ""}${anneeContext} au Sénégal.${programSection}${contenuCtx}${contextCompetences}
 Questions variées : QCM (4 choix), vrai/faux, calculs, définitions.
 Difficulté progressive : 30% facile, 40% moyen, 30% difficile.
 Les questions doivent être précisément basées sur le programme officiel sénégalais.

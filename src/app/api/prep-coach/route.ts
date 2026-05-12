@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getCompetences } from "@/data/competences";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -65,9 +66,14 @@ export async function POST(req: Request) {
   const contenuOfficiel = await fetchContenu(examen, serie, matiere, chapitre);
   const contenuCtx = buildContenuCtx(contenuOfficiel);
 
+  const competences = getCompetences(matiere, serie, chapitre || "");
+  const contextCompetences = competences.length > 0
+    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE DE L'ÉDUCATION DU SÉNÉGAL\n(Ce sont les compétences EXACTES sur lesquelles l'élève sera évalué au BAC/BFEM)\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nINSTRUCTION STRICTE : Ton contenu doit porter EXCLUSIVEMENT sur ces compétences officielles. Ne génère rien qui ne soit pas dans cette liste. Chaque question, flashcard ou explication doit correspondre à au moins une compétence de cette liste.`
+    : "";
+
   // Injecter à la fin du systemPrompt
-  const enrichedSystemPrompt = contenuCtx
-    ? `${systemPrompt}${contenuCtx}`
+  const enrichedSystemPrompt = (contenuCtx || contextCompetences)
+    ? `${systemPrompt}${contenuCtx}${contextCompetences}`
     : systemPrompt;
 
   try {
