@@ -509,10 +509,10 @@ function GenererPageInner() {
             </div>
           </div>
 
-          {/* Info matière */}
+          {/* Info matière — BFEM uniquement (BAC : hidden: true) */}
           {matiereB && (() => {
             const info = getInfoMatiere(examType, serie, matiereB);
-            if (!info) return null;
+            if (!info || info.hidden) return null;
             const nbChapitres = info.chapitres.filter(c => c !== "Autre").length;
             return (
               <div className="flex gap-3 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20 text-sm">
