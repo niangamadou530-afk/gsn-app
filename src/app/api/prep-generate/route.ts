@@ -194,88 +194,105 @@ Retourne UNIQUEMENT ce JSON :
 Exactement 10 questions QCM avec 4 choix chacune. Tout en français.`;
 }
 
-function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
-  const src = fromDoc
-    ? "en te basant UNIQUEMENT sur le contenu du document fourni"
-    : `en te basant sur le programme officiel sénégalais du ${examType}${serie ? " série " + serie : ""}`;
-  const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
+function getFormatResume(matiere: string): string {
+  const m = matiere;
+  if (["Mathématiques", "Sciences Physiques", "SVT"].some(n => m.includes(n))) {
+    return `Structure ton résumé avec exactement ces sections HTML :
+<section id="notions"><h2>Notions essentielles</h2>...</section>
+<section id="formules"><h2>Formules et lois clés</h2>...</section>
+<section id="definitions"><h2>Définitions importantes</h2>...</section>
+<section id="methodes"><h2>Méthodes de résolution</h2>...</section>
+<section id="examen"><h2>Ce qui tombe aux examens</h2>...</section>`;
+  }
+  if (["Français", "Philosophie"].some(n => m.includes(n))) {
+    return `Structure ton résumé avec exactement ces sections HTML :
+<section id="contexte"><h2>Contexte et présentation</h2>...</section>
+<section id="idees"><h2>Idées et thèses principales</h2>...</section>
+<section id="auteurs"><h2>Auteurs et œuvres clés</h2>...</section>
+<section id="concepts"><h2>Concepts à maîtriser</h2>...</section>
+<section id="examen"><h2>Types de sujets au BAC/BFEM</h2>...</section>`;
+  }
+  if (["Histoire", "Géographie", "Histoire-Géographie"].some(n => m.includes(n))) {
+    return `Structure ton résumé avec exactement ces sections HTML :
+<section id="contexte"><h2>Contexte historique/géographique</h2>...</section>
+<section id="evenements"><h2>Dates et événements clés</h2>...</section>
+<section id="acteurs"><h2>Acteurs principaux</h2>...</section>
+<section id="causes"><h2>Causes et conséquences</h2>...</section>
+<section id="examen"><h2>Méthodologie et sujets types au BAC/BFEM</h2>...</section>`;
+  }
+  if (["Anglais"].some(n => m.includes(n))) {
+    return `Structure ton résumé avec exactement ces sections HTML :
+<section id="vocabulaire"><h2>Vocabulaire clé</h2>...</section>
+<section id="grammaire"><h2>Points de grammaire essentiels</h2>...</section>
+<section id="exemples"><h2>Exemples en anglais avec traduction</h2>...</section>
+<section id="expressions"><h2>Expressions utiles pour l'épreuve</h2>...</section>
+<section id="examen"><h2>Ce qui est évalué</h2>...</section>`;
+  }
+  if (["Économie Générale", "Étude de Cas"].some(n => m.includes(n))) {
+    return `Structure ton résumé avec exactement ces sections HTML :
+<section id="definitions"><h2>Définitions des concepts clés</h2>...</section>
+<section id="mecanismes"><h2>Mécanismes économiques</h2>...</section>
+<section id="donnees"><h2>Données et exemples concrets</h2>...</section>
+<section id="analyses"><h2>Analyses et arguments</h2>...</section>
+<section id="examen"><h2>Ce qui tombe au BAC/BFEM</h2>...</section>`;
+  }
+  return `Structure ton résumé avec exactement ces sections HTML :
+<section id="notions"><h2>Notions essentielles</h2>...</section>
+<section id="points-cles"><h2>Points clés</h2>...</section>
+<section id="definitions"><h2>Définitions importantes</h2>...</section>
+<section id="examen"><h2>Ce qui tombe aux examens</h2>...</section>`;
+}
 
-  // Anglais : format bilingue
-  if (isAnglais(matiere)) {
+function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
+  const formatStr = getFormatResume(matiere);
+  const anglaisNote = isAnglais(matiere)
+    ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)."
+    : "";
+
+  // Mode document : pas d'injection de données officielles
+  if (fromDoc) {
     const topicLine = chapitre
       ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis.`
       : `Matière : ${matiere}`;
-    return `Tu es un professeur d'anglais expert du ${examType} sénégalais.
+    return `Tu es un professeur expert du ${examType} sénégalais.
 ${topicLine}
-Génère un résumé bilingue complet ${src}.
-Réponds en texte brut structuré, pas en JSON.
-${progCtx}${contenuCtx}
-FORMAT OBLIGATOIRE pour chaque section :
-- Explications en français
-- Exemples en anglais en italique (*exemple en anglais*)
-- Traduction en français entre parenthèses
-
-Structure avec ces sections :
-
-## Introduction
-Présente le sujet en français, avec exemple en anglais et traduction.
-
-## Notions essentielles
-Explique les notions en français. Pour chaque notion : *English example* (traduction française).
-
-## Définitions importantes
-Définis les termes clés en français avec exemples anglais traduits.
-
-## Formules et règles grammaticales
-Donne les règles en français avec formules en anglais (*Subject + Verb + ...*) et exemples traduits.
-
-## Exemples concrets
-*English example sentence.* (Traduction française.)
-Pour chaque exemple : phrase anglaise puis traduction.
-
-## Ce qui tombe aux examens
-Conseils en français sur ce qui est évalué, avec exemples de questions en anglais.
-
-## Points clés à retenir
-5 points en français avec exemple anglais pour chacun.
-
-Sois précis et pédagogique.`;
+Génère un résumé complet et structuré en te basant UNIQUEMENT sur le contenu du document fourni.
+${formatStr}
+Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${anglaisNote}
+Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`;
   }
 
-  // Autres matières
-  const topicLine = chapitre
-    ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis, pas un autre.`
-    : `Matière : ${matiere}`;
+  // ── Compétences exigibles ──────────────────────────────
+  const competences = getCompetences(matiere, serie, chapitre || "");
+  const competencesBlock = competences.length > 0
+    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE :\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
+    : "";
+
+  // ── Format officiel de l'épreuve ───────────────────────
+  const infoMatiere = getMatiereData(examType, serie, matiere);
+  const formatEpreuveBlock = infoMatiere
+    ? `\n\nFORMAT OFFICIEL DE L'ÉPREUVE :\nDurée : ${infoMatiere.duree_epreuve}${infoMatiere.note ? `\n${infoMatiere.note}` : ""}`
+    : "";
+
+  // ── Contenu Supabase (si disponible) ───────────────────
+  const contenuCtxBlock = contenuCtx ? `\n${contenuCtx}` : "";
+
+  // ── Instruction stricte ────────────────────────────────
+  const instructionBlock = competences.length > 0
+    ? `\n\nINSTRUCTION STRICTE :
+- Ton résumé doit couvrir TOUTES les compétences exigibles listées ci-dessus
+- Chaque section doit faire référence à ce qui est réellement évalué au ${examType}
+- Ne génère rien qui dépasse ces compétences officielles
+- Sois précis, complet et pédagogique${anglaisNote}`
+    : `\n\nINSTRUCTION :
+- Couvre les notions réellement évaluées au ${examType} sénégalais
+- Sois précis, complet et pédagogique${anglaisNote}`;
 
   return `Tu es un professeur expert du ${examType} sénégalais.
-${topicLine}
-Génère un résumé complet, détaillé et structuré ${src}.
-Réponds en texte brut structuré, pas en JSON.
-${progCtx}${contenuCtx}
-Structure ton résumé avec ces sections :
+Tu génères un résumé complet et fidèle pour ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` sur le chapitre : ${chapitre}` : ""}.${competencesBlock}${formatEpreuveBlock}${contenuCtxBlock}${instructionBlock}
 
-## Introduction
-Présente le contexte et l'importance du sujet.
-
-## Notions essentielles
-Explique toutes les notions clés clairement et en détail.
-
-## Définitions importantes
-Liste et définis les termes clés avec leur contexte.
-
-## Formules et règles
-Donne les formules, règles et méthodes importantes avec explications.
-
-## Exemples concrets
-Illustre avec des exemples pratiques et concrets.
-
-## Ce qui tombe aux examens
-Conseils spécifiques pour les examens sénégalais, points souvent évalués.
-
-## Points clés à retenir
-Résume en 5 points essentiels.
-
-Sois précis, complet et pédagogique. Tout en français.`;
+${formatStr}
+Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "" : " Tout en français."}`;
 }
 
 function evaluatePrompt(

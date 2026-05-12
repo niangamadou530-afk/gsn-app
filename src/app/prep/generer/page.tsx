@@ -846,7 +846,7 @@ function GenererPageInner() {
             </div>
           )}
 
-          <ResumeDisplay texte={texte} />
+          <ResumeDisplay texte={texte} matiere={activeMat()} />
 
           <button
             onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
@@ -1023,7 +1023,7 @@ function GenererPageInner() {
                   </button>
                   {isOpen && (
                     <div className="border-t border-outline-variant/15 p-4">
-                      <ResumeDisplay texte={r.contenu} />
+                      <ResumeDisplay texte={r.contenu} matiere={r.matiere ?? ""} />
                     </div>
                   )}
                 </div>
@@ -1095,6 +1095,63 @@ function getSectionMeta(title: string): SectionMeta {
   return SECTION_META["default"];
 }
 
+/* ── Métadonnées par section ID (nouveau format HTML) ─────── */
+
+const SECTION_ID_META: Record<string, SectionMeta> = {
+  // Sciences
+  "notions":     { icon: "lightbulb",   borderColor: "#2563eb", bgColor: "#eff6ff", titleColor: "#1d4ed8", bulletColor: "#3b82f6" },
+  "formules":    { icon: "functions",   borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  "definitions": { icon: "book_2",      borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "methodes":    { icon: "calculate",   borderColor: "#7c3aed", bgColor: "#f5f3ff", titleColor: "#6d28d9", bulletColor: "#8b5cf6" },
+  // Littéraire
+  "idees":       { icon: "lightbulb",   borderColor: "#2563eb", bgColor: "#eff6ff", titleColor: "#1d4ed8", bulletColor: "#3b82f6" },
+  "auteurs":     { icon: "person",      borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "concepts":    { icon: "school",      borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  // Histoire-Géo
+  "evenements":  { icon: "event",       borderColor: "#2563eb", bgColor: "#eff6ff", titleColor: "#1d4ed8", bulletColor: "#3b82f6" },
+  "acteurs":     { icon: "group",       borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "causes":      { icon: "analytics",   borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  // Anglais
+  "vocabulaire": { icon: "translate",   borderColor: "#2563eb", bgColor: "#eff6ff", titleColor: "#1d4ed8", bulletColor: "#3b82f6" },
+  "grammaire":   { icon: "spellcheck",  borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  "exemples":    { icon: "science",     borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "expressions": { icon: "chat",        borderColor: "#7c3aed", bgColor: "#f5f3ff", titleColor: "#6d28d9", bulletColor: "#8b5cf6" },
+  // Économie
+  "mecanismes":  { icon: "trending_up", borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+  "donnees":     { icon: "bar_chart",   borderColor: "#ea580c", bgColor: "#fff7ed", titleColor: "#c2410c", bulletColor: "#f97316" },
+  "analyses":    { icon: "analytics",   borderColor: "#7c3aed", bgColor: "#f5f3ff", titleColor: "#6d28d9", bulletColor: "#8b5cf6" },
+  // Partagé
+  "examen":      { icon: "star",        borderColor: "#dc2626", bgColor: "#fef2f2", titleColor: "#b91c1c", bulletColor: "#ef4444" },
+  "points-cles": { icon: "checklist",   borderColor: "#059669", bgColor: "#f0fdf4", titleColor: "#047857", bulletColor: "#10b981" },
+};
+
+// "contexte" a deux couleurs selon la matière : violet (Littéraire) ou marron (Histoire-Géo)
+const CONTEXTE_LIT:    SectionMeta = { icon: "info",  borderColor: "#7c3aed", bgColor: "#f5f3ff", titleColor: "#6d28d9", bulletColor: "#8b5cf6" };
+const CONTEXTE_HISTGEO: SectionMeta = { icon: "place", borderColor: "#92400e", bgColor: "#fffbeb", titleColor: "#78350f", bulletColor: "#b45309" };
+
+function getSectionIdMeta(id: string, matiere: string): SectionMeta {
+  if (id === "contexte") {
+    return ["Histoire", "Géographie"].some(m => matiere.includes(m)) ? CONTEXTE_HISTGEO : CONTEXTE_LIT;
+  }
+  return SECTION_ID_META[id] ?? SECTION_META["default"];
+}
+
+function parseHtmlSections(texte: string): Array<{ id: string; title: string; content: string }> | null {
+  if (!texte.includes("<section")) return null;
+  const sections: Array<{ id: string; title: string; content: string }> = [];
+  const re = /<section[^>]*id="([^"]*)"[^>]*>([\s\S]*?)<\/section>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texte)) !== null) {
+    const id = m[1];
+    const inner = m[2];
+    const h2 = inner.match(/<h2[^>]*>(.*?)<\/h2>/i);
+    const title = h2 ? h2[1].replace(/<[^>]*>/g, "") : id;
+    const content = inner.replace(/<h2[^>]*>[\s\S]*?<\/h2>/i, "").trim();
+    if (content || title) sections.push({ id, title, content });
+  }
+  return sections.length > 0 ? sections : null;
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -1151,10 +1208,52 @@ function formatSectionContent(raw: string, meta: SectionMeta): string {
   return out.join("");
 }
 
-function ResumeDisplay({ texte }: { texte: string }) {
+function SectionCard({ meta, title, html }: { meta: SectionMeta; title: string; html: string }) {
+  return (
+    <div className="rounded-2xl overflow-hidden shadow-sm"
+      style={{ borderLeft: `5px solid ${meta.borderColor}`, backgroundColor: meta.bgColor }}>
+      {title && (
+        <div className="flex items-center gap-2.5 px-4 pt-4 pb-2"
+          style={{ borderBottom: `1px solid ${meta.borderColor}20` }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${meta.borderColor}18` }}>
+            <span className="material-symbols-outlined text-[16px]"
+              style={{ color: meta.borderColor, fontVariationSettings: "'FILL' 1" }}>
+              {meta.icon}
+            </span>
+          </div>
+          <p className="font-black text-base leading-tight" style={{ color: meta.titleColor }}>{title}</p>
+        </div>
+      )}
+      <div className="px-4 pb-4 pt-3" dangerouslySetInnerHTML={{ __html: html }} />
+    </div>
+  );
+}
+
+function ResumeDisplay({ texte, matiere = "" }: { texte: string; matiere?: string }) {
+  // ── Format HTML sections (nouveau) ──────────────────────
+  const htmlSections = parseHtmlSections(texte);
+  if (htmlSections) {
+    return (
+      <div className="space-y-3">
+        {htmlSections.map((s, i) => {
+          const meta = getSectionIdMeta(s.id, matiere);
+          return (
+            <SectionCard
+              key={i}
+              meta={meta}
+              title={s.title}
+              html={formatSectionContent(s.content, meta)}
+            />
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Format markdown ## (ancien — fallback pour anciens résumés) ──
   const rawSections = texte.split(/\n(?=## )/);
   const sections: Array<{ title: string; content: string }> = [];
-
   for (const raw of rawSections) {
     const nl = raw.indexOf("\n");
     if (raw.startsWith("## ") && nl !== -1) {
@@ -1175,31 +1274,14 @@ function ResumeDisplay({ texte }: { texte: string }) {
 
   return (
     <div className="space-y-3">
-      {sections.map((s, i) => {
-        const meta = s.title ? getSectionMeta(s.title) : SECTION_META["default"];
-        const html = formatSectionContent(s.content, meta);
-        return (
-          <div key={i}
-            className="rounded-2xl overflow-hidden shadow-sm"
-            style={{ borderLeft: `5px solid ${meta.borderColor}`, backgroundColor: meta.bgColor }}>
-            {s.title && (
-              <div className="flex items-center gap-2.5 px-4 pt-4 pb-2"
-                style={{ borderBottom: `1px solid ${meta.borderColor}20` }}>
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: `${meta.borderColor}18` }}>
-                  <span className="material-symbols-outlined text-[16px]"
-                    style={{ color: meta.borderColor, fontVariationSettings: "'FILL' 1" }}>
-                    {meta.icon}
-                  </span>
-                </div>
-                <p className="font-black text-base leading-tight" style={{ color: meta.titleColor }}>{s.title}</p>
-              </div>
-            )}
-            <div className="px-4 pb-4 pt-3"
-              dangerouslySetInnerHTML={{ __html: html }} />
-          </div>
-        );
-      })}
+      {sections.map((s, i) => (
+        <SectionCard
+          key={i}
+          meta={s.title ? getSectionMeta(s.title) : SECTION_META["default"]}
+          title={s.title}
+          html={formatSectionContent(s.content, s.title ? getSectionMeta(s.title) : SECTION_META["default"])}
+        />
+      ))}
     </div>
   );
 }

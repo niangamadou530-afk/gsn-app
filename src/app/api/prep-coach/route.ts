@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getMatieres, getChapitres } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
@@ -60,21 +61,60 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "JSON invalide" }, { status: 400 });
   }
 
-  const { systemPrompt, message, history = [], matiere = "", chapitre = "", examen = "BAC", serie = "" } = body;
+  const { systemPrompt, message, history = [], examen = "BAC", serie = "" } = body;
 
-  // Récupérer contenu officiel si matiere + chapitre disponibles
-  const contenuOfficiel = await fetchContenu(examen, serie, matiere, chapitre);
+  // ── Détection côté serveur de la matière et du chapitre ─
+  const matieresList = getMatieres(examen, serie || undefined);
+  let detectedMatiere = "";
+  let detectedChapitre = "";
+  const msgLower = message.toLowerCase();
+
+  for (const mat of matieresList) {
+    const keywords = mat.toLowerCase().split(/[\s\-]+/).filter(k => k.length > 3);
+    if (keywords.some(k => msgLower.includes(k))) {
+      detectedMatiere = mat;
+      const chaps = getChapitres(examen, serie, mat).filter(c => c !== "Autre");
+      for (const ch of chaps) {
+        if (msgLower.includes(ch.toLowerCase().slice(0, 10))) {
+          detectedChapitre = ch;
+          break;
+        }
+      }
+      break;
+    }
+  }
+
+  // ── Contenu Supabase (si chapitre détecté) ──────────────
+  const contenuOfficiel = await fetchContenu(examen, serie, detectedMatiere, detectedChapitre);
   const contenuCtx = buildContenuCtx(contenuOfficiel);
 
-  const competences = getCompetences(matiere, serie, chapitre || "");
-  const contextCompetences = competences.length > 0
-    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE DE L'ÉDUCATION DU SÉNÉGAL\n(Ce sont les compétences EXACTES sur lesquelles l'élève sera évalué au BAC/BFEM)\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nINSTRUCTION STRICTE : Ton contenu doit porter EXCLUSIVEMENT sur ces compétences officielles. Ne génère rien qui ne soit pas dans cette liste. Chaque question, flashcard ou explication doit correspondre à au moins une compétence de cette liste.`
-    : "";
+  // ── Bloc programme officiel (si matière détectée) ───────
+  let programmeBlock = "";
+  if (detectedMatiere) {
+    const chapitres = getChapitres(examen, serie, detectedMatiere).filter(c => c !== "Autre");
 
-  // Injecter à la fin du systemPrompt
-  const enrichedSystemPrompt = (contenuCtx || contextCompetences)
-    ? `${systemPrompt}${contenuCtx}${contextCompetences}`
-    : systemPrompt;
+    // Compétences : chapitre précis si détecté, sinon tous les chapitres (max 30)
+    const allComps: string[] = [];
+    const chapsPourComps = detectedChapitre ? [detectedChapitre] : chapitres;
+    for (const ch of chapsPourComps) {
+      allComps.push(...getCompetences(detectedMatiere, serie, ch));
+    }
+    const uniqueComps = [...new Set(allComps)].slice(0, 30);
+
+    const parts: string[] = [
+      `\n\nPROGRAMME OFFICIEL DE ${detectedMatiere.toUpperCase()}${serie ? ` SÉRIE ${serie}` : ""} :`,
+    ];
+    if (chapitres.length > 0) {
+      parts.push(`Chapitres : ${chapitres.map(c => `• ${c}`).join(", ")}`);
+    }
+    if (uniqueComps.length > 0) {
+      parts.push(`Compétences exigibles officielles :\n${uniqueComps.map((c, i) => `${i + 1}. ${c}`).join("\n")}`);
+    }
+    parts.push("Base ta réponse EXCLUSIVEMENT sur ce programme officiel.");
+    programmeBlock = parts.join("\n");
+  }
+
+  const enrichedSystemPrompt = `${systemPrompt}${contenuCtx}${programmeBlock}`;
 
   try {
     const groq = new Groq({ apiKey });

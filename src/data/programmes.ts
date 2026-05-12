@@ -4,8 +4,9 @@
  */
 
 export type ProgrammeMatiere = {
-  coefficient: number;
+  coefficient?: number;
   duree_epreuve: string;
+  hidden?: true;
   chapitres: string[];
   note?: string;
 };
@@ -176,8 +177,8 @@ export const PROGRAMMES: {
   BAC: {
     "L": {
       "Mathématiques": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Rappel des méthodes de factorisation d'un polynôme",
           "Composition de fonctions",
@@ -194,8 +195,8 @@ export const PROGRAMMES: {
         ]
       },
       "Sciences Physiques": {
-        coefficient: 2,
         duree_epreuve: "2h",
+        hidden: true,
         note: "Matière à option L2",
         chapitres: [
           "Production, transport et utilisation de l'énergie électrique",
@@ -212,8 +213,8 @@ export const PROGRAMMES: {
         ]
       },
       "SVT": {
-        coefficient: 2,
         duree_epreuve: "2h",
+        hidden: true,
         note: "Matière à option L2",
         chapitres: [
           "Organisation du système nerveux cérébro-spinal des mammifères",
@@ -232,8 +233,8 @@ export const PROGRAMMES: {
         ]
       },
       "Philosophie": {
-        coefficient: 6,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Les origines et la spécificité de la philosophie par rapport aux mythes et religions",
           "Les grandes interrogations philosophiques (Métaphysique)",
@@ -250,8 +251,8 @@ export const PROGRAMMES: {
         ]
       },
       "Français": {
-        coefficient: 6,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Le Surréalisme : Apollinaire, Aragon, Éluard, Césaire, Senghor",
           "Esthétique des genres : La poésie (Boileau, Hugo, La Fontaine, Senghor, David Diop)",
@@ -265,8 +266,8 @@ export const PROGRAMMES: {
         ]
       },
       "Histoire": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "La décolonisation au Proche-Orient et la question palestinienne",
           "La décolonisation au Maghreb : le cas de l'Algérie",
@@ -281,8 +282,8 @@ export const PROGRAMMES: {
         ]
       },
       "Géographie": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Le Sénégal : problèmes économiques et politiques de développement",
           "Les problèmes et perspectives de développement du continent africain",
@@ -299,8 +300,8 @@ export const PROGRAMMES: {
         ]
       },
       "Anglais": {
-        coefficient: 2,
         duree_epreuve: "2h",
+        hidden: true,
         chapitres: [
           "Compréhension écrite de textes en anglais",
           "Vocabulaire thématique en contexte",
@@ -317,8 +318,8 @@ export const PROGRAMMES: {
         ]
       },
       "Économie Générale": {
-        coefficient: 3,
         duree_epreuve: "3h",
+        hidden: true,
         note: "Matière à option L2",
         chapitres: [
           "Croissance et développement",
@@ -336,8 +337,8 @@ export const PROGRAMMES: {
 
     "S1": {
       "Mathématiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Probabilité et dénombrement",
           "Nombres complexes",
@@ -359,8 +360,8 @@ export const PROGRAMMES: {
         ]
       },
       "Sciences Physiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Cinématique du point",
           "Bases de la dynamique : lois de Newton",
@@ -390,8 +391,8 @@ export const PROGRAMMES: {
         ]
       },
       "SVT": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Organisation du système nerveux cérébro-spinal des mammifères",
           "Organisation de l'encéphale",
@@ -416,8 +417,8 @@ export const PROGRAMMES: {
         ]
       },
       "Philosophie": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Les origines et la spécificité de la philosophie",
           "Les grandes interrogations philosophiques",
@@ -433,8 +434,8 @@ export const PROGRAMMES: {
         ]
       },
       "Français": {
-        coefficient: 3,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Le Surréalisme et les mouvements littéraires",
           "Esthétique des genres : La poésie",
@@ -447,8 +448,8 @@ export const PROGRAMMES: {
         ]
       },
       "Histoire": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "La décolonisation au Proche-Orient et la question palestinienne",
           "La décolonisation au Maghreb et en Algérie",
@@ -462,8 +463,8 @@ export const PROGRAMMES: {
         ]
       },
       "Géographie": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Le Sénégal : problèmes économiques et politiques de développement",
           "Les problèmes et perspectives de développement du continent africain",
@@ -478,8 +479,8 @@ export const PROGRAMMES: {
         ]
       },
       "Anglais": {
-        coefficient: 2,
         duree_epreuve: "2h",
+        hidden: true,
         chapitres: [
           "Compréhension écrite",
           "Vocabulaire thématique",
@@ -494,8 +495,8 @@ export const PROGRAMMES: {
 
     "S2": {
       "Mathématiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Fonctions numériques : rappels et compléments sur la continuité",
           "Fonctions numériques : dérivées et primitives",
@@ -511,8 +512,8 @@ export const PROGRAMMES: {
         ]
       },
       "Sciences Physiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Cinématique du point",
           "Bases de la dynamique : lois de Newton",
@@ -542,8 +543,8 @@ export const PROGRAMMES: {
         ]
       },
       "SVT": {
-        coefficient: 6,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Organisation du système nerveux cérébro-spinal des mammifères",
           "Organisation de l'encéphale",
@@ -570,8 +571,8 @@ export const PROGRAMMES: {
         ]
       },
       "Philosophie": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Les origines et la spécificité de la philosophie",
           "Les grandes interrogations philosophiques",
@@ -587,8 +588,8 @@ export const PROGRAMMES: {
         ]
       },
       "Français": {
-        coefficient: 3,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Le Surréalisme et les mouvements littéraires",
           "Esthétique des genres : La poésie",
@@ -601,8 +602,8 @@ export const PROGRAMMES: {
         ]
       },
       "Histoire": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "La décolonisation au Proche-Orient et la question palestinienne",
           "La décolonisation au Maghreb et en Algérie",
@@ -616,8 +617,8 @@ export const PROGRAMMES: {
         ]
       },
       "Géographie": {
-        coefficient: 2,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Le Sénégal : problèmes économiques et politiques de développement",
           "Les problèmes et perspectives de développement du continent africain",
@@ -632,8 +633,8 @@ export const PROGRAMMES: {
         ]
       },
       "Anglais": {
-        coefficient: 2,
         duree_epreuve: "2h",
+        hidden: true,
         chapitres: [
           "Compréhension écrite",
           "Vocabulaire thématique",
@@ -647,8 +648,8 @@ export const PROGRAMMES: {
 
     "S3": {
       "Mathématiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Probabilité et dénombrement",
           "Nombres complexes",
@@ -665,8 +666,8 @@ export const PROGRAMMES: {
         ]
       },
       "Sciences Physiques": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Cinématique du point",
           "Bases de la dynamique",
@@ -682,8 +683,8 @@ export const PROGRAMMES: {
         ]
       },
       "Construction Mécanique": {
-        coefficient: 8,
         duree_epreuve: "4h",
+        hidden: true,
         chapitres: [
           "Réalisation de liaison pivot par roulement",
           "Introduction à la transmission de puissance",
@@ -698,45 +699,45 @@ export const PROGRAMMES: {
           "Autre"
         ]
       },
-      "Philosophie": { coefficient: 2, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "Philosophie": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français":    { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":     { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "S4": {
-      "SVT": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Sciences Physiques": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Mathématiques": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Phyto-technique": { coefficient: 6, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Écologie et Environnement": { coefficient: 6, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Philosophie": { coefficient: 2, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "SVT":                        { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Sciences Physiques":         { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Mathématiques":              { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Phyto-technique":            { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Écologie et Environnement":  { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Philosophie":                { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français":                   { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":                    { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "S5": {
-      "SVT": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Sciences Physiques": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Mathématiques": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Techniques de transformation et de conservation": { coefficient: 6, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Philosophie": { coefficient: 2, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "SVT":                                           { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Sciences Physiques":                            { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Mathématiques":                                 { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Techniques de transformation et de conservation": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Philosophie":                                   { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français":                                      { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":                                       { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "F6": {
-      "Mathématiques": { coefficient: 4, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Physique": { coefficient: 4, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Chimie": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "TP de Chimie": { coefficient: 5, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "Mathématiques": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Physique":      { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Chimie":        { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "TP de Chimie":  { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français":      { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":       { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "T1": {
       "Mathématiques": {
-        coefficient: 5,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Calcul numérique et algébrique",
           "Fonctions numériques : étude et représentation",
@@ -748,10 +749,10 @@ export const PROGRAMMES: {
           "Autre"
         ]
       },
-      "Mécanique": { coefficient: 4, duree_epreuve: "3h", chapitres: ["Autre"] },
+      "Mécanique": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
       "Construction Mécanique": {
-        coefficient: 4,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Méthodes d'analyse et de conception",
           "Modélisation cinématique des mécanismes",
@@ -769,15 +770,15 @@ export const PROGRAMMES: {
           "Autre"
         ]
       },
-      "Analyse de fabrication et Étude d'outillage": { coefficient: 6, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "Analyse de fabrication et Étude d'outillage": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français": { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":  { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "T2": {
       "Mathématiques": {
-        coefficient: 4,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Calcul numérique et algébrique",
           "Fonctions numériques",
@@ -789,17 +790,17 @@ export const PROGRAMMES: {
           "Autre"
         ]
       },
-      "Construction Électromécanique": { coefficient: 3, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Électronique et Électrotechnique": { coefficient: 6, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Schéma Automatique et Informatique": { coefficient: 4, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "Construction Électromécanique":      { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Électronique et Électrotechnique":   { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Schéma Automatique et Informatique": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français": { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":  { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     },
 
     "G": {
       "Mathématiques": {
-        coefficient: 5,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "Calcul numérique et algébrique",
           "Fonctions numériques : étude et représentation",
@@ -814,8 +815,8 @@ export const PROGRAMMES: {
         ]
       },
       "Économie Générale": {
-        coefficient: 6,
         duree_epreuve: "3h",
+        hidden: true,
         chapitres: [
           "La croissance et le développement",
           "Le sous-développement",
@@ -834,10 +835,10 @@ export const PROGRAMMES: {
           "Autre"
         ]
       },
-      "Étude de Cas": { coefficient: 6, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Philosophie": { coefficient: 2, duree_epreuve: "3h", chapitres: ["Autre"] },
-      "Français": { coefficient: 3, duree_epreuve: "4h", chapitres: ["Autre"] },
-      "Anglais": { coefficient: 2, duree_epreuve: "2h", chapitres: ["Autre"] }
+      "Étude de Cas": { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Philosophie":  { duree_epreuve: "3h", hidden: true, chapitres: ["Autre"] },
+      "Français":     { duree_epreuve: "4h", hidden: true, chapitres: ["Autre"] },
+      "Anglais":      { duree_epreuve: "2h", hidden: true, chapitres: ["Autre"] }
     }
   }
 };
