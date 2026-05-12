@@ -292,11 +292,14 @@ function GenererPageInner() {
   }
 
   async function saveResume(texte: string, mat: string, chap: string) {
-    if (!texte || !userId) return;
+    if (!texte || !userId) {
+      setError(`saveResume bloqué: texte=${!!texte} userId=${!!userId}`);
+      return;
+    }
     const { error } = await supabase.from("prep_resumes").insert({
       user_id: userId, matiere: mat, chapitre: chap, contenu: texte,
     });
-    if (error) console.error("saveResume:", error.message);
+    if (error) setError(`Erreur sauvegarde résumé: ${error.message} (code: ${error.code})`);
     else setResumeSaved(true);
   }
 
