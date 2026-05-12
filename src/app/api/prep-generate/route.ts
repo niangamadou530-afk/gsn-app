@@ -319,45 +319,6 @@ Retourne UNIQUEMENT ce JSON :
 Exactement ${questions.length} éléments dans feedback. Tout en français.`;
 }
 
-/* ── Supabase server-side save ──────────────────────────── */
-
-async function saveResumeServer(
-  token: string | null,
-  matiere: string, chapitre: string, contenu: string
-): Promise<{ saved: boolean; resumeId: string | null }> {
-  if (!token || !contenu) {
-    console.error("saveResumeServer: token manquant ou contenu vide", { hasToken: !!token, hasContenu: !!contenu });
-    return { saved: false, resumeId: null };
-  }
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
-    console.error("saveResumeServer: variables Supabase manquantes");
-    return { saved: false, resumeId: null };
-  }
-  const sb = createClient(supabaseUrl, supabaseKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-    auth: { persistSession: false },
-  });
-  const { data: { user }, error: authErr } = await sb.auth.getUser(token);
-  if (authErr || !user) {
-    console.error("saveResumeServer: getUser échoué", authErr?.message);
-    return { saved: false, resumeId: null };
-  }
-  console.log("saveResumeServer: insertion pour user_id=", user.id, "matiere=", matiere, "chapitre=", chapitre);
-  const { data: inserted, error } = await sb
-    .from("prep_resumes")
-    .insert({ user_id: user.id, matiere, chapitre, contenu })
-    .select("id")
-    .single();
-  if (error) {
-    console.error("saveResumeServer: erreur insert", error.code, error.message, error.details, error.hint);
-    return { saved: false, resumeId: null };
-  }
-  console.log("saveResumeServer: succès, id=", inserted?.id);
-  return { saved: true, resumeId: inserted?.id ?? null };
-}
-
 /* ── Route ─────────────────────────────────────────────── */
 
 export async function POST(req: Request) {
@@ -377,15 +338,6 @@ export async function POST(req: Request) {
   const quizMode  = (body.quizMode as string) || "qcm";
   const fileBase64 = body.fileBase64 as string | undefined;
   const fileType   = body.fileType as string | undefined;
-
-  // JWT pour sauvegarde côté serveur (uniquement pour resume)
-  const authHeader = req.headers.get("Authorization") ?? "";
-  const jwtToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-  // Log du thème pour debug
-  if (type === "resume") {
-    console.log("prep-generate resume: matiere=", matiere, "chapitre=", JSON.stringify(chapitre));
-  }
 
   try {
     const groq = groqClient();
@@ -463,9 +415,7 @@ export async function POST(req: Request) {
       }
 
       if (isResume) {
-        const texte = content.trim();
-        const { saved, resumeId } = await saveResumeServer(jwtToken, matiere, chapitre, texte);
-        return NextResponse.json({ texte, saved, resumeId });
+        return NextResponse.json({ texte: content.trim() });
       }
       return NextResponse.json(parseJson(content));
     }
@@ -480,8 +430,7 @@ export async function POST(req: Request) {
         temperature: 0.4,
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
-      const { saved, resumeId } = await saveResumeServer(jwtToken, matiere, chapitre, texte);
-      return NextResponse.json({ texte, saved, resumeId });
+      return NextResponse.json({ texte });
     }
 
     let prompt: string;

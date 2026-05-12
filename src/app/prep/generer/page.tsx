@@ -219,16 +219,9 @@ function GenererPageInner() {
         };
       }
 
-      // Pour le résumé : inclure le token JWT pour la sauvegarde côté serveur
-      const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
-      if (genType === "resume") {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.access_token) reqHeaders["Authorization"] = `Bearer ${session.access_token}`;
-      }
-
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: reqHeaders,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
@@ -264,8 +257,9 @@ function GenererPageInner() {
           setPhase("quiz_redaction");
         }
       } else {
-        setResume(data);
-        setResumeSaved(data.saved === true);
+        const texte = (data.texte as string) ?? "";
+        setResume({ texte });
+        await saveResume(texte, mat, chap);
         await fetchVideos(mat, chap);
         setPhase("resume_result");
       }
@@ -298,20 +292,12 @@ function GenererPageInner() {
   }
 
   async function saveResume(texte: string, mat: string, chap: string) {
-    if (!texte) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { console.error("saveResume: utilisateur non connecté"); return; }
-    console.log("saveResume: insertion pour", user.id, mat, chap, texte.slice(0, 80));
+    if (!texte || !userId) return;
     const { error } = await supabase.from("prep_resumes").insert({
-      user_id: user.id, matiere: mat, chapitre: chap,
-      contenu: texte,
+      user_id: userId, matiere: mat, chapitre: chap, contenu: texte,
     });
-    if (error) {
-      console.error("saveResume: erreur Supabase", error.code, error.message, error.details);
-    } else {
-      console.log("saveResume: succès");
-      setResumeSaved(true);
-    }
+    if (error) console.error("saveResume:", error.message);
+    else setResumeSaved(true);
   }
 
   /* ── QCM logic ── */
