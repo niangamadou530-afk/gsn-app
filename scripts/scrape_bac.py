@@ -25,7 +25,10 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from dotenv import load_dotenv
 from supabase import create_client, Client
+
+load_dotenv(Path(__file__).parent / ".env")
 
 # ── Configuration ───────────────────────────────────────────────────────────
 
@@ -541,11 +544,18 @@ def main():
 
     # 4. Upsert en base (batch unique)
     if not args.no_db and sb and records:
-        print(f"\n→ Upsert de {len(records)} enregistrements…")
-        # batch de 50 pour éviter les timeouts
+        # dédupliquer par url_originale (évite ON CONFLICT sur la même ligne dans un batch)
+        seen: set[str] = set()
+        unique_records: list[dict] = []
+        for r in records:
+            key = r["url_originale"]
+            if key not in seen:
+                seen.add(key)
+                unique_records.append(r)
+        print(f"\n→ Upsert de {len(unique_records)} enregistrements ({len(records) - len(unique_records)} doublons ignorés)…")
         batch_size = 50
-        for start in range(0, len(records), batch_size):
-            insert_batch(sb, records[start:start + batch_size])
+        for start in range(0, len(unique_records), batch_size):
+            insert_batch(sb, unique_records[start:start + batch_size])
 
     print(f"""
 ── Résumé ──────────────────────────────
