@@ -491,19 +491,18 @@ export async function POST(req: Request) {
       try {
         const { data: sujets } = await sbClient()
           .from("sujets_extraits")
-          .select("annee, groupe, type, contenu_texte, exercices")
+          .select("annee, groupe, type, contenu_texte")
           .eq("matiere", matiere)
           .eq("serie", serie)
           .eq("examen", examType)
           .order("annee", { ascending: false })
-          .limit(6);
+          .limit(3);
 
         if (sujets && sujets.length > 0) {
-          sujetsBlock = `\n\nSUJETS ET CORRIGÉS RÉELS DU ${examType} SÉNÉGALAIS SUR CETTE MATIÈRE :\n${
-            sujets.map((s: { annee: number; groupe: string; type: string; contenu_texte?: string }) =>
-              `${s.annee} ${s.groupe} — ${s.type === "corrige" ? "CORRIGÉ" : "ÉPREUVE"} :\n${s.contenu_texte?.slice(0, 800) ?? ""}`
-            ).join("\n\n")
-          }\n\nUtilise ces vrais sujets et corrigés pour enrichir la section "Ce qui tombe au ${examType}" de ton résumé. Cite les années et types de questions réels. Pour les matières scientifiques inclus des exercices similaires aux vrais sujets avec leurs corrigés détaillés.`;
+          sujetsBlock = sujets
+            .map((s: { annee: number; groupe: string; type: string; contenu_texte?: string }) =>
+              `${s.annee} ${s.groupe} — ${s.type === "corrige" ? "CORRIGÉ" : "ÉPREUVE"} :\n${s.contenu_texte?.slice(0, 400) ?? ""}`
+            ).join("\n\n");
         }
       } catch {
         // table pas encore peuplée, on continue sans
@@ -512,8 +511,8 @@ export async function POST(req: Request) {
       const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx, sujetsBlock);
       const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
-        max_tokens: 3000,
+        model: "llama-3.3-70b-versatile",
+        max_tokens: 4000,
         temperature: 0.4,
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
