@@ -245,11 +245,8 @@ function getFormatResume(matiere: string): string {
 
 function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = "", sujetsBlock = ""): string {
   const formatStr = getFormatResume(matiere);
-  const anglaisNote = isAnglais(matiere)
-    ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)."
-    : "";
 
-  // Mode document : pas d'injection de données officielles
+  // Mode document : prompt minimal basé uniquement sur le document fourni
   if (fromDoc) {
     const topicLine = chapitre
       ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis.`
@@ -258,41 +255,108 @@ function resumePrompt(matiere: string, chapitre: string, examType: string, serie
 ${topicLine}
 Génère un résumé complet et structuré en te basant UNIQUEMENT sur le contenu du document fourni.
 ${formatStr}
-Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${anglaisNote}
+Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)." : ""}
 Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`;
   }
 
   // ── Compétences exigibles ──────────────────────────────
   const competences = getCompetences(matiere, serie, chapitre || "");
   const competencesBlock = competences.length > 0
-    ? `\n\nCOMPÉTENCES EXIGIBLES OFFICIELLES DU MINISTÈRE :\n${competences.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
+    ? competences.map((c, i) => `${i + 1}. ${c}`).join("\n")
+    : "(non disponibles pour cette matière/série)";
+
+  const sujetsSection = sujetsBlock
+    ? `\nSUJETS ET CORRIGÉS RÉELS :\n${sujetsBlock.replace(/^\n+/, "")}`
     : "";
 
-  // ── Format officiel de l'épreuve ───────────────────────
-  const infoMatiere = getMatiereData(examType, serie, matiere);
-  const formatEpreuveBlock = infoMatiere
-    ? `\n\nFORMAT OFFICIEL DE L'ÉPREUVE :\nDurée : ${infoMatiere.duree_epreuve}${infoMatiere.note ? `\n${infoMatiere.note}` : ""}`
-    : "";
+  return `Tu es un professeur expert du BAC et BFEM sénégalais. Tu génères un résumé complet et exhaustif sur ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` chapitre ${chapitre}` : ""}.
 
-  // ── Contenu Supabase (si disponible) ───────────────────
-  const contenuCtxBlock = contenuCtx ? `\n${contenuCtx}` : "";
+COMPÉTENCES EXIGIBLES OFFICIELLES :
+${competencesBlock}
+${sujetsSection}
+INSTRUCTIONS PAR MATIÈRE :
 
-  // ── Instruction stricte ────────────────────────────────
-  const instructionBlock = competences.length > 0
-    ? `\n\nINSTRUCTION STRICTE :
-- Ton résumé doit couvrir TOUTES les compétences exigibles listées ci-dessus
-- Chaque section doit faire référence à ce qui est réellement évalué au ${examType}
-- Ne génère rien qui dépasse ces compétences officielles
-- Sois précis, complet et pédagogique${anglaisNote}`
-    : `\n\nINSTRUCTION :
-- Couvre les notions réellement évaluées au ${examType} sénégalais
-- Sois précis, complet et pédagogique${anglaisNote}`;
+Si la matière est Mathématiques ou Sciences Physiques :
+Pour chaque notion du chapitre tu dois obligatoirement écrire :
+- L'énoncé complet de la notion, loi ou théorème avec toutes ses conditions
+- La formule exacte avec chaque variable expliquée et son unité
+- Les conditions d'application de la formule
+- Un exemple numérique résolu étape par étape avec tous les calculs détaillés, de préférence tiré d'un vrai sujet BAC sénégalais. Si aucun sujet disponible créer un exemple cohérent et pertinent avec le niveau BAC
+- Un deuxième exemple plus difficile également résolu complètement, de préférence tiré d'un vrai sujet BAC. Mentionner l'année et le groupe si disponible
+- Les erreurs fréquentes que font les élèves sénégalais sur cette notion
+- Ce qui est demandé exactement au BAC sur cette notion avec les formulations types des sujets
 
-  return `Tu es un professeur expert du ${examType} sénégalais.
-Tu génères un résumé complet et fidèle pour ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` sur le chapitre : ${chapitre}` : ""}.${competencesBlock}${formatEpreuveBlock}${contenuCtxBlock}${instructionBlock}${sujetsBlock}
+Si la matière est SVT :
+- L'explication détaillée de chaque mécanisme biologique avec tous les acteurs cellulaires et moléculaires nommés
+- Les schémas décrits complètement en texte avec toutes les structures nommées et leurs rôles
+- Les expériences classiques à connaître avec protocole complet, résultats attendus et conclusions
+- Les définitions précises de chaque terme scientifique
+- Les tableaux comparatifs quand c'est pertinent : par exemple immunité humorale vs cellulaire
+- Les sujets types qui tombent au BAC avec exemples réels si disponibles
+
+Si la matière est Philosophie :
+- La problématique centrale du chapitre formulée clairement
+- La biographie courte de chaque auteur au programme : dates, nationalité, œuvres principales, contexte historique
+- La thèse de chaque auteur avec ses arguments principaux développés en paragraphes explicatifs détaillés
+- Les concepts clés définis et expliqués avec des exemples concrets de la vie quotidienne
+- Les distinctions philosophiques importantes : par exemple liberté positive vs liberté négative
+- Les citations courtes et exactes des auteurs clés avec leur source
+- Un plan de dissertation type complet sur ce chapitre avec introduction développement et conclusion
+- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes
+
+Si la matière est Français :
+- La présentation complète du mouvement littéraire avec contexte historique, social et culturel
+- Les caractéristiques stylistiques avec exemples tirés des œuvres au programme
+- La biographie de chaque auteur au programme : vie, œuvres, style, place dans l'histoire littéraire
+- L'analyse détaillée des œuvres principales avec thèmes, personnages, procédés narratifs et stylistiques
+- Les figures de style à identifier avec définition et exemples tirés des textes au programme
+- La méthodologie complète du type d'exercice : dissertation, commentaire composé ou résumé de texte avec exemple rédigé
+- Les sujets types qui tombent au BAC avec exemples de sujets réels si disponibles
+
+Si la matière est Histoire :
+- La chronologie détaillée avec toutes les dates importantes et leur signification
+- Les causes approfondies avec distinction claire entre causes profondes à long terme et causes immédiates
+- La biographie détaillée de chaque acteur historique important : origine, rôle exact, actions décisives, héritage
+- Les faits et événements développés en paragraphes explicatifs complets avec contexte
+- Les conséquences analysées à court terme, moyen terme et long terme
+- Les documents et sources historiques classiques utilisés dans les épreuves sénégalaises
+- La méthodologie de la dissertation historique et du commentaire de document
+- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes des sujets réels si disponibles
+
+Si la matière est Géographie :
+- Les données statistiques importantes avec chiffres précis, pourcentages, rangs mondiaux et années de référence
+- Les cartes décrites complètement en texte avec localisation précise des éléments : pays, villes, fleuves, reliefs
+- Les mécanismes géographiques expliqués en détail avec causes et conséquences
+- Les exemples concrets avec noms précis de pays, villes, régions, organisations
+- Les notions et concepts géographiques définis avec précision
+- La méthodologie du commentaire de carte et du commentaire de document géographique avec exemple
+- Les sujets types qui tombent au BAC au Sénégal
+
+Si la matière est Anglais :
+- Le vocabulaire thématique complet avec traduction française et exemple d'utilisation dans une phrase en contexte
+- Les structures grammaticales importantes avec exemples en anglais et traduction
+- Deux ou trois paragraphes en anglais sur le thème avec traduction complète en français
+- Les expressions idiomatiques et phrasal verbs utiles pour l'épreuve avec traduction et exemple
+- Un exemple complet de réponse à une question de compréhension en anglais
+- Un exemple de production écrite courte sur le thème : lettre ou essai de 150 mots minimum
+
+Si la matière est Économie Générale :
+- Les définitions précises et complètes de tous les concepts économiques du chapitre
+- Les mécanismes économiques expliqués avec schémas décrits en texte et exemples chiffrés
+- Les données statistiques importantes avec sources : Banque Mondiale, FMI, ANSD Sénégal
+- Les exemples concrets tirés de l'économie sénégalaise et de l'économie mondiale avec noms précis
+- Les théories économiques avec leurs auteurs, dates et thèses principales
+- Les sujets types qui tombent au BAC avec formulations exactes si disponibles
+
+RÈGLE ABSOLUE POUR TOUTES LES MATIÈRES :
+Ce résumé doit être suffisamment complet pour qu'un élève puisse réviser uniquement avec lui sans avoir besoin d'aucun autre document.
+Il doit couvrir 100% des compétences exigibles officielles listées ci-dessus.
+Minimum 800 mots. Pas de limite maximale.
+Pour tous les exemples : utiliser en priorité les vrais sujets BAC ou BFEM sénégalais disponibles avec l'année et le groupe. Si aucun sujet disponible créer un exemple cohérent, pertinent et au niveau exact du BAC ou BFEM sénégalais.
+Tous les exemples d'exercices doivent être résolus complètement avec toutes les étapes détaillées.
 
 ${formatStr}
-Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "" : " Tout en français."}`;
+Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections. Tout en français sauf si la matière est Anglais.`;
 }
 
 function evaluatePrompt(
