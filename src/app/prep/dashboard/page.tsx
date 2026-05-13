@@ -160,7 +160,7 @@ export default function PrepDashboardPage() {
         {/* Outils */}
         <div className="grid grid-cols-2 gap-3">
           <ToolCard href="/prep/soft-skills" icon="self_improvement" label="Bien-être & Organisation" desc="Stress · Pomodoro · Planning" color="#ef4444" bg="bg-red-50" />
-          <ToolCard href="/prep/epreuves"    icon="description"      label="Épreuves & Corrigés"     desc="Sujets officiels BAC/BFEM"  color="#f59e0b" bg="bg-amber-50" />
+          <ToolCard href={student?.exam_type === "BFEM" ? "/prep/bfem" : "/prep/epreuves"} icon="description" label="Épreuves & Corrigés" desc={student?.exam_type === "BFEM" ? "Sujets officiels BFEM" : "Sujets officiels BAC"} color="#f59e0b" bg="bg-amber-50" />
         </div>
 
       </div>

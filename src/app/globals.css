@@ -97,3 +97,21 @@ body {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* BFEM HTML content rendering */
+.bfem-content { font-size: 0.95rem; line-height: 1.7; color: #191c23; }
+.bfem-content h1, .bfem-content h2, .bfem-content h3, .bfem-content h4 { font-weight: 700; margin: 1.2em 0 0.5em; line-height: 1.3; }
+.bfem-content h1 { font-size: 1.4rem; }
+.bfem-content h2 { font-size: 1.2rem; }
+.bfem-content h3 { font-size: 1.05rem; }
+.bfem-content p { margin: 0.6em 0; }
+.bfem-content ul, .bfem-content ol { padding-left: 1.4em; margin: 0.6em 0; }
+.bfem-content li { margin: 0.3em 0; }
+.bfem-content table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.9rem; }
+.bfem-content th, .bfem-content td { border: 1px solid #d0d0d0; padding: 0.4em 0.6em; text-align: left; }
+.bfem-content th { background: #f0f4ff; font-weight: 600; }
+.bfem-content img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5em 0; }
+.bfem-content strong, .bfem-content b { font-weight: 700; }
+.bfem-content em, .bfem-content i { font-style: italic; }
+.bfem-content a { color: #005bbf; text-decoration: underline; }
+.bfem-content blockquote { border-left: 3px solid #005bbf; padding-left: 1em; color: #555; margin: 0.8em 0; }
