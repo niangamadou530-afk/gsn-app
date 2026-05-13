@@ -243,7 +243,7 @@ function getFormatResume(matiere: string): string {
 <section id="examen"><h2>Ce qui tombe aux examens</h2>...</section>`;
 }
 
-function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
+function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = "", sujetsBlock = ""): string {
   const formatStr = getFormatResume(matiere);
   const anglaisNote = isAnglais(matiere)
     ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)."
@@ -289,7 +289,7 @@ Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`
 - Sois précis, complet et pédagogique${anglaisNote}`;
 
   return `Tu es un professeur expert du ${examType} sénégalais.
-Tu génères un résumé complet et fidèle pour ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` sur le chapitre : ${chapitre}` : ""}.${competencesBlock}${formatEpreuveBlock}${contenuCtxBlock}${instructionBlock}
+Tu génères un résumé complet et fidèle pour ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` sur le chapitre : ${chapitre}` : ""}.${competencesBlock}${formatEpreuveBlock}${contenuCtxBlock}${instructionBlock}${sujetsBlock}
 
 ${formatStr}
 Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "" : " Tout en français."}`;
@@ -422,7 +422,30 @@ export async function POST(req: Request) {
 
     /* ── Knowledge mode (Mode B) — fullCtx injecté ── */
     if (type === "resume") {
-      const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx);
+      // Chercher les sujets réels pour cette matière et série (BAC + BFEM)
+      let sujetsBlock = "";
+      try {
+        const { data: sujets } = await sbClient()
+          .from("sujets_extraits")
+          .select("annee, groupe, type, contenu_texte, exercices")
+          .eq("matiere", matiere)
+          .eq("serie", serie)
+          .eq("examen", examType)
+          .order("annee", { ascending: false })
+          .limit(6);
+
+        if (sujets && sujets.length > 0) {
+          sujetsBlock = `\n\nSUJETS ET CORRIGÉS RÉELS DU ${examType} SÉNÉGALAIS SUR CETTE MATIÈRE :\n${
+            sujets.map((s: { annee: number; groupe: string; type: string; contenu_texte?: string }) =>
+              `${s.annee} ${s.groupe} — ${s.type === "corrige" ? "CORRIGÉ" : "ÉPREUVE"} :\n${s.contenu_texte?.slice(0, 800) ?? ""}`
+            ).join("\n\n")
+          }\n\nUtilise ces vrais sujets et corrigés pour enrichir la section "Ce qui tombe au ${examType}" de ton résumé. Cite les années et types de questions réels. Pour les matières scientifiques inclus des exercices similaires aux vrais sujets avec leurs corrigés détaillés.`;
+        }
+      } catch {
+        // table pas encore peuplée, on continue sans
+      }
+
+      const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx, sujetsBlock);
       const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: "llama-3.1-8b-instant",
