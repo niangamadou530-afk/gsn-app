@@ -97,25 +97,51 @@ def html_to_text(html: str) -> str:
     return soup.get_text(separator="\n", strip=True)
 
 
-def upsert(sb: Client, record: dict) -> None:
-    sb.table("sujets_extraits").upsert(
+def new_sb() -> Client:
+    """Crée un client Supabase frais (nouvelle connexion HTTP) à chaque appel."""
+    return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def upsert(record: dict) -> None:
+    new_sb().table("sujets_extraits").upsert(
         record, on_conflict="epreuve_id"
     ).execute()
 
 
 # ── Phase 1 : BAC PDFs ────────────────────────────────────────────────────────
 
-def process_bac(sb: Client, session: requests.Session, limit: int, dry: bool) -> tuple[int, int]:
-    query = (
-        sb.table("epreuves_bac")
-        .select("id, annee, serie, matiere, type, url_storage, examen")
-        .neq("examen", "BFEM")
-        .not_.is_("url_storage", "null")
-        .order("annee", ascending=False)
-    )
-    if limit:
-        query = query.limit(limit)
-    rows = query.execute().data or []
+def fetch_bac_rows(limit: int) -> list[dict]:
+    """
+    Retourne les entrées BAC en essayant examen='BAC' puis examen IS NULL.
+    Utilise url_storage en priorité, url_originale en fallback (PDF original).
+    """
+    sel = "id, annee, serie, matiere, type, url_storage, url_originale, examen"
+
+    # Tentative 1 : examen explicitement 'BAC'
+    q1 = new_sb().table("epreuves_bac").select(sel).eq("examen", "BAC").order("annee", desc=True)
+    if limit: q1 = q1.limit(limit)
+    rows = q1.execute().data or []
+    if not rows:
+        # Tentative 2 : examen IS NULL (migration pas encore appliquée)
+        q2 = new_sb().table("epreuves_bac").select(sel).is_("examen", "null").order("annee", desc=True)
+        if limit: q2 = q2.limit(limit)
+        rows = q2.execute().data or []
+        print(f"  (filtre examen IS NULL → {len(rows)} lignes)")
+    else:
+        print(f"  (filtre examen='BAC' → {len(rows)} lignes)")
+
+    # Résout l'URL effective : url_storage sinon url_originale (PDF source)
+    result = []
+    for r in rows:
+        pdf_url = r.get("url_storage") or r.get("url_originale") or ""
+        if pdf_url.lower().endswith(".pdf"):
+            r["_pdf_url"] = pdf_url
+            result.append(r)
+    return result
+
+
+def process_bac(session: requests.Session, limit: int, dry: bool) -> tuple[int, int]:
+    rows = fetch_bac_rows(limit)
     print(f"\n── Phase 1 BAC : {len(rows)} PDFs\n")
 
     ok = err = 0
@@ -126,8 +152,9 @@ def process_bac(sb: Client, session: requests.Session, limit: int, dry: bool) ->
             print("  [dry-run]")
             continue
 
+        pdf_url = row["_pdf_url"]
         try:
-            r = session.get(row["url_storage"], timeout=30)
+            r = session.get(pdf_url, timeout=30)
             r.raise_for_status()
             text = pdf_to_text(r.content)
             text = text.replace("\x00", " ").strip()
@@ -140,18 +167,18 @@ def process_bac(sb: Client, session: requests.Session, limit: int, dry: bool) ->
         print(f"  {len(text):,} car · {len(exercises)} exercice(s)")
 
         record = {
-            "examen":        row.get("examen", "BAC"),
+            "examen":        row.get("examen") or "BAC",
             "annee":         row["annee"],
             "serie":         row["serie"],
             "matiere":       row["matiere"],
-            "groupe":        detect_groupe(row["matiere"], row["url_storage"]),
+            "groupe":        detect_groupe(row["matiere"], pdf_url),
             "type":          row["type"],
             "contenu_texte": text[:MAX_TEXT],
             "exercices":     exercises,
             "epreuve_id":    row["id"],
         }
         try:
-            upsert(sb, record)
+            upsert(record)
             print("  [db-ok]")
             ok += 1
         except Exception as e:
@@ -165,13 +192,13 @@ def process_bac(sb: Client, session: requests.Session, limit: int, dry: bool) ->
 
 # ── Phase 2 : BFEM HTML ───────────────────────────────────────────────────────
 
-def process_bfem(sb: Client, limit: int, dry: bool) -> tuple[int, int]:
+def process_bfem(limit: int, dry: bool) -> tuple[int, int]:
+    # Connexion fraîche ; on ne sélectionne PAS contenu_html en bulk (payload trop lourd)
     query = (
-        sb.table("epreuves_bac")
-        .select("id, annee, serie, matiere, type, contenu_html, url_originale, examen")
+        new_sb().table("epreuves_bac")
+        .select("id, annee, serie, matiere, type, examen")
         .eq("examen", "BFEM")
-        .not_.is_("contenu_html", "null")
-        .order("annee", ascending=False)
+        .order("annee", desc=True)
     )
     if limit:
         query = query.limit(limit)
@@ -186,8 +213,14 @@ def process_bfem(sb: Client, limit: int, dry: bool) -> tuple[int, int]:
             print("  [dry-run]")
             continue
 
+        # Fetch contenu_html individuellement (connexion fraîche) pour éviter le crash HTTP/2
         try:
-            text = html_to_text(row["contenu_html"])
+            res = new_sb().table("epreuves_bac").select("contenu_html").eq("id", row["id"]).single().execute()
+            contenu_html = (res.data or {}).get("contenu_html") or ""
+            if not contenu_html:
+                print("  [skip] contenu_html vide")
+                continue
+            text = html_to_text(contenu_html)
             text = text.strip()
         except Exception as e:
             print(f"  [err] {e}")
@@ -209,7 +242,7 @@ def process_bfem(sb: Client, limit: int, dry: bool) -> tuple[int, int]:
             "epreuve_id":    row["id"],
         }
         try:
-            upsert(sb, record)
+            upsert(record)
             print("  [db-ok]")
             ok += 1
         except Exception as e:
@@ -233,7 +266,6 @@ def main() -> None:
         print("SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant dans .env")
         return
 
-    sb = create_client(SUPABASE_URL, SUPABASE_KEY)
     print(f"Connecté : {SUPABASE_URL}")
 
     session = requests.Session()
@@ -242,12 +274,12 @@ def main() -> None:
     total_ok = total_err = 0
 
     if not args.bfem_only:
-        ok, err = process_bac(sb, session, args.limit, args.dry_run)
+        ok, err = process_bac(session, args.limit, args.dry_run)
         total_ok += ok
         total_err += err
 
     if not args.bac_only:
-        ok, err = process_bfem(sb, args.limit, args.dry_run)
+        ok, err = process_bfem(args.limit, args.dry_run)
         total_ok += ok
         total_err += err
 
