@@ -34,12 +34,14 @@ export default function EpreuvesPage() {
   const [annee, setAnnee]       = useState<number>(2025);
   const [docType, setDocType]   = useState<DocType>("tous");
   const [groupe, setGroupe]     = useState<Groupe>("tous");
+  const [matiere, setMatiere]   = useState("Toutes");
   const [selected, setSelected] = useState<Epreuve | null>(null);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
       setSelected(null);
+      setMatiere("Toutes");
       const { data, error } = await supabase
         .from("epreuves_bac")
         .select("id, annee, serie, matiere, type, url_storage, url_originale, nom_fichier")
@@ -50,11 +52,17 @@ export default function EpreuvesPage() {
     })();
   }, [annee]);
 
+  const matieres = useMemo(() => {
+    const s = new Set(all.map(e => e.matiere.replace(/\s*2eGr\s*$/i, "").trim()));
+    return ["Toutes", ...Array.from(s).sort()];
+  }, [all]);
+
   const filtered = useMemo(() => all.filter(e => {
     if (docType !== "tous" && e.type !== docType) return false;
     if (groupe !== "tous" && detectGroupe(e) !== groupe) return false;
+    if (matiere !== "Toutes" && e.matiere.replace(/\s*2eGr\s*$/i, "").trim() !== matiere) return false;
     return true;
-  }), [all, docType, groupe]);
+  }), [all, docType, groupe, matiere]);
 
   const pdfUrl = (e: Epreuve) => e.url_storage ?? e.url_originale;
 
@@ -129,6 +137,16 @@ export default function EpreuvesPage() {
               <button key={k} onClick={() => setGroupe(k)}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${groupe === k ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
                 {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Filtres matière */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {matieres.map(m => (
+              <button key={m} onClick={() => setMatiere(m)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${matiere === m ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
+                {m}
               </button>
             ))}
           </div>
