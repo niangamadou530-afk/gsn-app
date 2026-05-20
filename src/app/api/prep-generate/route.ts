@@ -271,10 +271,23 @@ Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`
 
   return `Tu es un professeur expert du BAC et BFEM sénégalais. Tu génères un résumé complet et exhaustif sur ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` chapitre ${chapitre}` : ""}.
 
+══════════════════════════════════════════
+FORMAT DE SORTIE OBLIGATOIRE — NE PAS MODIFIER
+══════════════════════════════════════════
+${formatStr}
+
+RÈGLES DE FORMAT ABSOLUES (violations = réponse invalide) :
+1. Ta réponse COMMENCE directement par la première balise <section — aucun texte avant.
+2. Tu utilises UNIQUEMENT les balises <section id="..."> listées ci-dessus, jamais d'autres.
+3. Tout le contenu est DANS les balises <section>…</section>. Zéro texte en dehors.
+4. Remplis chaque section avec du texte en prose + listes à tirets (-). Pas de balises HTML imbriquées.
+5. Langue : tout en français sauf si la matière est Anglais.
+══════════════════════════════════════════
+
 COMPÉTENCES EXIGIBLES OFFICIELLES :
 ${competencesBlock}
 ${sujetsSection}
-INSTRUCTIONS PAR MATIÈRE :
+INSTRUCTIONS DE CONTENU PAR MATIÈRE :
 
 Si la matière est Mathématiques ou Sciences Physiques :
 Pour chaque notion du chapitre tu dois obligatoirement écrire :
@@ -348,15 +361,16 @@ Si la matière est Économie Générale :
 - Les théories économiques avec leurs auteurs, dates et thèses principales
 - Les sujets types qui tombent au BAC avec formulations exactes si disponibles
 
-RÈGLE ABSOLUE POUR TOUTES LES MATIÈRES :
+RÈGLE ABSOLUE DE CONTENU :
 Ce résumé doit être suffisamment complet pour qu'un élève puisse réviser uniquement avec lui sans avoir besoin d'aucun autre document.
 Il doit couvrir 100% des compétences exigibles officielles listées ci-dessus.
 Minimum 800 mots. Pas de limite maximale.
 Pour tous les exemples : utiliser en priorité les vrais sujets BAC ou BFEM sénégalais disponibles avec l'année et le groupe. Si aucun sujet disponible créer un exemple cohérent, pertinent et au niveau exact du BAC ou BFEM sénégalais.
 Tous les exemples d'exercices doivent être résolus complètement avec toutes les étapes détaillées.
 
-${formatStr}
-Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections. Tout en français sauf si la matière est Anglais.`;
+══════════════════════════════════════════
+RAPPEL FORMAT FINAL — commence par <section id="..."> et utilise uniquement les sections définies au début.
+══════════════════════════════════════════`;
 }
 
 function evaluatePrompt(
