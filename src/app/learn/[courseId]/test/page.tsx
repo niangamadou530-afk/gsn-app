@@ -164,6 +164,14 @@ export default function TestPage() {
           if (skillErr) console.error('[submit] users.update error:', skillErr.message, skillErr.code);
           else console.log('[submit] skill saved OK');
 
+          // Skill Passport PFIMN auto-delivery
+          if ((course?.title ?? "").startsWith("PFIMN")) {
+            await supabase
+              .from("pfimn_enrollments")
+              .update({ skill_passport_issued: true })
+              .eq("user_id", authData.user.id);
+          }
+
           setCourse((prev: any) => ({ ...prev, completed: true, certificate_id: certId }));
         }
       }
