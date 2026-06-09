@@ -223,7 +223,7 @@ export default function MctnDashboardPage() {
             {[
               { href: "/mctn/learn",  icon: "school",              label: "Mes parcours",    color: "#005bbf", desc: "6 métiers NDT" },
               { href: "/mctn/passport", icon: "workspace_premium",   label: "Skill Passport",  color: "#2b5bb5", desc: `${certCount} cert.` },
-              { href: "/missions",    icon: "work",                label: "GSN WORK",        color: "#2e7d32", desc: "Offres d'emploi" },
+              { href: "/mctn/work",  icon: "work",                label: "GSN WORK",        color: "#2e7d32", desc: "Offres NDT" },
               { href: "/wallet",      icon: "account_balance_wallet", label: "GSN PAY",      color: "#e65100", desc: "Micro-crédit" },
             ].map((a) => (
               <Link key={a.href} href={a.href}
@@ -286,7 +286,7 @@ export default function MctnDashboardPage() {
           <span className="material-symbols-outlined">workspace_premium</span>
           <span className="text-[10px] font-medium mt-0.5">Passport</span>
         </Link>
-        <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+        <Link href="/mctn/work" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">work</span>
           <span className="text-[10px] font-medium mt-0.5">WORK</span>
         </Link>
