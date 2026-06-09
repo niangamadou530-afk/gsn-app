@@ -13,7 +13,6 @@ const DOMAINS = [
     icon: "code",
     color: "#005bbf",
     weeks: [4, 8, 12],
-    objectifs: ["Premier emploi", "Freelance", "Créer ma startup"],
   },
   {
     id: "data",
@@ -22,7 +21,6 @@ const DOMAINS = [
     icon: "psychology",
     color: "#2b5bb5",
     weeks: [4, 8, 12],
-    objectifs: ["Premier emploi", "Freelance"],
   },
   {
     id: "cybersec",
@@ -31,7 +29,6 @@ const DOMAINS = [
     icon: "security",
     color: "#7b1fa2",
     weeks: [4, 8, 16],
-    objectifs: ["Premier emploi", "Reconversion"],
   },
   {
     id: "ux",
@@ -40,7 +37,6 @@ const DOMAINS = [
     icon: "palette",
     color: "#e65100",
     weeks: [4, 8],
-    objectifs: ["Freelance", "Premier emploi"],
   },
   {
     id: "ecommerce",
@@ -49,7 +45,6 @@ const DOMAINS = [
     icon: "storefront",
     color: "#2e7d32",
     weeks: [4, 8],
-    objectifs: ["Créer ma startup", "Freelance"],
   },
   {
     id: "cloud",
@@ -58,21 +53,37 @@ const DOMAINS = [
     icon: "cloud",
     color: "#00695c",
     weeks: [8, 12, 16],
-    objectifs: ["Premier emploi", "Reconversion"],
   },
 ];
+
+const DOMAIN_COLORS: Record<string, string> = {
+  "dev-web": "#005bbf",
+  data: "#2b5bb5",
+  cybersec: "#7b1fa2",
+  ux: "#e65100",
+  ecommerce: "#2e7d32",
+  cloud: "#00695c",
+};
 
 type Enrollment = {
   domaine: string;
   niveau: string;
   objectif: string;
-  region: string;
   course_id: string | null;
+};
+
+type UserCourse = {
+  id: string;
+  title: string;
+  modules: any[];
+  completed?: boolean;
+  test_score?: number;
 };
 
 export default function MctnLearnPage() {
   const router = useRouter();
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [courses, setCourses] = useState<UserCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
 
@@ -81,30 +92,60 @@ export default function MctnLearnPage() {
   }, []);
 
   async function load() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.replace("/login"); return; }
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
 
-    const { data } = await supabase
-      .from("pfimn_enrollments")
-      .select("domaine, niveau, objectif, region, course_id")
-      .eq("user_id", user.id)
-      .single();
+    const [enrollRes, coursesRes] = await Promise.all([
+      supabase
+        .from("pfimn_enrollments")
+        .select("domaine, niveau, objectif, course_id")
+        .eq("user_id", user.id)
+        .single(),
+      supabase
+        .from("user_courses")
+        .select("id, title, modules, completed, test_score")
+        .eq("user_id", user.id)
+        .ilike("title", "PFIMN%")
+        .order("id", { ascending: false }),
+    ]);
 
-    setEnrollment(data ?? null);
+    setEnrollment(enrollRes.data ?? null);
+    setCourses((coursesRes.data as UserCourse[]) ?? []);
     setLoading(false);
+  }
+
+  function getWeeksCount(modules: any[]): number {
+    if (!Array.isArray(modules)) return 0;
+    return modules[0]?.week !== undefined ? modules.length : 0;
+  }
+
+  function courseColor(title: string): string {
+    for (const [key, color] of Object.entries(DOMAIN_COLORS)) {
+      if (title.toLowerCase().includes(key)) return color;
+    }
+    return "#005bbf";
   }
 
   async function startCourse(domainId: string, weeks: number) {
     setStarting(domainId);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.replace("/login"); return; }
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
 
       const domain = DOMAINS.find((d) => d.id === domainId)!;
       const niveau = enrollment?.niveau ?? "Débutant";
       const objectif = enrollment?.objectif ?? "Premier emploi";
 
-      // Génération du parcours via l'API IA existante
       const BATCH = 4;
       let allWeeks: any[] = [];
 
@@ -112,7 +153,7 @@ export default function MctnLearnPage() {
         const batchSize = Math.min(BATCH, weeks - start + 1);
         const prompt = `Génère un parcours de formation PFIMN (Programme National Formation Insertion Métiers Numérique - Sénégal) pour les semaines ${start} à ${start + batchSize - 1} (${batchSize} semaines).
 
-Profil: domaine="${domain.label}", niveau="${niveau}", objectif="${objectif}", région="${enrollment?.region ?? "Dakar"}"
+Profil: domaine="${domain.label}", niveau="${niveau}", objectif="${objectif}"
 
 Contexte: Formation alignée sur le New Deal Technologique du Sénégal (NDT 2025-2034). Contenu pratique et directement applicable au marché sénégalais et africain.
 
@@ -158,7 +199,7 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
         .from("user_courses")
         .insert({
           user_id: user.id,
-          title:   `PFIMN · ${domain.label} · ${niveau} · ${weeks} semaines`,
+          title: `PFIMN · ${domain.label} · ${niveau} · ${weeks} semaines`,
           modules: allWeeks,
         })
         .select("id")
@@ -166,13 +207,12 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
 
       if (error) throw error;
 
-      // Mettre à jour l'enrollment avec le course_id
       await supabase
         .from("pfimn_enrollments")
         .update({ course_id: inserted.id })
         .eq("user_id", user.id);
 
-      router.push(`/learn/${inserted.id}`);
+      router.push(`/mctn/learn/${inserted.id}`);
     } catch (err: any) {
       alert("Erreur : " + (err.message ?? "Impossible de démarrer le parcours"));
     } finally {
@@ -196,30 +236,136 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
       {/* Top bar */}
       <header className="fixed top-0 w-full z-50 glass-nav shadow-sm flex justify-between items-center px-6 py-4">
         <div className="flex items-center gap-2">
-          <Link href="/mctn/dashboard" className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
+          <Link
+            href="/mctn/dashboard"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all"
+          >
             <span className="material-symbols-outlined text-on-surface">arrow_back</span>
           </Link>
           <span className="text-base font-bold text-primary">PFIMN · Parcours</span>
         </div>
         <Link href="/mctn/dashboard">
           <div className="w-9 h-9 bg-primary/10 rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+            <span
+              className="material-symbols-outlined text-primary text-[20px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              person
+            </span>
           </div>
         </Link>
       </header>
 
       <div className="pt-20 px-6 max-w-2xl mx-auto space-y-8">
 
-        {/* Domaine inscrit — mis en avant */}
+        {/* ── Mes cours PFIMN ── */}
+        {courses.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold tracking-tight text-on-surface">Mes parcours</h2>
+              <span className="text-xs text-on-surface-variant font-medium">
+                {courses.length} cours
+              </span>
+            </div>
+            <div className="space-y-3">
+              {courses.map((course) => {
+                const weeks = getWeeksCount(course.modules);
+                const color = courseColor(course.title);
+                const totalMods = weeks * 3;
+                return (
+                  <Link
+                    key={course.id}
+                    href={`/mctn/learn/${course.id}`}
+                    className="block bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden active:scale-[0.99] transition-all"
+                    style={{ borderLeft: `4px solid ${color}` }}
+                  >
+                    <div className="p-4">
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        <span className="px-2.5 py-0.5 bg-surface-container rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                          PFIMN
+                        </span>
+                        {course.completed ? (
+                          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                            Certifié
+                            <span
+                              className="material-symbols-outlined text-[10px]"
+                              style={{ fontVariationSettings: "'FILL' 1" }}
+                            >
+                              check_circle
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 bg-surface-container rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                            {weeks} semaines
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold text-on-surface mb-3 leading-snug">
+                        {course.title}
+                      </h3>
+                      {weeks > 0 && (
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="text-on-surface-variant">Modules</span>
+                            <span style={{ color }}>{totalMods} modules</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{
+                                width: course.completed ? "100%" : "8%",
+                                backgroundColor: color,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="px-4 py-3 bg-surface-container-low flex justify-between items-center">
+                      <span className="text-xs text-on-surface-variant flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[15px]">
+                          {course.completed ? "workspace_premium" : "schedule"}
+                        </span>
+                        {course.completed
+                          ? `Score : ${course.test_score}%`
+                          : `${weeks} sem. · ${totalMods} modules`}
+                      </span>
+                      <span className="text-xs font-bold text-primary flex items-center gap-1">
+                        {course.completed ? "Voir le diplôme" : "Continuer"}
+                        <span className="material-symbols-outlined text-[15px]">
+                          {course.completed ? "open_in_new" : "arrow_forward"}
+                        </span>
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Domaine inscrit — nouveau parcours ── */}
         {enrolledDomain && (
           <section className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Ton parcours PFIMN</p>
-            <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-4"
-              style={{ borderLeft: `4px solid ${enrolledDomain.color}` }}>
+            <p className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">
+              {courses.length > 0 ? "Nouveau parcours" : "Ton parcours PFIMN"}
+            </p>
+            <div
+              className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-4"
+              style={{ borderLeft: `4px solid ${enrolledDomain.color}` }}
+            >
               <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: `${enrolledDomain.color}15`, color: enrolledDomain.color }}>
-                  <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    backgroundColor: `${enrolledDomain.color}15`,
+                    color: enrolledDomain.color,
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined text-[24px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
                     {enrolledDomain.icon}
                   </span>
                 </div>
@@ -228,15 +374,17 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
                   <p className="text-xs text-on-surface-variant mt-0.5">{enrolledDomain.sub}</p>
                   {enrollment && (
                     <div className="flex gap-2 mt-2 flex-wrap">
-                      <span className="text-[11px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{enrollment.niveau}</span>
-                      <span className="text-[11px] font-medium bg-surface-container text-on-surface-variant px-2.5 py-1 rounded-full">{enrollment.objectif}</span>
-                      <span className="text-[11px] font-medium bg-surface-container text-on-surface-variant px-2.5 py-1 rounded-full">{enrollment.region}</span>
+                      <span className="text-[11px] font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full">
+                        {enrollment.niveau}
+                      </span>
+                      <span className="text-[11px] font-medium bg-surface-container text-on-surface-variant px-2.5 py-1 rounded-full">
+                        {enrollment.objectif}
+                      </span>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Durées disponibles */}
               <div>
                 <p className="text-xs font-bold text-on-surface-variant mb-2">Choisir la durée :</p>
                 <div className="flex gap-2 flex-wrap">
@@ -263,10 +411,12 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
           </section>
         )}
 
-        {/* Tous les parcours disponibles */}
+        {/* ── Tous les métiers NDT ── */}
         <section className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold tracking-tight text-on-surface">Tous les métiers NDT</h2>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">
+              Tous les métiers NDT
+            </h2>
             <span className="text-xs text-on-surface-variant font-medium">6 domaines</span>
           </div>
 
@@ -279,15 +429,24 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
                   className={`bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-3 ${isEnrolled ? "border-2 border-primary/30" : ""}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ backgroundColor: `${d.color}15`, color: d.color }}>
-                      <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{d.icon}</span>
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ backgroundColor: `${d.color}15`, color: d.color }}
+                    >
+                      <span
+                        className="material-symbols-outlined text-[20px]"
+                        style={{ fontVariationSettings: "'FILL' 1" }}
+                      >
+                        {d.icon}
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-sm text-on-surface truncate">{d.label}</h3>
                         {isEnrolled && (
-                          <span className="shrink-0 text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">TON PARCOURS</span>
+                          <span className="shrink-0 text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                            TON PARCOURS
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-on-surface-variant mt-0.5 truncate">{d.sub}</p>
@@ -317,11 +476,17 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
 
         {/* Info modalité hybride */}
         <div className="bg-surface-container-low rounded-2xl p-4 flex gap-3">
-          <span className="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>info</span>
+          <span
+            className="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5"
+            style={{ fontVariationSettings: "'FILL' 1" }}
+          >
+            info
+          </span>
           <div>
             <p className="text-sm font-bold text-on-surface">Modalité hybride PFIMN</p>
             <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">
-              Sessions présentielles SenaySkills (espaces numériques, hubs tech) + approfondissement digital GSN (IA, exercices, évaluations sur mobile)
+              Sessions présentielles SenaySkills (espaces numériques, hubs tech) +
+              approfondissement digital GSN (IA, exercices, évaluations sur mobile)
             </p>
           </div>
         </div>
@@ -330,19 +495,33 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
 
       {/* Bottom nav PFIMN */}
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
-        <Link href="/mctn/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+        <Link
+          href="/mctn/dashboard"
+          className="flex flex-col items-center text-outline active:scale-90 transition-transform"
+        >
           <span className="material-symbols-outlined">home</span>
           <span className="text-[10px] font-medium mt-0.5">Accueil</span>
         </Link>
-        <Link href="/mctn/learn" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full">
-          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+        <Link
+          href="/mctn/learn"
+          className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full"
+        >
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+            school
+          </span>
           <span className="text-[10px] font-medium mt-0.5">Parcours</span>
         </Link>
-        <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+        <Link
+          href="/score"
+          className="flex flex-col items-center text-outline active:scale-90 transition-transform"
+        >
           <span className="material-symbols-outlined">workspace_premium</span>
           <span className="text-[10px] font-medium mt-0.5">Passport</span>
         </Link>
-        <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+        <Link
+          href="/missions"
+          className="flex flex-col items-center text-outline active:scale-90 transition-transform"
+        >
           <span className="material-symbols-outlined">work</span>
           <span className="text-[10px] font-medium mt-0.5">WORK</span>
         </Link>

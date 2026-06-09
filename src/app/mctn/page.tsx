@@ -10,19 +10,11 @@ const DOMAINS = [
 ];
 
 const STATS = [
-  { value: "5 000",  label: "Jeunes formés (Phase 1)",   icon: "school" },
-  { value: "2 000",  label: "Insertions tech visées",     icon: "work" },
-  { value: "6",      label: "Métiers du numérique",       icon: "hub" },
-  { value: "3 régions", label: "Dakar · Thiès · Ziguinchor", icon: "location_on" },
+  { value: "5 000", label: "Jeunes formés (Phase 1)", icon: "school" },
+  { value: "2 000", label: "Insertions tech visées",  icon: "work" },
+  { value: "6",     label: "Métiers du numérique",    icon: "hub" },
 ];
 
-const TIMELINE = [
-  { months: "M 1–2",  label: "Cadrage institutionnel",  desc: "Signature MCTN × SenaySkills × GSN" },
-  { months: "M 3–4",  label: "Préparation",             desc: "Formation coachs · Identification bénéficiaires" },
-  { months: "M 5–8",  label: "Lancement Phase 1",       desc: "Sessions terrain & digital · Skill Passports délivrés" },
-  { months: "M 9–10", label: "Insertion & Matching",    desc: "Activation GSN WORK · Placements tech" },
-  { months: "M 11–12",label: "Financement startups",    desc: "Activation GSN PAY · Micro-crédits projets tech" },
-];
 
 export default function PfimnLandingPage() {
   return (
@@ -103,27 +95,6 @@ export default function PfimnLandingPage() {
 
       <div className="max-w-2xl mx-auto px-6 space-y-12 py-12">
 
-        {/* ── Trois fractures ── */}
-        <section className="space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Pourquoi le PFIMN ?</h2>
-          {[
-            { color: "#005bbf", icon: "school",           title: "Fracture de formation",    desc: "Pas de parcours courts, certifiants et alignés sur les métiers réels du numérique" },
-            { color: "#2b5bb5", icon: "work",             title: "Fracture d'insertion",     desc: "Entreprises tech et administrations peinent à identifier des profils certifiés locaux" },
-            { color: "#e65100", icon: "account_balance",  title: "Fracture de financement",  desc: "Exclusion du système bancaire — frein à l'émergence des startups du New Deal" },
-          ].map((f) => (
-            <div key={f.title} className="bg-surface-container-lowest rounded-2xl p-5 flex gap-4 shadow-sm"
-              style={{ borderLeft: `4px solid ${f.color}` }}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: `${f.color}15`, color: f.color }}>
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{f.icon}</span>
-              </div>
-              <div>
-                <p className="font-bold text-sm text-on-surface">{f.title}</p>
-                <p className="text-xs text-on-surface-variant mt-0.5 leading-relaxed">{f.desc}</p>
-              </div>
-            </div>
-          ))}
-        </section>
 
         {/* ── 6 Domaines NDT ── */}
         <section className="space-y-4">
@@ -176,25 +147,6 @@ export default function PfimnLandingPage() {
           ))}
         </section>
 
-        {/* ── Calendrier ── */}
-        <section className="space-y-4">
-          <h2 className="text-xl font-bold tracking-tight text-on-surface">Calendrier de Déploiement</h2>
-          <div className="relative pl-6 space-y-0">
-            <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-outline-variant" />
-            {TIMELINE.map((t, i) => (
-              <div key={t.months} className="relative flex gap-4 pb-5 last:pb-0">
-                <div className={`absolute -left-[13px] top-1 w-3 h-3 rounded-full border-2 z-10 ${i === 0 ? "bg-primary border-primary" : "bg-surface border-outline-variant"}`} />
-                <div className="ml-2 flex-1 bg-surface-container-lowest rounded-xl p-3 shadow-sm">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[11px] font-black text-primary uppercase tracking-wider">{t.months}</span>
-                    <span className="text-xs font-bold text-on-surface">{t.label}</span>
-                  </div>
-                  <p className="text-xs text-on-surface-variant">{t.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* ── CTA final ── */}
         <section className="bg-gradient-to-br from-primary to-secondary rounded-3xl p-8 text-center space-y-4 shadow-xl shadow-primary/20">

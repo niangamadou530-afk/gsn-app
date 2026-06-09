@@ -14,17 +14,11 @@ const DOMAINS = [
   { id: "cloud",     label: "Cloud Computing & DevOps",    sub: "AWS, Docker, CI/CD, Terraform", icon: "cloud",             color: "#00695c" },
 ];
 
-const REGIONS = [
-  "Dakar", "Thiès", "Ziguinchor", "Saint-Louis", "Diourbel", "Louga",
-  "Fatick", "Kaolack", "Matam", "Tambacounda", "Kolda", "Sédhiou",
-  "Kédougou", "Kaffrine",
-];
-
 const NIVEAUX   = ["Débutant", "Intermédiaire", "Avancé"];
 const OBJECTIFS = ["Premier emploi", "Freelance", "Reconversion", "Créer ma startup"];
 
 type Answers = {
-  prenom: string; nom: string; age: string; region: string; phone: string;
+  prenom: string; nom: string; age: string; phone: string;
   domaine: string; niveau: string; objectif: string;
   email: string; password: string;
 };
@@ -38,7 +32,7 @@ function InscriptionContent() {
   const [error, setError]     = useState("");
 
   const [answers, setAnswers] = useState<Answers>({
-    prenom: "", nom: "", age: "", region: "", phone: "",
+    prenom: "", nom: "", age: "", phone: "",
     domaine: searchParams.get("domaine") ?? "",
     niveau: "", objectif: "",
     email: "", password: "",
@@ -51,7 +45,7 @@ function InscriptionContent() {
   }
 
   function canNext(): boolean {
-    if (step === 1) return !!(answers.prenom && answers.nom && answers.age && answers.region);
+    if (step === 1) return !!(answers.prenom && answers.nom && answers.age);
     if (step === 2) return !!answers.domaine;
     if (step === 3) return !!(answers.niveau && answers.objectif);
     if (step === 4) return !!(answers.email && answers.password);
@@ -82,7 +76,6 @@ function InscriptionContent() {
         profile_type: "professionnel",
         tenant_id:    "mctn",
         phone:        answers.phone || null,
-        region:       answers.region,
         age:          parseInt(answers.age) || null,
       });
 
@@ -94,7 +87,6 @@ function InscriptionContent() {
         domaine:  answers.domaine,
         niveau:   answers.niveau,
         objectif: answers.objectif,
-        region:   answers.region,
       });
 
       if (enrollErr) throw enrollErr;
@@ -187,21 +179,6 @@ function InscriptionContent() {
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl px-4 py-3 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors text-sm"
                   required
                 />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-on-surface-variant mb-1 block">Région *</label>
-                <select
-                  value={answers.region}
-                  onChange={(e) => set("region", e.target.value)}
-                  className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl px-4 py-3 text-on-surface outline-none focus:border-primary transition-colors text-sm"
-                  required
-                >
-                  <option value="">Choisir une région</option>
-                  {REGIONS.map((r) => (
-                    <option key={r} value={r}>{r}</option>
-                  ))}
-                </select>
               </div>
 
               <div>
@@ -351,7 +328,6 @@ function InscriptionContent() {
               <div className="flex flex-wrap gap-2">
                 {[
                   { icon: "person",   val: `${answers.prenom} ${answers.nom}` },
-                  { icon: "location_on", val: answers.region },
                   { icon: "code",     val: DOMAINS.find((d) => d.id === answers.domaine)?.label ?? answers.domaine },
                   { icon: "trending_up", val: answers.niveau },
                   { icon: "flag",     val: answers.objectif },
