@@ -65,14 +65,13 @@ export default function ParentPage() {
 
       const studentId = link[0].student_user_id;
 
-      const [{ data: profile }, { data: stu }, { data: prog }, { data: res }] = await Promise.all([
-        supabase.from("users").select("name").eq("id", studentId).single(),
+      const [{ data: stu }, { data: prog }, { data: res }] = await Promise.all([
         supabase.from("prep_students").select("*").eq("user_id", studentId).limit(1),
         supabase.from("prep_programs").select("exam_date").eq("user_id", studentId).limit(1),
         supabase.from("prep_results").select("subject, score, created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
       ]);
 
-      setStudentName(profile?.name ?? "Élève");
+      setStudentName((stu?.[0] as { prenom?: string | null } | undefined)?.prenom ?? "Élève");
       setStudentData((stu?.[0] as StudentData) ?? null);
       setExamDate(prog?.[0]?.exam_date ?? "");
       setResults((res ?? []) as typeof results);
