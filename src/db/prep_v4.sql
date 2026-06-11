@@ -69,15 +69,16 @@ ALTER TABLE flashcards        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prep_resumes      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE prep_player_stats ENABLE ROW LEVEL SECURITY;
 
+-- Supprime quiz_results_read_all : cette politique permettait à tout utilisateur
+-- authentifié de lire TOUS les résultats de quiz, violant l'isolation des données.
+DROP POLICY IF EXISTS quiz_results_read_all ON quiz_results;
+
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='prep_students' AND policyname='prep_students_self') THEN
     CREATE POLICY prep_students_self ON prep_students FOR ALL USING (auth.uid() = user_id);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='quiz_results' AND policyname='quiz_results_self') THEN
     CREATE POLICY quiz_results_self ON quiz_results FOR ALL USING (auth.uid() = user_id);
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='quiz_results' AND policyname='quiz_results_read_all') THEN
-    CREATE POLICY quiz_results_read_all ON quiz_results FOR SELECT USING (true);
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='flashcards' AND policyname='flashcards_self') THEN
     CREATE POLICY flashcards_self ON flashcards FOR ALL USING (auth.uid() = user_id);

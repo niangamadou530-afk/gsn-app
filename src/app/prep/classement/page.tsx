@@ -47,7 +47,11 @@ export default function ClassementPage() {
       setMyEcole(ecole);
       setMyExamType(examType);
 
-      const { data: results } = await supabase.from("quiz_results").select("user_id, score, total");
+      const res = await fetch("/api/prep-classement");
+      const { results, students } = await res.json() as {
+        results: Array<{ user_id: string; score: number; total: number }>;
+        students: Array<{ user_id: string; prenom: string | null; ecole: string | null; serie: string | null; exam_type: string }>;
+      };
       if (!results || results.length === 0) { setLoading(false); return; }
 
       const byUser: Record<string, number[]> = {};
@@ -57,8 +61,6 @@ export default function ClassementPage() {
       }
 
       const uids = Object.keys(byUser);
-      const { data: students } = await supabase
-        .from("prep_students").select("user_id, prenom, ecole, serie, exam_type").in("user_id", uids);
 
       const stuMap: Record<string, { prenom: string | null; ecole: string | null; serie: string | null; exam_type: string }> = {};
       for (const s of students ?? []) stuMap[s.user_id] = { prenom: s.prenom, ecole: s.ecole, serie: s.serie, exam_type: s.exam_type ?? "BAC" };

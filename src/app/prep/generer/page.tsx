@@ -115,7 +115,8 @@ function GenererPageInner() {
   }
 
   async function toggleFlashMaitrisee(id: string, current: boolean) {
-    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id);
+    if (!userId) return;
+    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id).eq("user_id", userId);
     setSavedFlashcards(prev => prev.map(f => f.id === id ? { ...f, maitrisee: !current } : f));
   }
 
