@@ -308,7 +308,7 @@ export default function MctnPassportPage() {
                 </span>
               </Link>
 
-              <Link href="/score"
+              <Link href="/mctn/dashboard"
                 className="flex items-center gap-3 w-full bg-surface-container-lowest rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-all">
                 <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-secondary text-[20px]"
@@ -323,7 +323,7 @@ export default function MctnPassportPage() {
                 </span>
               </Link>
 
-              <Link href="/missions"
+              <Link href="/mctn/work"
                 className="flex items-center gap-3 w-full bg-surface-container-lowest rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-all">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{ backgroundColor: `${domainColor}15` }}>
@@ -368,10 +368,15 @@ export default function MctnPassportPage() {
             </span>
             <span className="text-[10px] font-medium mt-0.5">Passport</span>
           </Link>
-          <Link href="/missions"
+          <Link href="/mctn/work"
             className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">work</span>
             <span className="text-[10px] font-medium mt-0.5">WORK</span>
+          </Link>
+          <Link href="/mctn/pay"
+            className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+            <span className="material-symbols-outlined">account_balance_wallet</span>
+            <span className="text-[10px] font-medium mt-0.5">PAY</span>
           </Link>
         </nav>
       </main>

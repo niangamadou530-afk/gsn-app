@@ -163,7 +163,7 @@ export default function MctnDashboardPage() {
             </p>
             <p className="text-white/50 text-xs mt-1">{certCount} certification{certCount > 1 ? "s" : ""} obtenue{certCount > 1 ? "s" : ""}</p>
           </div>
-          <Link href="/score"
+          <Link href="/mctn/passport"
             className="shrink-0 bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-xl text-xs font-bold active:scale-95 transition-all border border-white/10">
             Voir
           </Link>
@@ -224,7 +224,7 @@ export default function MctnDashboardPage() {
               { href: "/mctn/learn",  icon: "school",              label: "Mes parcours",    color: "#005bbf", desc: "6 métiers NDT" },
               { href: "/mctn/passport", icon: "workspace_premium",   label: "Skill Passport",  color: "#2b5bb5", desc: `${certCount} cert.` },
               { href: "/mctn/work",  icon: "work",                label: "GSN WORK",        color: "#2e7d32", desc: "Offres NDT" },
-              { href: "/wallet",      icon: "account_balance_wallet", label: "GSN PAY",      color: "#e65100", desc: "Micro-crédit" },
+              { href: "/mctn/pay",    icon: "account_balance_wallet", label: "GSN PAY",      color: "#e65100", desc: "Micro-crédit" },
             ].map((a) => (
               <Link key={a.href} href={a.href}
                 className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm active:scale-[0.97] transition-all space-y-2">
@@ -244,7 +244,7 @@ export default function MctnDashboardPage() {
           <section className="space-y-2">
             <div className="flex justify-between items-center">
               <h2 className="text-sm font-bold uppercase tracking-widest text-on-surface-variant">Skill Passport</h2>
-              <Link href="/score" className="text-primary text-xs font-bold hover:underline">Voir tout</Link>
+              <Link href="/mctn/passport" className="text-primary text-xs font-bold hover:underline">Voir tout</Link>
             </div>
             {skills.slice(0, 2).map((sk: any, i: number) => (
               <div key={i} className="bg-surface-container-lowest rounded-2xl p-4 flex items-center gap-3 shadow-sm">
@@ -289,6 +289,10 @@ export default function MctnDashboardPage() {
         <Link href="/mctn/work" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">work</span>
           <span className="text-[10px] font-medium mt-0.5">WORK</span>
+        </Link>
+        <Link href="/mctn/pay" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">account_balance_wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">PAY</span>
         </Link>
       </nav>
     </main>

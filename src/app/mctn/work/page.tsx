@@ -298,6 +298,11 @@ export default function MctnWorkPage() {
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>work</span>
           <span className="text-[10px] font-medium mt-0.5">WORK</span>
         </Link>
+        <Link href="/mctn/pay"
+          className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+          <span className="material-symbols-outlined">account_balance_wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">PAY</span>
+        </Link>
       </nav>
     </main>
   );
