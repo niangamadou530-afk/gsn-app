@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type ProfileType = "eleve" | "professionnel" | "Beneficiaire du PNACIJ"| "";
+type ProfileType = "beneficiaire" | "recruteur" | "";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -37,7 +37,7 @@ export default function SignupPage() {
         id: userId,
         name: fullName,
         score: 0,
-        profile_type: profileType || "professionnel",
+        profile_type: profileType || "recruteur",
       });
 
       if (insertError) {
@@ -48,10 +48,10 @@ export default function SignupPage() {
     }
 
     setLoading(false);
-    if (profileType === "eleve") {
-      router.push("/prep/onboarding");
+    if (profileType === "beneficiaire") {
+      router.push("/mjs"); {/*route dashboard beneficiaire*/}
     } else {
-      router.push("/dashboard");
+      router.push("/dashboard"); {/*route dashboard recruteur*/}
     }
   }
 
@@ -91,36 +91,36 @@ export default function SignupPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Tu es…</h2>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">Vous etes…</h2>
               <p className="text-on-surface-variant text-sm">Choisis ton profil pour une expérience personnalisée.</p>
             </div>
 
             <div className="space-y-3">
               <button
-                onClick={() => setProfileType("eleve")}
-                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "eleve" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
+                onClick={() => setProfileType("beneficiaire")}
+                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "beneficiaire" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
                 <div className="flex items-center gap-4">
-                  <span className="text-3xl">🎓</span>
+                  <span className="text-3xl">🙍‍♂️</span>
                   <div>
-                    <p className="font-bold text-on-surface">Élève</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Je prépare mon BFEM ou BAC — accès à GSN PREP</p>
+                    <p className="font-bold text-on-surface">Beneficiaire PNACIJ</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Je suis un beneficiaire du programme PNACIJ</p>
                   </div>
-                  {profileType === "eleve" && (
+                  {profileType === "beneficiaire" && (
                     <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                   )}
                 </div>
               </button>
 
               <button
-                onClick={() => setProfileType("professionnel")}
-                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "professionnel" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
+                onClick={() => setProfileType("recruteur")}
+                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "recruteur" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
                 <div className="flex items-center gap-4">
-                  <span className="text-3xl">👨‍💼</span>
+                  <span className="text-3xl">🏫</span>
                   <div>
-                    <p className="font-bold text-on-surface">Professionnel</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Je cherche des missions, formations ou emplois</p>
+                    <p className="font-bold text-on-surface">Recruteur / Partenaire MJS</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Je suis un recruteur ou un partenaire de la ministere</p>
                   </div>
-                  {profileType === "professionnel" && (
+                  {profileType === "recruteur" && (
                     <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                   )}
                 </div>
@@ -146,8 +146,8 @@ export default function SignupPage() {
                 <span className="material-symbols-outlined text-[22px]">arrow_back</span>
               </button>
               <div className="flex items-center gap-2">
-                <span className="text-lg">{profileType === "eleve" ? "🎓" : "👨‍💼"}</span>
-                <span className="text-sm font-semibold text-on-surface-variant">{profileType === "eleve" ? "Élève" : "Professionnel"}</span>
+                <span className="text-lg">{profileType === "beneficiaire" ? "🙍‍♂️" : "🏫"}</span>
+                <span className="text-sm font-semibold text-on-surface-variant">{profileType === "beneficiaire" ? "Beneficiaire" : "Recruteur / Partenaire MJS"}</span>
               </div>
             </div>
 
@@ -156,7 +156,7 @@ export default function SignupPage() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">person</span>
                 <input
                   type="text"
-                  placeholder="Nom complet"
+                  placeholder={profileType === "beneficiaire" ? "nom complet" : "nom du partenaire"}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
@@ -215,7 +215,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-on-surface-variant mt-8">
           Déjà inscrit ?{" "}
-          <Link href="/login" className="text-primary font-bold hover:underline">
+          <Link href="/mjs/login" className="text-primary font-bold hover:underline">
             Se connecter
           </Link>
         </p>
