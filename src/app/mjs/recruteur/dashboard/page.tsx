@@ -47,6 +47,8 @@ export default function DashboardRecruteurPage() {
         .eq("tenant_id", "mjs")
         .order("delivre_le", { ascending: false });
 
+      console.log("passports:", passports, "error:", Error);
+
       if (passports) {
         const mapped = (passports as any[]).map((p) => ({
           user_id: p.user_id,
@@ -118,21 +120,27 @@ export default function DashboardRecruteurPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {profilsFiltres.map((p, i) => (
-              <div key={i} className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
-                    {p.prenom[0]}{p.nom[0]}
+              <button
+                key={i}
+                onClick={() => router.push(`/mjs/recruteur/profil/${p.user_id}`)}
+                className="text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
+              >
+                <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
+                      {p.prenom[0]}{p.nom[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
+                      <p className="text-xs text-on-surface-variant">{p.secteur_nom}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
-                    <p className="text-xs text-on-surface-variant">{p.secteur_nom}</p>
+                  <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
+                    <p className="text-xs font-bold text-on-tertiary-container">{p.parcours_titre}</p>
                   </div>
                 </div>
-                <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
-                  <p className="text-xs font-bold text-on-tertiary-container">{p.parcours_titre}</p>
-                </div>
-              </div>
+              </button>
             ))}
           </div>
         )}

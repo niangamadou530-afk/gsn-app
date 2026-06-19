@@ -29,9 +29,9 @@ export default function InscriptionRecruteurPage() {
       password,
     });
 
-    console.log(authError);
 
     if (authError) {
+      console.error(authError);
       setError(authError.message === "User already registered"
         ? "Un compte existe déjà avec cet email."
         : "Une erreur est survenue. Réessaie.");
