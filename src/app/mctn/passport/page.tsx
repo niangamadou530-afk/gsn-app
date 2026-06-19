@@ -293,7 +293,7 @@ export default function MctnPassportPage() {
           {/* Actions si certifié */}
           {isIssued && courseData && (
             <div className="space-y-3">
-              <Link href={`/learn/${enrollment?.course_id}/certificate`}
+              <Link href={`/mctn/learn/${enrollment?.course_id}/certificate`}
                 className="flex items-center gap-3 w-full bg-surface-container-lowest rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-all">
                 <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-primary text-[20px]"

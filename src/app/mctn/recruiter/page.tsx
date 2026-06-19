@@ -276,6 +276,17 @@ export default function MctnRecruiterPage() {
           </div>
         )}
 
+        {/* CTA espace employeur */}
+        <Link href="/mctn/employer/login"
+          className="flex items-center gap-3 bg-[#0a1628] text-white rounded-2xl p-4 hover:opacity-90 active:scale-[0.99] transition-all">
+          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>business_center</span>
+          <div className="flex-1">
+            <p className="font-bold text-sm">Espace Entreprises PFIMN</p>
+            <p className="text-xs text-white/60">Publiez une offre et recrutez des talents certifiés NDT</p>
+          </div>
+          <span className="material-symbols-outlined text-white/60 text-[20px]">arrow_forward</span>
+        </Link>
+
         {/* Info accès */}
         <div className="bg-surface-container-low rounded-2xl p-4 flex gap-3">
           <span className="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5"

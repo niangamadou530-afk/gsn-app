@@ -315,7 +315,7 @@ export default function MctnCourseDetailPage() {
           </div>
           {course.completed && (
             <Link
-              href={`/learn/${courseId}/certificate`}
+              href={`/mctn/learn/${courseId}/certificate`}
               className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 rounded-full px-4 py-1.5 text-xs font-bold"
             >
               <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
@@ -821,7 +821,7 @@ export default function MctnCourseDetailPage() {
           )}
           <div className="pt-1">
             <Link
-              href={`/learn/${courseId}/test`}
+              href={`/mctn/learn/${courseId}/test`}
               className="inline-block bg-primary text-on-primary px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
             >
               Passer le test →

@@ -21,9 +21,11 @@ export default function LoginPage() {
     if (error) { setLoading(false); setErrorMessage(error.message); return; }
     const userId = authData.user?.id;
     if (userId) {
-      const { data: profile } = await supabase.from("users").select("profile_type").eq("id", userId).single();
+      const { data: profile } = await supabase.from("users").select("profile_type, tenant_id").eq("id", userId).single();
       setLoading(false);
-      if (profile?.profile_type === "eleve") {
+      if (profile?.tenant_id === "mctn") {
+        router.push("/mctn/dashboard");
+      } else if (profile?.profile_type === "eleve") {
         router.push("/prep/dashboard");
       } else {
         router.push("/dashboard");

@@ -78,7 +78,7 @@ export default function MctnWorkPage() {
         .eq("user_id", user.id).single(),
       supabase.from("users").select("score").eq("id", user.id).single(),
       supabase.from("employer_missions")
-        .select("*").eq("status", "active")
+        .select("*").eq("status", "active").eq("tenant_id", "mctn")
         .order("created_at", { ascending: false }),
       supabase.from("applications").select("mission_id").eq("user_id", user.id),
     ]);

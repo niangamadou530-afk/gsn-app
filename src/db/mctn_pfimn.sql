@@ -58,3 +58,16 @@ SELECT
   ROUND(COUNT(*) FILTER (WHERE skill_passport_issued = TRUE) * 100.0 / NULLIF(COUNT(*), 0), 1) AS taux_completion_pct,
   ROUND(COUNT(*) FILTER (WHERE inserted = TRUE) * 100.0 / NULLIF(COUNT(*), 0), 1)              AS taux_insertion_pct
 FROM pfimn_enrollments;
+
+-- ============================================================
+-- 5. Espace employeur MCTN — séparation des offres NDT
+-- ============================================================
+
+ALTER TABLE employers
+  ADD COLUMN IF NOT EXISTS tenant_id TEXT DEFAULT 'gsn';
+
+ALTER TABLE employer_missions
+  ADD COLUMN IF NOT EXISTS tenant_id TEXT DEFAULT 'gsn';
+
+CREATE INDEX IF NOT EXISTS idx_employers_tenant_id        ON employers(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_employer_missions_tenant_id ON employer_missions(tenant_id);

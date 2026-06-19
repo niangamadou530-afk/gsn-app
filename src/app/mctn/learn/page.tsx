@@ -114,8 +114,15 @@ export default function MctnLearnPage() {
         .order("id", { ascending: false }),
     ]);
 
-    setEnrollment(enrollRes.data ?? null);
-    setCourses((coursesRes.data as UserCourse[]) ?? []);
+    const enrollment = enrollRes.data ?? null;
+    const allCourses = (coursesRes.data as UserCourse[]) ?? [];
+
+    setEnrollment(enrollment);
+    setCourses(
+      enrollment?.course_id
+        ? allCourses.filter((c) => c.id === enrollment.course_id)
+        : []
+    );
     setLoading(false);
   }
 
@@ -426,7 +433,7 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
               return (
                 <div
                   key={d.id}
-                  className={`bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-3 ${isEnrolled ? "border-2 border-primary/30" : ""}`}
+                  className={`bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-3 ${isEnrolled ? "border-2 border-primary/30" : "opacity-60"}`}
                 >
                   <div className="flex items-center gap-3">
                     <div
@@ -452,22 +459,26 @@ Règles : exactement ${batchSize} semaines, 3 modules par semaine, index answer 
                       <p className="text-xs text-on-surface-variant mt-0.5 truncate">{d.sub}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {d.weeks.map((w) => (
-                      <button
-                        key={w}
-                        onClick={() => startCourse(d.id, w)}
-                        disabled={!!starting}
-                        className="text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition-all active:scale-95 disabled:opacity-50"
-                        style={{
-                          borderColor: isEnrolled ? d.color : "var(--color-outline-variant)",
-                          color: isEnrolled ? d.color : "var(--color-on-surface-variant)",
-                        }}
-                      >
-                        {starting === d.id ? "..." : `${w} sem.`}
-                      </button>
-                    ))}
-                  </div>
+                  {isEnrolled ? (
+                    <div className="flex gap-2 flex-wrap">
+                      {d.weeks.map((w) => (
+                        <button
+                          key={w}
+                          onClick={() => startCourse(d.id, w)}
+                          disabled={!!starting}
+                          className="text-xs font-bold px-3 py-1.5 rounded-xl border-2 transition-all active:scale-95 disabled:opacity-50"
+                          style={{ borderColor: d.color, color: d.color }}
+                        >
+                          {starting === d.id ? "..." : `${w} sem.`}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-xs font-medium text-on-surface-variant bg-surface-container rounded-xl px-3 py-2">
+                      <span className="material-symbols-outlined text-[16px]">lock</span>
+                      Verrouillé · réservé aux bénéficiaires inscrits à ce métier
+                    </div>
+                  )}
                 </div>
               );
             })}
