@@ -37,29 +37,45 @@ export default function DashboardRecruteurPage() {
       if (!rec) { router.push("/mjs/recruteur/connexion"); return; }
       setRecruteur(rec);
 
-      const { data: passports } = await supabase
+      // 1. Récupère les skill passports avec le parcours (relation FK existante)
+      const { data: passportsRaw, error: passErr } = await supabase
         .from("mjs_skill_passports")
         .select(`
           user_id, delivre_le,
-          mjs_beneficiaires:user_id ( prenom, nom ),
           mjs_parcours ( titre, mjs_secteurs ( nom ) )
         `)
         .eq("tenant_id", "mjs")
         .order("delivre_le", { ascending: false });
 
-      console.log("passports:", passports, "error:", Error);
+      console.log("passportsRaw:", passportsRaw, "error:", passErr);
 
-      if (passports) {
-        const mapped = (passports as any[]).map((p) => ({
-          user_id: p.user_id,
-          prenom: p.mjs_beneficiaires?.prenom ?? "—",
-          nom: p.mjs_beneficiaires?.nom ?? "",
-          parcours_titre: p.mjs_parcours?.titre ?? "—",
-          secteur_nom: p.mjs_parcours?.mjs_secteurs?.nom ?? "—",
-          delivre_le: p.delivre_le,
-        }));
-        setProfils(mapped);
+      if (!passportsRaw || passportsRaw.length === 0) {
+        setProfils([]);
+        setLoading(false);
+        return;
       }
+
+      // 2. Récupère les bénéficiaires correspondants séparément
+      const userIds = Array.from(new Set(passportsRaw.map((p) => p.user_id)));
+      const { data: beneficiaires, error: benErr } = await supabase
+        .from("mjs_beneficiaires")
+        .select("user_id, prenom, nom")
+        .in("user_id", userIds)
+        .eq("tenant_id", "mjs");
+
+      console.log("beneficiaires:", beneficiaires, "error:", benErr);
+
+      const benMap = new Map((beneficiaires ?? []).map((b) => [b.user_id, b]));
+
+      const mapped = (passportsRaw as any[]).map((p) => ({
+        user_id: p.user_id,
+        prenom: benMap.get(p.user_id)?.prenom ?? "—",
+        nom: benMap.get(p.user_id)?.nom ?? "",
+        parcours_titre: p.mjs_parcours?.titre ?? "—",
+        secteur_nom: p.mjs_parcours?.mjs_secteurs?.nom ?? "—",
+        delivre_le: p.delivre_le,
+      }));
+      setProfils(mapped);
 
       setLoading(false);
     }
@@ -125,20 +141,18 @@ export default function DashboardRecruteurPage() {
                 onClick={() => router.push(`/mjs/recruteur/profil/${p.user_id}`)}
                 className="text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
               >
-                <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
-                      {p.prenom[0]}{p.nom[0]}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
-                      <p className="text-xs text-on-surface-variant">{p.secteur_nom}</p>
-                    </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
+                    {p.prenom[0]}{p.nom[0]}
                   </div>
-                  <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
-                    <p className="text-xs font-bold text-on-tertiary-container">{p.parcours_titre}</p>
+                  <div className="min-w-0">
+                    <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
+                    <p className="text-xs text-on-surface-variant">{p.secteur_nom}</p>
                   </div>
+                </div>
+                <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
+                  <p className="text-xs font-bold text-on-tertiary-container">{p.parcours_titre}</p>
                 </div>
               </button>
             ))}
