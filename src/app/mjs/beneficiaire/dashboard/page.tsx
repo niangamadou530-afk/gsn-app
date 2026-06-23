@@ -14,7 +14,8 @@ type InscriptionRow = {
     modules_total: number;
     mjs_secteurs: { nom: string; icone: string | null } | null;
   } | null;
-  mjs_progression: { pourcentage: number; modules_faits: number }[];
+  pourcentage: number;
+  certifie: boolean;
 };
 
 export default function DashboardBeneficiairePage() {
@@ -40,20 +41,43 @@ export default function DashboardBeneficiairePage() {
 
       setBeneficiaire(ben);
 
-      const { data: insc } = await supabase
-        .from("mjs_inscriptions")
-        .select(`
-          parcours_id,
-          mjs_parcours (
-            id, titre, modules_total,
-            mjs_secteurs ( nom, icone )
-          ),
-          mjs_progression ( pourcentage, modules_faits )
-        `)
-        .eq("user_id", user.id)
-        .eq("tenant_id", "mjs");
+      const [{ data: insc }, { data: progressions }, { data: passports }] = await Promise.all([
+        supabase
+          .from("mjs_inscriptions")
+          .select(`
+            parcours_id,
+            mjs_parcours (
+              id, titre, modules_total,
+              mjs_secteurs ( nom, icone )
+            )
+          `)
+          .eq("user_id", user.id)
+          .eq("tenant_id", "mjs"),
+        supabase
+          .from("mjs_progression")
+          .select("parcours_id, pourcentage")
+          .eq("user_id", user.id)
+          .eq("tenant_id", "mjs"),
+        supabase
+          .from("mjs_skill_passports")
+          .select("parcours_id")
+          .eq("user_id", user.id)
+          .eq("tenant_id", "mjs"),
+      ]);
 
-      if (insc) setInscriptions(insc as unknown as InscriptionRow[]);
+      const progMap = new Map((progressions ?? []).map((p) => [p.parcours_id, p.pourcentage ?? 0]));
+      const passportSet = new Set((passports ?? []).map((p) => p.parcours_id));
+
+      if (insc) {
+        setInscriptions(
+          insc.map((row) => ({
+            parcours_id: row.parcours_id,
+            mjs_parcours: row.mjs_parcours as InscriptionRow["mjs_parcours"],
+            pourcentage: progMap.get(row.parcours_id) ?? 0,
+            certifie: passportSet.has(row.parcours_id),
+          }))
+        );
+      }
       setLoading(false);
     }
     load();
@@ -69,17 +93,12 @@ export default function DashboardBeneficiairePage() {
 
   if (!beneficiaire) return null;
 
-  const parcoursActifs = inscriptions.filter(
-    (i) => (i.mjs_progression[0]?.pourcentage ?? 0) < 100
-  );
-  const parcoursTermines = inscriptions.filter(
-    (i) => (i.mjs_progression[0]?.pourcentage ?? 0) >= 100
-  );
+  const parcoursActifs = inscriptions.filter((i) => !i.certifie);
+  const parcoursTermines = inscriptions.filter((i) => i.certifie);
 
   const moyenne = inscriptions.length > 0
     ? Math.round(
-        inscriptions.reduce((sum, i) => sum + (i.mjs_progression[0]?.pourcentage ?? 0), 0) /
-        inscriptions.length
+        inscriptions.reduce((sum, i) => sum + i.pourcentage, 0) / inscriptions.length
       )
     : 0;
 
@@ -142,7 +161,7 @@ export default function DashboardBeneficiairePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-10">
             {parcoursActifs.map((i) => {
               const p = i.mjs_parcours;
-              const prog = i.mjs_progression[0]?.pourcentage ?? 0;
+              const prog = i.pourcentage;
               if (!p) return null;
               return (
                 <button

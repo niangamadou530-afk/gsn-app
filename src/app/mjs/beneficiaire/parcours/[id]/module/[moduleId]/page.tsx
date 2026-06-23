@@ -3,9 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { ModuleContenu } from "../../page";
+import type { ModuleContenu, QuizQ } from "../../../types";
 
-type QuizQ = { question: string; options: string[]; answer: number; explanation?: string };
 type YTVideo = { videoId: string; title: string; channel: string };
 type Phase = "content" | "exercise" | "quiz" | "result";
 
@@ -58,14 +57,22 @@ export default function ModuleDetailPage() {
 
     const { data: insc } = await supabase
       .from("mjs_inscriptions")
-      .select("id, mjs_progression ( modules_faits_ids )")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("parcours_id", id)
+      .eq("tenant_id", "mjs")
+      .maybeSingle();
+
+    const { data: prog } = await supabase
+      .from("mjs_progression")
+      .select("modules_faits_ids")
       .eq("user_id", user.id)
       .eq("parcours_id", id)
       .eq("tenant_id", "mjs")
       .maybeSingle();
 
     if (insc) {
-      const ids: string[] = (insc as any).mjs_progression?.[0]?.modules_faits_ids ?? [];
+      const ids: string[] = prog?.modules_faits_ids ?? [];
       const passed = new Set<string>(ids);
       setQuizPassed(passed);
       if (passed.has(moduleId)) setPhase("result");
@@ -123,8 +130,7 @@ export default function ModuleDetailPage() {
       setPhase("result");
 
       const passedArr = Array.from(nextPassed);
-      const total = totalModules;
-      const pourcentage = Math.round((passedArr.length / total) * 100);
+      const pourcentage = Math.round((passedArr.length / totalModules) * 100);
 
       await supabase
         .from("mjs_progression")
@@ -137,15 +143,6 @@ export default function ModuleDetailPage() {
         .eq("user_id", userId)
         .eq("parcours_id", id)
         .eq("tenant_id", "mjs");
-
-      // Créer le Skill Passport si 100% atteint
-      if (pourcentage >= 100) {
-        await supabase
-          .from("mjs_skill_passports")
-          .insert({ user_id: userId, tenant_id: "mjs", parcours_id: id })
-          .onConflict("user_id, parcours_id")
-          .ignore();
-      }
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -178,7 +175,6 @@ export default function ModuleDetailPage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-24">
 
-      {/* Top bar */}
       <header className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur border-b border-outline-variant/10 flex justify-between items-center px-6 py-4">
         <button onClick={() => router.push(`/mjs/beneficiaire/parcours/${id}`)}
           className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
@@ -190,7 +186,6 @@ export default function ModuleDetailPage() {
 
       <div className="pt-24 px-6 max-w-2xl mx-auto space-y-5">
 
-        {/* En-tête module */}
         <div>
           <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Module {moduleIndex + 1}</span>
           <h1 className="text-xl font-extrabold text-on-surface mt-0.5">{module.titre}</h1>
@@ -203,15 +198,16 @@ export default function ModuleDetailPage() {
             const labels: Record<Phase, string> = { content: "Cours", exercise: "Exercice", quiz: "Quiz", result: "Résultat" };
             const isActive = phase === p;
             const isDisabled =
-              (p === "exercise" && phase === "content" && !exDone.has(moduleId)) ||
+              (p === "exercise" && !exDone.has(moduleId) && phase === "content") ||
               (p === "quiz" && !exDone.has(moduleId)) ||
               (p === "result" && !isAlreadyPassed);
             return (
               <button
                 key={p}
                 disabled={isDisabled}
-                onClick={() => !isDisabled && (setPhase(p), window.scrollTo({ top: 0, behavior: "smooth" }))}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors ${isActive ? "bg-surface-container-lowest text-primary shadow-sm" : isDisabled ? "text-outline/40 cursor-default" : "text-on-surface-variant hover:text-on-surface"}`}
+                onClick={() => { if (!isDisabled) { setPhase(p); window.scrollTo({ top: 0, behavior: "smooth" }); } }}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-colors
+                  ${isActive ? "bg-surface-container-lowest text-primary shadow-sm" : isDisabled ? "text-outline/40 cursor-default" : "text-on-surface-variant hover:text-on-surface"}`}
               >
                 {labels[p]}
               </button>
@@ -219,7 +215,7 @@ export default function ModuleDetailPage() {
           })}
         </div>
 
-        {/* ─── PHASE : COURS ─── */}
+        {/* ─── COURS ─── */}
         {phase === "content" && (
           <>
             {module.sections?.map((sec, si) => (
@@ -229,7 +225,6 @@ export default function ModuleDetailPage() {
               </div>
             ))}
 
-            {/* YouTube */}
             {module.keywords?.length > 0 && (
               <div>
                 <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">Ressources vidéo</p>
@@ -276,7 +271,7 @@ export default function ModuleDetailPage() {
           </>
         )}
 
-        {/* ─── PHASE : EXERCICE ─── */}
+        {/* ─── EXERCICE ─── */}
         {phase === "exercise" && (
           <div className="space-y-4">
             <div className="bg-primary/5 rounded-xl p-4">
@@ -311,7 +306,7 @@ export default function ModuleDetailPage() {
           </div>
         )}
 
-        {/* ─── PHASE : QUIZ ─── */}
+        {/* ─── QUIZ ─── */}
         {phase === "quiz" && quiz.length > 0 && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -394,7 +389,7 @@ export default function ModuleDetailPage() {
           </div>
         )}
 
-        {/* ─── PHASE : RÉSULTAT ─── */}
+        {/* ─── RÉSULTAT ─── */}
         {phase === "result" && (
           <div className="space-y-4">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 text-center">
@@ -408,21 +403,12 @@ export default function ModuleDetailPage() {
               </button>
             </div>
 
-            {moduleIndex < totalModules - 1 ? (
-              <button
-                onClick={() => router.push(`/mjs/beneficiaire/parcours/${id}`)}
-                className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
+            <button
+              onClick={() => router.push(`/mjs/beneficiaire/parcours/${id}`)}
+              className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
             >
-                Module suivant →
+              {moduleIndex < totalModules - 1 ? "Module suivant →" : "Voir mon parcours complet →"}
             </button>
-            ) : (
-              <button
-                onClick={() => router.push(`/mjs/beneficiaire/parcours/${id}`)}
-                className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
-              >
-                Voir mon parcours complet →
-              </button>
-            )}
 
             <button onClick={() => setPhase("content")}
               className="w-full py-3 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container transition-colors">
@@ -430,6 +416,7 @@ export default function ModuleDetailPage() {
             </button>
           </div>
         )}
+
       </div>
     </main>
   );

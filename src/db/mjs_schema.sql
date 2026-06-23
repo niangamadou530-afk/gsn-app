@@ -142,6 +142,37 @@ CREATE POLICY "user_own_passport" ON mjs_skill_passports
   FOR SELECT
   USING (auth.uid() = user_id);
 
+-- Bénéficiaire : peut insérer son propre passport (après test final)
+CREATE POLICY "user_insert_own_passport" ON mjs_skill_passports
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id AND tenant_id = 'mjs');
+
+CREATE POLICY "user_update_own_passport" ON mjs_skill_passports
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id AND tenant_id = 'mjs');
+
+-- Bénéficiaire inscrit : peut initialiser le contenu IA d'un parcours encore vide
+CREATE POLICY "inscribed_seed_parcours_content" ON mjs_parcours
+  FOR UPDATE
+  USING (
+    tenant_id = 'mjs'
+    AND (
+      modules_contenu IS NULL
+      OR jsonb_array_length(COALESCE(modules_contenu, '[]'::jsonb)) = 0
+    )
+    AND EXISTS (
+      SELECT 1 FROM mjs_inscriptions i
+      WHERE i.parcours_id = mjs_parcours.id
+        AND i.user_id = auth.uid()
+        AND i.tenant_id = 'mjs'
+    )
+  )
+  WITH CHECK (tenant_id = 'mjs');
+
+-- Bénéficiaire : peut insérer son propre passport (via test final côté API service role de préférence)
+-- Policy documentée ; l'API /api/mjs/skill-passport utilise la service role key.
+
 -- ...et tout recruteur connecté peut consulter tous les passports du tenant
 -- (nécessaire pour /mjs/recruteur/dashboard)
 CREATE POLICY "recruteur_read_passports" ON mjs_skill_passports
