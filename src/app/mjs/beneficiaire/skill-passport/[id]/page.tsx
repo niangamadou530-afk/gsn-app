@@ -10,7 +10,7 @@ type PassportData = {
   parcours: {
     titre: string;
     niveau: string | null;
-    mjs_secteurs: { nom: string } | null;
+    mjs_secteurs: { nom: string }[] | null;
   } | null;
   beneficiaire: { prenom: string; nom: string } | null;
 };
@@ -50,7 +50,9 @@ export default function SkillPassportPage() {
 
     setData({
       delivre_le: passport.delivre_le,
-      parcours: passport.mjs_parcours as PassportData["parcours"],
+      parcours: Array.isArray(passport.mjs_parcours)
+        ? passport.mjs_parcours[0] ?? null
+        : passport.mjs_parcours,
       beneficiaire: ben,
     });
     setLoading(false);
@@ -101,7 +103,9 @@ export default function SkillPassportPage() {
             <p className="text-sm opacity-90">a validé le parcours</p>
             <p className="text-xl font-bold">{data.parcours?.titre}</p>
             <p className="text-sm opacity-80">
-              {data.parcours?.mjs_secteurs?.nom}
+              {data.parcours?.mjs_secteurs && data.parcours.mjs_secteurs.length > 0
+                ? data.parcours.mjs_secteurs.map(s => s.nom).join(', ')
+                : null}
               {data.parcours?.niveau && ` · ${NIVEAU_LABEL[data.parcours.niveau] ?? data.parcours.niveau}`}
             </p>
           </div>

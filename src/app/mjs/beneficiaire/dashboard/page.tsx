@@ -72,7 +72,17 @@ export default function DashboardBeneficiairePage() {
         setInscriptions(
           insc.map((row) => ({
             parcours_id: row.parcours_id,
-            mjs_parcours: row.mjs_parcours as InscriptionRow["mjs_parcours"],
+            mjs_parcours: (() => {
+              if (!row.mjs_parcours) return null;
+              const p = Array.isArray(row.mjs_parcours) ? row.mjs_parcours[0] : (row.mjs_parcours as any);
+              if (!p) return null;
+              return {
+                id: p.id,
+                titre: p.titre,
+                modules_total: p.modules_total,
+                mjs_secteurs: Array.isArray(p.mjs_secteurs) ? p.mjs_secteurs[0] || null : p.mjs_secteurs || null,
+              };
+            })() as InscriptionRow["mjs_parcours"],
             pourcentage: progMap.get(row.parcours_id) ?? 0,
             certifie: passportSet.has(row.parcours_id),
           }))
