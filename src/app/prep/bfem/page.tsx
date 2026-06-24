@@ -11,7 +11,6 @@ interface BfemDoc {
   annee: number;
   matiere: string;
   type: "epreuve" | "corrige";
-  contenu_html: string | null;
   url_originale: string;
 }
 
@@ -28,7 +27,6 @@ function useMathJax() {
   const ready = useRef(false);
 
   useEffect(() => {
-    // Configure before the script loads
     window.MathJax = {
       typesetPromise: window.MathJax?.typesetPromise ?? (() => Promise.resolve()),
     } as typeof window.MathJax;
@@ -73,17 +71,19 @@ function useMathJax() {
 }
 
 export default function BfemPage() {
-  const router    = useRouter();
-  const typeset   = useMathJax();
+  const router     = useRouter();
+  const typeset    = useMathJax();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [all, setAll]           = useState<BfemDoc[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [annee, setAnnee]       = useState<number | null>(null);
-  const [annees, setAnnees]     = useState<number[]>([]);
-  const [docType, setDocType]   = useState<DocType>("tous");
-  const [matiere, setMatiere]   = useState("Toutes");
-  const [selected, setSelected] = useState<BfemDoc | null>(null);
+  const [all, setAll]                   = useState<BfemDoc[]>([]);
+  const [loading, setLoading]           = useState(true);
+  const [annee, setAnnee]               = useState<number | null>(null);
+  const [annees, setAnnees]             = useState<number[]>([]);
+  const [docType, setDocType]           = useState<DocType>("tous");
+  const [matiere, setMatiere]           = useState("Toutes");
+  const [selected, setSelected]         = useState<BfemDoc | null>(null);
+  const [contentHtml, setContentHtml]   = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -103,7 +103,7 @@ export default function BfemPage() {
 
       const { data, error } = await supabase
         .from("epreuves_bac")
-        .select("id, annee, matiere, type, contenu_html, url_originale")
+        .select("id, annee, matiere, type, url_originale")
         .eq("examen", "BFEM")
         .order("annee", { ascending: false });
 
@@ -121,10 +121,32 @@ export default function BfemPage() {
 
   // Trigger MathJax after content renders
   useEffect(() => {
-    if (selected?.contenu_html && contentRef.current) {
+    if (contentHtml && contentRef.current) {
       typeset(contentRef.current);
     }
-  }, [selected, typeset]);
+  }, [contentHtml, typeset]);
+
+  async function handleSelect(doc: BfemDoc) {
+    setSelected(doc);
+    setContentHtml(null);
+    setContentLoading(true);
+    const { data } = await supabase
+      .from("epreuves_bac")
+      .select("contenu_html")
+      .eq("id", doc.id)
+      .single();
+    setContentHtml((data as any)?.contenu_html ?? null);
+    setContentLoading(false);
+  }
+
+  function handleBack() {
+    if (selected) {
+      setSelected(null);
+      setContentHtml(null);
+    } else {
+      router.push("/prep/dashboard");
+    }
+  }
 
   const matieres = useMemo(() => {
     const s = new Set(all.filter(d => annee === null || d.annee === annee).map(d => d.matiere));
@@ -143,7 +165,7 @@ export default function BfemPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-4 py-3 flex items-center gap-3">
         <button
-          onClick={() => selected ? setSelected(null) : router.push("/prep/dashboard")}
+          onClick={handleBack}
           className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
@@ -169,11 +191,16 @@ export default function BfemPage() {
             </a>
           </div>
 
-          {selected.contenu_html ? (
+          {contentLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin"
+                style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+            </div>
+          ) : contentHtml ? (
             <div
               ref={contentRef}
               className="flex-1 px-4 py-6 overflow-auto bfem-content"
-              dangerouslySetInnerHTML={{ __html: selected.contenu_html }}
+              dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 text-center">
@@ -248,7 +275,7 @@ export default function BfemPage() {
             <div className="space-y-2">
               <p className="text-xs text-on-surface-variant">{filtered.length} document{filtered.length > 1 ? "s" : ""}</p>
               {filtered.map(d => (
-                <button key={d.id} onClick={() => setSelected(d)}
+                <button key={d.id} onClick={() => handleSelect(d)}
                   className="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest shadow-sm text-left active:scale-[0.98] transition-transform">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
                     d.type === "corrige" ? "bg-green-100" : "bg-blue-100"
