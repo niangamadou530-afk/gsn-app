@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getCompetences } from "@/data/competences";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -44,6 +45,7 @@ function buildContenuCtx(contenu: ContenuOfficiel): string {
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   const body = await request.json().catch(() => ({}));
   const chapter         = body?.chapter         || "Révision générale";

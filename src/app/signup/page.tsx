@@ -11,16 +11,72 @@ export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [profileType, setProfileType] = useState<ProfileType>("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [inviteChecking, setInviteChecking] = useState(false);
+  const [inviteExamType, setInviteExamType] = useState("BFEM");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
+  async function handleStep1Continue() {
+    if (profileType !== "eleve") {
+      setStep(2);
+      return;
+    }
+    if (!inviteCode.trim()) {
+      setInviteError("Code d'invitation requis pour les élèves.");
+      return;
+    }
+    setInviteChecking(true);
+    setInviteError("");
+    try {
+      const res = await fetch("/api/invite-validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: inviteCode.trim().toUpperCase(), dry_run: true }),
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        setInviteError(data.error ?? "Code invalide.");
+        return;
+      }
+      setInviteExamType(data.exam_type ?? "BFEM");
+      setStep(2);
+    } catch {
+      setInviteError("Erreur de vérification. Réessaie.");
+    } finally {
+      setInviteChecking(false);
+    }
+  }
+
   async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
     setLoading(true);
+
+    // Atomic invite code check + increment before creating account
+    if (profileType === "eleve") {
+      try {
+        const res = await fetch("/api/invite-validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: inviteCode.trim().toUpperCase(), dry_run: false }),
+        });
+        const data = await res.json();
+        if (!data.valid) {
+          setLoading(false);
+          setErrorMessage(data.error ?? "Code invalide. Retourne à l'étape précédente.");
+          return;
+        }
+      } catch {
+        setLoading(false);
+        setErrorMessage("Erreur de vérification du code. Réessaie.");
+        return;
+      }
+    }
 
     const { data, error } = await supabase.auth.signUp({ email, password });
 
@@ -49,7 +105,9 @@ export default function SignupPage() {
 
     setLoading(false);
     if (profileType === "eleve") {
-      router.push("/prep/onboarding");
+      const code = encodeURIComponent(inviteCode.trim().toUpperCase());
+      const exam = encodeURIComponent(inviteExamType);
+      router.push(`/prep/onboarding?exam=${exam}&code=${code}`);
     } else {
       router.push("/dashboard");
     }
@@ -87,7 +145,7 @@ export default function SignupPage() {
           <div className={`flex-1 h-1 rounded-full transition-colors ${step >= 2 ? "bg-primary" : "bg-surface-container"}`} />
         </div>
 
-        {/* Step 1 — Profile type */}
+        {/* Step 1 — Profile type + invite code */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
@@ -97,19 +155,42 @@ export default function SignupPage() {
 
             <div className="space-y-3">
               <button
-                onClick={() => setProfileType("eleve")}
+                onClick={() => { setProfileType("eleve"); setInviteError(""); }}
                 className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "eleve" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
                 <div className="flex items-center gap-4">
                   <span className="text-3xl">🎓</span>
                   <div>
                     <p className="font-bold text-on-surface">Élève</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Je prépare mon BFEM ou BAC — accès à GSN PREP</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Je prépare mon BFEM — accès à GSN PREP</p>
                   </div>
                   {profileType === "eleve" && (
                     <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                   )}
                 </div>
               </button>
+
+              {/* Invite code — affiché uniquement quand "élève" est sélectionné */}
+              {profileType === "eleve" && (
+                <div className="space-y-2 pl-2">
+                  <p className="text-sm font-bold text-on-surface">Code d'invitation</p>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">key</span>
+                    <input
+                      type="text"
+                      placeholder="Ex: BFEM2026"
+                      value={inviteCode}
+                      onChange={e => { setInviteCode(e.target.value.toUpperCase()); setInviteError(""); }}
+                      className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-3.5 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors font-mono tracking-widest uppercase"
+                    />
+                  </div>
+                  {inviteError && (
+                    <div className="flex items-center gap-2 bg-error/10 text-error rounded-xl px-3 py-2.5">
+                      <span className="material-symbols-outlined text-[16px]">error</span>
+                      <p className="text-sm font-medium">{inviteError}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <button
                 onClick={() => setProfileType("professionnel")}
@@ -128,11 +209,17 @@ export default function SignupPage() {
             </div>
 
             <button
-              disabled={!profileType}
-              onClick={() => setStep(2)}
+              disabled={!profileType || inviteChecking}
+              onClick={handleStep1Continue}
               className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 mt-2">
-              Continuer
-              <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+              {inviteChecking ? (
+                <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
+              ) : (
+                <>
+                  Continuer
+                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                </>
+              )}
             </button>
           </div>
         )}
@@ -146,7 +233,11 @@ export default function SignupPage() {
               </button>
               <div className="flex items-center gap-2">
                 <span className="text-lg">{profileType === "eleve" ? "🎓" : "👨‍💼"}</span>
-                <span className="text-sm font-semibold text-on-surface-variant">{profileType === "eleve" ? "Élève" : "Professionnel"}</span>
+                <span className="text-sm font-semibold text-on-surface-variant">
+                  {profileType === "eleve"
+                    ? `Élève ${inviteExamType} · ${inviteCode}`
+                    : "Professionnel"}
+                </span>
               </div>
             </div>
 

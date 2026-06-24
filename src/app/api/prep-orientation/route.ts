@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 const LYCEES_SN = `
 MEILLEURS LYCÉES PUBLICS DU SÉNÉGAL :
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
   const serie = (formData.get("serie") as string) || "";
 
   if (!file) return NextResponse.json({ error: "Fichier manquant" }, { status: 400 });
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   const groq = new Groq({ apiKey });
   const arrayBuffer = await file.arrayBuffer();

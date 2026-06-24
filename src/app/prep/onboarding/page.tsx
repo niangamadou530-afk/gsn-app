@@ -21,6 +21,8 @@ function PrepOnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedExam = searchParams.get("exam");
+  const inviteCode = searchParams.get("code");
+  const isLockedBFEM = preselectedExam === "BFEM" && !!inviteCode;
 
   const [step, setStep]       = useState(0);
   const [prenom, setPrenom]   = useState("");
@@ -120,21 +122,32 @@ function PrepOnboardingInner() {
             {/* Examen */}
             <div className="space-y-2">
               <label className="font-bold text-on-surface text-sm">Quel examen prépares-tu ?</label>
-              <div className="grid grid-cols-2 gap-3">
-                {["BFEM", "BAC"].map(e => (
-                  <button key={e}
-                    onClick={() => { setExamType(e); setSerie(""); }}
-                    className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all active:scale-[0.97] ${examType === e ? "border-primary bg-primary/5" : "border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30"}`}>
-                    <span className="material-symbols-outlined text-[32px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                      {e === "BFEM" ? "assignment" : "workspace_premium"}
-                    </span>
-                    <div className="text-center">
-                      <p className="font-extrabold text-on-surface">{e}</p>
-                      <p className="text-[11px] text-on-surface-variant">{e === "BFEM" ? "3ème · Brevet" : "Terminale · Bac"}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {isLockedBFEM ? (
+                <div className="flex items-center gap-3 p-4 rounded-2xl border-2 border-primary/40 bg-primary/5">
+                  <span className="material-symbols-outlined text-primary text-[28px]" style={{ fontVariationSettings: "'FILL' 1" }}>assignment</span>
+                  <div className="flex-1">
+                    <p className="font-extrabold text-primary">BFEM · 3ème Brevet</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Accès limité · Code {inviteCode}</p>
+                  </div>
+                  <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {["BFEM", "BAC"].map(e => (
+                    <button key={e}
+                      onClick={() => { setExamType(e); setSerie(""); }}
+                      className={`flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all active:scale-[0.97] ${examType === e ? "border-primary bg-primary/5" : "border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30"}`}>
+                      <span className="material-symbols-outlined text-[32px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                        {e === "BFEM" ? "assignment" : "workspace_premium"}
+                      </span>
+                      <div className="text-center">
+                        <p className="font-extrabold text-on-surface">{e}</p>
+                        <p className="text-[11px] text-on-surface-variant">{e === "BFEM" ? "3ème · Brevet" : "Terminale · Bac"}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Série BAC */}

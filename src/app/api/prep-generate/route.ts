@@ -3,6 +3,8 @@ import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getMatiereData } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
+import { checkUsage, incrementUsage, LIMIT_MESSAGE, type UsageField } from "@/lib/prepUsage";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -417,6 +419,31 @@ export async function POST(req: Request) {
   const fileBase64 = body.fileBase64 as string | undefined;
   const fileType   = body.fileType as string | undefined;
 
+  // Vérification quota quotidien (sauf pour l'évaluation de rédaction)
+  const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
+  type UsageCtx = { field: UsageField; userId: string; current: number; rowExists: boolean };
+  let usageCtx: UsageCtx | null = null;
+
+  if (mode !== "evaluate") {
+    const field: UsageField = type === "quiz" ? "quiz_count"
+                            : type === "flashcards" ? "flashcards_count"
+                            : "resume_count";
+    const check = await checkUsage(token, field);
+    if (!check.allowed) {
+      const status = check.reason === "auth" ? 401 : 429;
+      const error  = check.reason === "auth" ? "Non authentifié" : LIMIT_MESSAGE;
+      return NextResponse.json({ error }, { status });
+    }
+    usageCtx = { field, userId: check.userId, current: check.current, rowExists: check.rowExists };
+  }
+
+  async function bump() {
+    if (!usageCtx) return;
+    await incrementUsage(token, usageCtx.userId, usageCtx.field, usageCtx.current, usageCtx.rowExists);
+  }
+
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
+
   try {
     const groq = groqClient();
 
@@ -493,8 +520,10 @@ export async function POST(req: Request) {
       }
 
       if (isResume) {
+        await bump();
         return NextResponse.json({ texte: content.trim() });
       }
+      await bump();
       return NextResponse.json(parseJson(content));
     }
 
@@ -530,6 +559,7 @@ export async function POST(req: Request) {
         temperature: 0.4,
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
+      await bump();
       return NextResponse.json({ texte });
     }
 
@@ -544,6 +574,7 @@ export async function POST(req: Request) {
       temperature: 0.4,
     });
 
+    await bump();
     return NextResponse.json(parseJson(completion.choices[0]?.message?.content ?? ""));
 
   } catch (error: unknown) {

@@ -33,6 +33,11 @@ export default function LearnPage() {
   async function load() {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { router.replace("/login"); return; }
+
+    // Les élèves GSN PREP n'ont pas accès à GSN Learn
+    const { data: userRow } = await supabase.from("users").select("profile_type").eq("id", auth.user.id).single();
+    if (userRow?.profile_type === "eleve") { router.replace("/prep/dashboard"); return; }
+
     const { data, error } = await supabase
       .from("user_courses")
       .select("id, title, modules, completed, test_score")

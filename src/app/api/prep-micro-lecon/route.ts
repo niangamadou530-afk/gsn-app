@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
   try {
     const { subject, chapter, serie } = await req.json();
 

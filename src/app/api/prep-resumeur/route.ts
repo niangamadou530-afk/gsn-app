@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 const JSON_PROMPT = (matiere: string) => `Tu es un professeur expert en ${matiere || "toutes matières"}.
 Analyse ce cours et génère en JSON :
@@ -22,6 +23,7 @@ Retourne UNIQUEMENT le JSON valide, sans markdown.`;
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   let formData: FormData;
   try {

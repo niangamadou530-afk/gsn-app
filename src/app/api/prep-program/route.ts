@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 /* ── Fréquences historiques par matière (examens 2000-2025) ── */
 const CHAPTER_FREQ: Record<string, Record<string, { frequency_score: number; last_appeared: number; probability: string; years: number[]; tip: string }>> = {
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
     console.log("ERROR: GROQ_API_KEY manquante");
     return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
   }
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
   console.log("GROQ_API_KEY présente:", apiKey.slice(0, 8) + "...");
 
   const body = await request.json().catch((e: unknown) => {

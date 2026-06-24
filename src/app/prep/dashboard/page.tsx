@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-15";
+const BFEM_DATE = "2026-07-14";
 
 function daysUntil(dateStr: string): number {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
@@ -110,7 +110,7 @@ export default function PrepDashboardPage() {
             <span className="text-5xl font-black">J-{days}</span>
             <span className="text-lg font-semibold opacity-80 mb-1">jours</span>
           </div>
-          <p className="text-xs opacity-75 mt-1">{examLabel} · {student?.exam_type === "BFEM" ? "15 juillet 2026" : "30 juin 2026"}</p>
+          <p className="text-xs opacity-75 mt-1">{examLabel} · {student?.exam_type === "BFEM" ? "14 juillet 2026" : "30 juin 2026"}</p>
         </div>
 
         {/* Générer avec l'IA — CTA principal */}

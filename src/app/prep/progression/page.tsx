@@ -8,7 +8,7 @@ type QuizResult = { matiere: string; score: number; total: number; created_at: s
 type FlashStat  = { matiere: string; total: number; maitrisee: number };
 
 const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-15";
+const BFEM_DATE = "2026-07-14";
 
 function daysUntil(d: string) { return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)); }
 function countdownColor(d: number) { return d > 60 ? "#22c55e" : d > 30 ? "#f97316" : "#ef4444"; }

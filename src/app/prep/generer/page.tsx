@@ -47,6 +47,7 @@ function GenererPageInner() {
   const [serie, setSerie]       = useState("");
   const [prenom, setPrenom]     = useState("");
   const [userId, setUserId]     = useState<string | null>(null);
+  const [authToken, setAuthToken] = useState("");
 
   // Mode A
   const [fileA, setFileA]         = useState<File | null>(null);
@@ -84,6 +85,7 @@ function GenererPageInner() {
   const [mode, setMode]       = useState<"A" | "B" | null>(null);
   const [flashSaved, setFlashSaved]   = useState(false);
   const [resumeSaved, setResumeSaved] = useState(false);
+  const [retrySeconds, setRetrySeconds] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // Sections sauvegardées
@@ -121,9 +123,18 @@ function GenererPageInner() {
   }
 
   useEffect(() => {
+    if (retrySeconds <= 0) return;
+    const t = setTimeout(() => setRetrySeconds(s => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [retrySeconds]);
+
+  useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setAuthToken(session?.access_token ?? "");
+      });
       supabase.from("prep_students")
         .select("exam_type, serie, prenom")
         .eq("user_id", user.id)
@@ -222,9 +233,17 @@ function GenererPageInner() {
 
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify(body),
       });
+
+      if (res.status === 503) {
+        const e = await res.json();
+        setError(e.error ?? "Beaucoup de demandes en ce moment. Réessaie dans quelques secondes.");
+        setRetrySeconds(5);
+        setPhase(mode === "A" ? "setup_a" : "setup_b");
+        return;
+      }
 
       if (!res.ok) {
         const e = await res.json();
@@ -329,7 +348,7 @@ function GenererPageInner() {
     try {
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({
           mode: "evaluate",
           questions: redactionQs,
@@ -466,11 +485,11 @@ function GenererPageInner() {
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button
-          disabled={!fileA || !matiereA}
+          disabled={!fileA || !matiereA || retrySeconds > 0}
           onClick={generate}
           className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
           style={{ backgroundColor: "#FF6B00" }}>
-          Générer {genLabel}
+          {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : `Générer ${genLabel}`}
         </button>
       </div>
     </main>
@@ -578,11 +597,11 @@ function GenererPageInner() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
-            disabled={!matiereB}
+            disabled={!matiereB || retrySeconds > 0}
             onClick={generate}
             className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#FF6B00" }}>
-            Générer {genLabel}
+            {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : `Générer ${genLabel}`}
           </button>
         </div>
       </main>
