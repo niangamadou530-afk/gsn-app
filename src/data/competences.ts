@@ -1347,6 +1347,311 @@ export const COMPETENCES_EXIGIBLES: Record<string, string[]> = {
     "Évaluer le bilan des résistances africaines"
   ],
 
+  // ======== HISTOIRE BFEM (suite — chapitres manquants) ========
+
+  "Histoire_BFEM_L'impérialisme japonais": [
+    "Expliquer les causes de l'impérialisme japonais : modernisation Meiji, besoin de matières premières",
+    "Identifier les conquêtes japonaises en Asie : Corée, Mandchourie, Chine",
+    "Analyser les conséquences de l'expansion japonaise sur la région Asie-Pacifique",
+    "Situer l'impérialisme japonais dans le contexte des rivalités mondiales du début du XXe siècle"
+  ],
+  "Histoire_BFEM_L'impérialisme européen en Asie": [
+    "Identifier les puissances européennes implantées en Asie : Grande-Bretagne, France, Pays-Bas, Portugal",
+    "Décrire les formes de domination : protectorat, colonie directe, comptoirs commerciaux",
+    "Analyser les motivations de l'impérialisme européen en Asie : économiques, stratégiques, missionnaires",
+    "Identifier des résistances asiatiques face à la domination européenne"
+  ],
+  "Histoire_BFEM_Les découvertes scientifiques et les mutations économiques": [
+    "Identifier les grandes découvertes scientifiques du XIXe siècle : électricité, acier, pétrole, chimie",
+    "Expliquer les mutations économiques liées à la révolution industrielle",
+    "Analyser le développement des transports : chemins de fer, bateaux à vapeur",
+    "Évaluer l'impact des découvertes scientifiques sur les conditions de vie"
+  ],
+  "Histoire_BFEM_Le développement du capitalisme et les mutations sociales": [
+    "Définir le capitalisme industriel et ses caractéristiques",
+    "Identifier les nouvelles classes sociales : bourgeoisie industrielle et prolétariat ouvrier",
+    "Décrire les conditions de vie et de travail des ouvriers au XIXe siècle",
+    "Analyser les inégalités sociales liées au développement du capitalisme"
+  ],
+  "Histoire_BFEM_Les doctrines sociales : syndicalisme et socialisme": [
+    "Définir le syndicalisme et expliquer son rôle dans la défense des droits des travailleurs",
+    "Identifier les grandes doctrines socialistes : socialisme utopique, marxisme, socialisme démocratique",
+    "Expliquer les idées fondamentales de Karl Marx : lutte des classes, plus-value, dictature du prolétariat",
+    "Analyser l'impact du syndicalisme et du socialisme sur l'évolution sociale au XIXe et XXe siècles"
+  ],
+  "Histoire_BFEM_Les systèmes coloniaux en Afrique : système français et britannique": [
+    "Distinguer le système colonial français (assimilation) du système colonial britannique (indirect rule)",
+    "Expliquer les mécanismes d'exploitation économique des colonies",
+    "Identifier les effets du système colonial sur les sociétés africaines",
+    "Analyser les différences dans la façon dont chaque système a préparé (ou non) l'accès à l'indépendance"
+  ],
+  "Histoire_BFEM_Les missions et les explorations": [
+    "Identifier les motivations des explorateurs et des missionnaires en Afrique au XIXe siècle",
+    "Citer des explorateurs célèbres : Livingstone, Stanley, Brazza, Mungo Park",
+    "Expliquer le rôle des missions religieuses : évangélisation, éducation, santé",
+    "Analyser le lien entre exploration, missions et colonisation"
+  ],
+  "Histoire_BFEM_L'impérialisme américain": [
+    "Définir l'impérialisme américain et expliquer la doctrine Monroe",
+    "Identifier les zones d'influence des États-Unis : Amérique latine, Caraïbes, Pacifique",
+    "Analyser la guerre hispano-américaine de 1898 et ses résultats",
+    "Expliquer les modalités de la domination américaine : économique, politique et militaire"
+  ],
+  "Histoire_BFEM_La révolution russe et la consolidation du régime": [
+    "Expliquer les causes de la révolution russe de 1917 : guerre, crise économique, opposition au tsar",
+    "Distinguer la révolution de Février (renversement du tsar) de la révolution d'Octobre (prise de pouvoir bolchevique)",
+    "Identifier les acteurs principaux : Lénine, Trotski, le Parti bolchevique",
+    "Analyser la consolidation du régime soviétique : guerre civile, NEP, stalinisme"
+  ],
+  "Histoire_BFEM_La crise des années 30": [
+    "Expliquer les causes du krach boursier de 1929 et ses conséquences mondiales",
+    "Décrire les effets de la crise économique : chômage massif, faillites bancaires, récession",
+    "Analyser les réponses à la crise : New Deal de Roosevelt, politiques déflationnistes",
+    "Établir le lien entre la crise des années 30 et la montée des régimes totalitaires en Europe"
+  ],
+
+  // ======== GÉOGRAPHIE BFEM (suite — chapitres manquants) ========
+
+  "Géographie_BFEM_Méthodologie de commentaire histoire et géographie": [
+    "Identifier les différents types de documents : cartes, graphiques, textes, images",
+    "Analyser un document en dégageant sa nature, sa source et son intérêt informatif",
+    "Rédiger une introduction et une conclusion structurées pour un commentaire de document",
+    "Organiser ses idées dans un développement en plusieurs parties avec des exemples précis"
+  ],
+  "Géographie_BFEM_Potentiel et équilibres": [
+    "Identifier les ressources naturelles de la Terre : sol, eau, minéraux, énergies fossiles",
+    "Expliquer la notion d'équilibre entre les ressources disponibles et les besoins humains",
+    "Analyser les déséquilibres liés à l'inégale répartition des ressources dans le monde",
+    "Proposer des solutions pour une gestion durable des ressources naturelles"
+  ],
+  "Géographie_BFEM_La surexploitation des ressources et ses conséquences": [
+    "Définir la surexploitation des ressources naturelles",
+    "Identifier les conséquences de la déforestation, de la surpêche et de l'épuisement des sols",
+    "Analyser l'impact de la surexploitation sur la biodiversité et les écosystèmes",
+    "Proposer des mesures pour lutter contre la surexploitation : reforestation, aires protégées, pêche durable"
+  ],
+  "Géographie_BFEM_Les conséquences climatiques de l'exploitation économique de la planète": [
+    "Expliquer le mécanisme de l'effet de serre et le rôle des gaz à effet de serre",
+    "Identifier les principales conséquences du réchauffement climatique : montée des eaux, sécheresses, migrations",
+    "Analyser l'impact du réchauffement climatique sur le Sénégal et l'Afrique",
+    "Citer des accords internationaux sur le climat : Protocole de Kyoto, Accord de Paris"
+  ],
+  "Géographie_BFEM_Les systèmes économiques : structures économiques et sociales et leur évolution": [
+    "Distinguer économie de subsistance et économie de marché",
+    "Identifier les trois secteurs économiques : primaire, secondaire, tertiaire",
+    "Analyser l'évolution des structures économiques dans les pays en développement",
+    "Expliquer le rôle de l'agriculture dans l'économie du Sénégal"
+  ],
+  "Géographie_BFEM_La coopération bilatérale": [
+    "Définir la coopération bilatérale comme une relation d'aide ou d'échange entre deux États",
+    "Identifier les domaines de la coopération bilatérale : aide financière, technique, culturelle",
+    "Analyser des exemples de coopération bilatérale impliquant le Sénégal",
+    "Évaluer les avantages et les limites de la coopération bilatérale pour les pays en développement"
+  ],
+  "Géographie_BFEM_La coopération multilatérale": [
+    "Définir la coopération multilatérale et la distinguer de la coopération bilatérale",
+    "Identifier les organisations de coopération multilatérale : ONU, FMI, Banque Mondiale, CEDEAO, Union Africaine",
+    "Analyser le rôle des organisations internationales dans le développement des pays africains",
+    "Évaluer les résultats de la coopération multilatérale pour le Sénégal"
+  ],
+  "Géographie_BFEM_Les formes et problèmes de communication": [
+    "Identifier les formes de communication dans le monde : routes, voies ferrées, voies maritimes, voies aériennes",
+    "Analyser les inégalités dans les réseaux de communication entre pays développés et en développement",
+    "Expliquer le rôle des technologies de l'information et de la communication (TIC) dans la mondialisation",
+    "Identifier les obstacles à la communication dans les pays en développement : manque d'infrastructures, coût élevé"
+  ],
+
+  // ======== ÉDUCATION CIVIQUE BFEM (suite) ========
+
+  "Éducation Civique_BFEM_L'Afrique face à ses défis": [
+    "Identifier les principaux défis de l'Afrique : pauvreté, conflits, dettes, pandémies, changement climatique",
+    "Expliquer le rôle de l'Union Africaine dans la gestion des crises et la promotion du développement",
+    "Analyser les initiatives africaines de développement : NEPAD, Agenda 2063 de l'UA",
+    "Décrire le rôle de la CEDEAO dans l'intégration régionale en Afrique de l'Ouest",
+    "Proposer des actions citoyennes pour contribuer au développement de l'Afrique"
+  ],
+
+  // ======== SVT BFEM (suite) ========
+
+  "SVT_BFEM_Étude de la vision": [
+    "Décrire la structure de l'œil : cornée, iris, cristallin, rétine, nerf optique",
+    "Expliquer le mécanisme de la vision : formation d'une image renversée sur la rétine",
+    "Distinguer les cellules photoréceptrices : cônes (vision des couleurs) et bâtonnets (vision nocturne)",
+    "Identifier les défauts de la vision : myopie, hypermétropie, astigmatisme",
+    "Expliquer la correction des défauts visuels par des lentilles ou des lunettes"
+  ],
+  "SVT_BFEM_Le système immunitaire": [
+    "Identifier les organes du système immunitaire : rate, thymus, ganglions lymphatiques, moelle osseuse",
+    "Distinguer la notion de soi et de non-soi",
+    "Identifier les principales cellules immunitaires : globules blancs, lymphocytes B, lymphocytes T, macrophages",
+    "Décrire la réaction inflammatoire comme première ligne de défense de l'organisme"
+  ],
+  "SVT_BFEM_Aide à l'immunité": [
+    "Expliquer le principe de la vaccination : stimulation de la mémoire immunitaire par un antigène affaibli",
+    "Distinguer la vaccination (prévention) de la sérothérapie (traitement)",
+    "Identifier les principales maladies évitables par la vaccination : tétanos, poliomyélite, rougeole",
+    "Expliquer le rôle de la sérothérapie dans le traitement d'une maladie déjà déclarée",
+    "Citer des vaccins du programme élargi de vaccination (PEV) utilisés au Sénégal"
+  ],
+
+  // ======== SCIENCES PHYSIQUES BFEM (suite) ========
+
+  "Sciences Physiques_BFEM_Équilibre d'un solide soumis à l'action de deux forces": [
+    "Énoncer les conditions d'équilibre d'un solide soumis à deux forces : égalité, opposition et colinéarité",
+    "Identifier les forces exercées sur un solide en équilibre : poids et réaction du support",
+    "Appliquer les conditions d'équilibre pour calculer une force inconnue",
+    "Représenter graphiquement les forces agissant sur un solide en équilibre"
+  ],
+  "Sciences Physiques_BFEM_Principes des actions réciproques": [
+    "Énoncer le principe des actions réciproques : toute action a une réaction égale et opposée",
+    "Identifier les couples action-réaction dans des situations de la vie courante",
+    "Expliquer que les forces d'action et de réaction sont appliquées sur deux corps différents",
+    "Illustrer le principe par des exemples : recul d'une arme à feu, propulsion par réaction"
+  ],
+  "Sciences Physiques_BFEM_Électrisation par frottement": [
+    "Mettre en évidence l'électrisation par frottement d'un corps isolant",
+    "Distinguer les corps électrisés positivement et négativement",
+    "Énoncer la loi d'attraction et de répulsion des charges électriques",
+    "Expliquer la notion de conducteur et d'isolant électrique",
+    "Expliquer la mise à la terre pour neutraliser un corps chargé"
+  ],
+  "Sciences Physiques_BFEM_Le courant électrique": [
+    "Définir le courant électrique comme un déplacement ordonné de porteurs de charges",
+    "Distinguer courant continu et courant alternatif",
+    "Définir l'intensité du courant électrique et son unité : l'ampère (A)",
+    "Mesurer l'intensité du courant avec un ampèremètre monté en série",
+    "Expliquer la convention du sens du courant : du pôle + au pôle - dans le circuit extérieur"
+  ],
+  "Sciences Physiques_BFEM_Notions de solutions": [
+    "Définir une solution, un soluté et un solvant",
+    "Distinguer solution diluée et solution concentrée",
+    "Calculer la concentration massique d'une solution : Cm = m/V",
+    "Préparer une solution de concentration donnée par dissolution ou par dilution",
+    "Identifier des exemples de solutions aqueuses de la vie quotidienne"
+  ],
+  "Sciences Physiques_BFEM_Action à froid des acides dilués sur les métaux usuels": [
+    "Identifier les métaux qui réagissent avec les acides dilués à froid : fer, zinc, aluminium",
+    "Écrire l'équation de la réaction entre le fer et l'acide chlorhydrique",
+    "Identifier les produits de la réaction : sel métallique et dihydrogène",
+    "Mettre en évidence le dégagement de dihydrogène par le test à la flamme",
+    "Citer les métaux inertes vis-à-vis des acides dilués : or, argent, platine"
+  ],
+
+  // ======== FRANÇAIS BFEM ========
+
+  "Français_BFEM_Lecture méthodique et analyse de textes": [
+    "Identifier le type de texte : narratif, descriptif, argumentatif, explicatif",
+    "Dégager le thème principal et les idées essentielles d'un texte",
+    "Identifier les procédés d'écriture : figures de style, connecteurs logiques, registre de langue",
+    "Rédiger des réponses aux questions de compréhension en justifiant par des citations"
+  ],
+  "Français_BFEM_Résumé de texte": [
+    "Identifier les idées essentielles d'un texte en les distinguant des idées secondaires",
+    "Rédiger un résumé fidèle au texte source en respectant la proportion demandée",
+    "Reformuler les idées dans ses propres mots sans déformer le sens original",
+    "Respecter la progression des idées et les liens logiques du texte"
+  ],
+  "Français_BFEM_Dictée et orthographe": [
+    "Écrire correctement les mots selon les règles orthographiques de base",
+    "Appliquer les règles d'accord : sujet-verbe, adjectif-nom, participe passé",
+    "Distinguer les homophones courants : a/à, est/et, son/sont, ces/ses, on/ont",
+    "Corriger les erreurs d'orthographe lexicale et grammaticale dans un texte"
+  ],
+  "Français_BFEM_Grammaire et conjugaison": [
+    "Identifier et analyser les fonctions grammaticales : sujet, verbe, complément, attribut",
+    "Conjuguer les verbes aux temps courants : présent, imparfait, passé composé, futur simple, conditionnel",
+    "Distinguer les temps du passé et leur emploi dans un récit",
+    "Transformer les types et formes de phrases : affirmative, négative, interrogative, exclamative"
+  ],
+  "Français_BFEM_Expression écrite : rédaction et récit": [
+    "Rédiger un texte narratif cohérent avec introduction, développement et conclusion",
+    "Utiliser correctement les temps du récit : imparfait pour la description, passé simple ou passé composé pour l'action",
+    "Décrire un personnage, un lieu ou une situation de façon précise et détaillée",
+    "Respecter la ponctuation, l'organisation en paragraphes et la cohérence des idées"
+  ],
+  "Français_BFEM_Vocabulaire et sens des mots": [
+    "Identifier le sens d'un mot selon son contexte",
+    "Distinguer sens propre et sens figuré d'un mot",
+    "Utiliser les relations lexicales : synonymes, antonymes, familles de mots, champs lexicaux",
+    "Expliquer des expressions courantes et des proverbes du français"
+  ],
+  "Français_BFEM_Correspondance et lettre": [
+    "Distinguer la lettre amicale de la lettre officielle selon leur structure et leur registre",
+    "Respecter la présentation d'une lettre : lieu, date, destinataire, objet, formule de politesse",
+    "Rédiger une lettre de demande, de réclamation ou de remerciement",
+    "Adapter le registre de langue au destinataire : formel ou familier"
+  ],
+  "Français_BFEM_Textes littéraires africains et francophones": [
+    "Identifier les caractéristiques de la littérature africaine francophone",
+    "Analyser un extrait d'auteur africain francophone : thèmes, style, message",
+    "Citer des auteurs africains francophones au programme : Sembène Ousmane, Cheikh Hamidou Kane, Birago Diop",
+    "Expliquer la notion de Négritude et son importance dans la littérature africaine francophone"
+  ],
+
+  // ======== ANGLAIS BFEM ========
+
+  "Anglais_BFEM_Compréhension écrite": [
+    "Identify the main idea and supporting details of a text",
+    "Deduce the meaning of unfamiliar words from context",
+    "Answer comprehension questions in complete English sentences",
+    "Distinguish between facts and opinions in a text"
+  ],
+  "Anglais_BFEM_Vocabulaire en contexte": [
+    "Identify the correct meaning of a word according to its context",
+    "Use synonyms and antonyms to broaden vocabulary",
+    "Identify word families : noun, verb, adjective, adverb",
+    "Use topic-based vocabulary correctly in sentences"
+  ],
+  "Anglais_BFEM_Grammaire : temps verbaux": [
+    "Use the simple present to express habits and general truths",
+    "Use the simple past to narrate completed events",
+    "Use the present continuous to describe ongoing actions",
+    "Use the future forms : will and going to",
+    "Distinguish and correctly use the past simple and the present perfect"
+  ],
+  "Anglais_BFEM_Grammaire : modaux et auxiliaires": [
+    "Use modal verbs correctly : can, could, may, might, must, should, would",
+    "Express ability, permission, obligation and advice using modals",
+    "Use the auxiliaries do, does, did to form questions and negatives",
+    "Form tag questions correctly"
+  ],
+  "Anglais_BFEM_Grammaire : passif et discours rapporté": [
+    "Transform an active sentence into the passive voice",
+    "Use the passive in different tenses : simple present and simple past",
+    "Report statements using say and tell with correct tense changes",
+    "Report questions and orders using ask and tell"
+  ],
+  "Anglais_BFEM_Expression écrite : lettre et essai court": [
+    "Write a short informal letter to a friend using appropriate conventions",
+    "Write a short formal letter or email with correct layout and register",
+    "Write a short paragraph expressing an opinion and giving reasons",
+    "Use linking words and connectors : however, therefore, because, in addition, although"
+  ],
+  "Anglais_BFEM_Civilisation anglophone": [
+    "Identify English-speaking countries and their capitals",
+    "Describe main cultural features of the United Kingdom and the United States",
+    "Identify English-speaking African countries and their cultural traditions",
+    "Compare aspects of Anglophone culture with Senegalese culture"
+  ],
+  "Anglais_BFEM_Fonctions communicatives": [
+    "Greet people and make introductions in English",
+    "Ask for and give directions",
+    "Express agreement, disagreement, preference and suggestions",
+    "Describe people, places and daily routines in English"
+  ],
+  "Anglais_BFEM_Thèmes : environnement, santé, éducation": [
+    "Discuss environmental issues : pollution, deforestation, climate change",
+    "Describe health problems and talk about prevention and solutions",
+    "Express opinions about education systems and school life",
+    "Use topic-specific vocabulary related to environment, health and education"
+  ],
+  "Anglais_BFEM_Thèmes : famille, société, travail": [
+    "Describe family relationships and social structures",
+    "Discuss social issues : poverty, inequality, migration",
+    "Talk about jobs, professions and working conditions",
+    "Express opinions about family values and social changes in Senegal and the world"
+  ],
+
 };
 
 export function getCompetences(matiere: string, serie: string, chapitre: string): string[] {

@@ -33,14 +33,60 @@ function PrepOnboardingInner() {
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState("");
 
+  // ── Autocomplete école ──────────────────────────────────────────────────────
+  const [ecoleQuery, setEcoleQuery]             = useState("");
+  const [ecoleSuggestions, setEcoleSuggestions] = useState<{ nom: string; ville: string }[]>([]);
+  const [ecoleManual, setEcoleManual]           = useState(false);
+  const [ecoleLoading, setEcoleLoading]         = useState(false);
+  const [ecoleOpen, setEcoleOpen]               = useState(false);
+
   useEffect(() => {
     if (preselectedExam === "BFEM" || preselectedExam === "BAC") setExamType(preselectedExam);
   }, [preselectedExam]);
 
+  useEffect(() => {
+    if (ecoleManual || ecoleQuery.trim().length < 2) {
+      setEcoleSuggestions([]);
+      setEcoleOpen(false);
+      setEcoleLoading(false);
+      return;
+    }
+    setEcoleLoading(true);
+    const timer = setTimeout(async () => {
+      const { data } = await supabase
+        .from("etablissements_senegal")
+        .select("nom, ville")
+        .ilike("nom", `%${ecoleQuery.trim()}%`)
+        .order("nom")
+        .limit(8);
+      setEcoleSuggestions(data ?? []);
+      setEcoleOpen(true);
+      setEcoleLoading(false);
+    }, 300);
+    return () => { clearTimeout(timer); setEcoleLoading(false); };
+  }, [ecoleQuery, ecoleManual]);
+
+  function selectEcole(nom: string) {
+    setEcole(nom);
+    setEcoleQuery(nom);
+    setEcoleOpen(false);
+  }
+
+  function switchToManual() {
+    setEcoleManual(true);
+    setEcole(ecoleQuery);
+    setEcoleOpen(false);
+  }
+
+  function resetEcoleSearch() {
+    setEcoleManual(false);
+    setEcole("");
+    setEcoleQuery("");
+    setEcoleSuggestions([]);
+  }
+
   const progress = ((step + 1) / 3) * 100;
   const step0Valid = prenom.trim().length >= 2 && examType !== "" && (examType === "BFEM" || serie !== "");
-  const step1Valid = true; // école et classe sont optionnels
-  const step2Valid = true;
 
   async function saveProfile() {
     setSaving(true);
@@ -189,15 +235,103 @@ function PrepOnboardingInner() {
             </div>
 
             <div className="space-y-4">
+
+              {/* ── Champ école avec autocomplete ── */}
               <div className="space-y-2">
                 <label className="font-bold text-on-surface text-sm">Nom de l'école ou du lycée</label>
-                <input
-                  value={ecole}
-                  onChange={e => setEcole(e.target.value)}
-                  placeholder="Ex: Lycée Lamine Guèye, Kennedy..."
-                  className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-                />
+
+                {ecoleManual ? (
+                  /* Mode saisie manuelle */
+                  <div className="space-y-2">
+                    <input
+                      value={ecole}
+                      onChange={e => setEcole(e.target.value)}
+                      placeholder="Saisir le nom de ton école..."
+                      autoFocus
+                      className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={resetEcoleSearch}
+                      className="text-xs text-primary underline">
+                      ← Retour à la recherche
+                    </button>
+                  </div>
+                ) : (
+                  /* Mode recherche */
+                  <div className="relative">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[20px]">
+                        search
+                      </span>
+                      <input
+                        value={ecoleQuery}
+                        onChange={e => { setEcoleQuery(e.target.value); setEcole(""); }}
+                        onFocus={() => { if (ecoleSuggestions.length > 0) setEcoleOpen(true); }}
+                        onBlur={() => setTimeout(() => setEcoleOpen(false), 150)}
+                        placeholder="Rechercher mon école…"
+                        className="w-full pl-10 pr-10 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+                      />
+                      {ecoleLoading && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 rounded-full border-2 animate-spin"
+                            style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+                        </div>
+                      )}
+                      {ecole && !ecoleLoading && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-[20px]"
+                          style={{ fontVariationSettings: "'FILL' 1" }}>
+                          check_circle
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Dropdown */}
+                    {ecoleOpen && (
+                      <div className="absolute z-20 w-full mt-1 bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
+                        {ecoleSuggestions.length === 0 && (
+                          <div className="px-4 py-3 text-sm text-on-surface-variant italic">
+                            Aucun résultat pour « {ecoleQuery} »
+                          </div>
+                        )}
+                        {ecoleSuggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onMouseDown={() => selectEcole(s.nom)}
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container text-left transition-colors border-b border-outline-variant/20 last:border-0">
+                            <span className="material-symbols-outlined text-primary text-[18px] shrink-0"
+                              style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-on-surface text-sm truncate">{s.nom}</p>
+                              <p className="text-xs text-on-surface-variant">{s.ville}</p>
+                            </div>
+                          </button>
+                        ))}
+                        {/* Option manuelle toujours visible en bas du dropdown */}
+                        <button
+                          type="button"
+                          onMouseDown={switchToManual}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 text-left transition-colors border-t border-outline-variant/30">
+                          <span className="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">edit</span>
+                          <p className="text-sm text-on-surface-variant italic">Mon école n'est pas dans la liste</p>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Lien de secours quand dropdown fermé mais query >= 2 sans sélection */}
+                    {!ecoleOpen && !ecoleLoading && ecoleQuery.trim().length >= 2 && !ecole && (
+                      <button
+                        type="button"
+                        onClick={switchToManual}
+                        className="mt-2 text-xs text-on-surface-variant underline">
+                        Mon école n'est pas dans la liste →
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
+
               <div className="space-y-2">
                 <label className="font-bold text-on-surface text-sm">Ta classe</label>
                 <input
