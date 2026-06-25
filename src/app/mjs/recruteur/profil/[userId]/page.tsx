@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-type Beneficiaire = { prenom: string; nom: string };
+type Beneficiaire = { prenom: string; nom: string; email?: string | null; telephone?: string | null };
 
 type PassportInfo = {
   parcours_titre: string;
@@ -37,7 +37,7 @@ export default function ProfilBeneficiairePage() {
 
       const { data: ben } = await supabase
         .from("mjs_beneficiaires")
-        .select("prenom, nom")
+        .select("prenom, nom, email, telephone")
         .eq("user_id", userId)
         .eq("tenant_id", "mjs")
         .maybeSingle();
@@ -96,17 +96,44 @@ export default function ProfilBeneficiairePage() {
         </button>
 
         {/* En-tête profil */}
-        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm mb-8 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center font-bold text-xl text-on-primary-container flex-shrink-0">
-            {beneficiaire.prenom[0]}{beneficiaire.nom[0]}
+        <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm mb-8 flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center font-bold text-xl text-on-primary-container flex-shrink-0">
+              {(beneficiaire.prenom?.[0] ?? "")}{(beneficiaire.nom?.[0] ?? "")}
+            </div>
+            <div>
+              <h1 className="text-2xl font-extrabold text-on-background">
+                {beneficiaire.prenom} {beneficiaire.nom}
+              </h1>
+              <p className="text-on-surface-variant text-sm mt-1">
+                {passports.length} certification{passports.length !== 1 ? "s" : ""} PNACIJ
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-extrabold text-on-background">
-              {beneficiaire.prenom} {beneficiaire.nom}
-            </h1>
-            <p className="text-on-surface-variant text-sm mt-1">
-              {passports.length} certification{passports.length !== 1 ? "s" : ""} PNACIJ
-            </p>
+
+          {/* Coordonnées de contact */}
+          <div className="flex-1 flex flex-col gap-2 justify-center md:items-end border-t md:border-t-0 md:border-l border-outline-variant/15 pt-4 md:pt-0 md:pl-6 text-sm">
+            {beneficiaire.email && (
+              <a
+                href={`mailto:${beneficiaire.email}`}
+                className="flex items-center gap-2 text-primary hover:underline font-semibold"
+              >
+                <span className="material-symbols-outlined text-[18px]">mail</span>
+                {beneficiaire.email}
+              </a>
+            )}
+            {beneficiaire.telephone && (
+              <a
+                href={`tel:${beneficiaire.telephone}`}
+                className="flex items-center gap-2 text-secondary hover:underline font-semibold"
+              >
+                <span className="material-symbols-outlined text-[18px]">phone</span>
+                {beneficiaire.telephone}
+              </a>
+            )}
+            {!beneficiaire.email && !beneficiaire.telephone && (
+              <p className="text-on-surface-variant italic text-xs">Aucune coordonnée renseignée</p>
+            )}
           </div>
         </div>
 

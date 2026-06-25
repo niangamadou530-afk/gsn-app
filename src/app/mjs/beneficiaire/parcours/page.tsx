@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { ParcoursListItem, Secteur } from "./types";
 import { NIVEAU_LABEL } from "./types";
+import MjsNavbar from "../MjsNavbar";
 
 export default function ListeParcoursPage() {
   const router = useRouter();
@@ -133,6 +134,7 @@ export default function ListeParcoursPage() {
           </p>
         )}
       </div>
+      <MjsNavbar />
     </main>
   );
 }

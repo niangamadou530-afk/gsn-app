@@ -183,6 +183,24 @@ export async function GET() {
       .sort((a, b) => new Date(b.delivre_le).getTime() - new Date(a.delivre_le).getTime())
       .slice(0, 5);
 
+    // Demographic Breakdown (genre, région, handicap)
+    const maleCount = safeBeneficiaires.filter((b) => b.genre === "M").length;
+    const femaleCount = safeBeneficiaires.filter((b) => b.genre === "F").length;
+    const handicappedCount = safeBeneficiaires.filter((b) => b.situation_handicap === true).length;
+
+    const genderBreakdown = {
+      male: maleCount,
+      female: femaleCount,
+      total: totalInscrits
+    };
+
+    // Région Breakdown (all regions from Senegal)
+    const regionBreakdown: Record<string, number> = {};
+    const senegaleseRegions = ["Dakar", "Thiès", "Diourbel", "Saint-Louis", "Kaolack", "Ziguinchor", "Kolda", "Fatick", "Louga", "Matam", "Tambacounda", "Kédougou", "Sédhiou", "Kaffrine"];
+    senegaleseRegions.forEach((region) => {
+      regionBreakdown[region] = safeBeneficiaires.filter((b) => b.region === region).length;
+    });
+
     return NextResponse.json({
       kpis: {
         totalInscrits,
@@ -191,10 +209,13 @@ export async function GET() {
         totalCertifies,
         tauxInsertionGlobal,
         tauxInsertionCertifies,
-        totalPartners: recruitersCount || 0
+        totalPartners: recruitersCount || 0,
+        handicappedCount
       },
       sectorsBreakdown,
       insertionBreakdown,
+      genderBreakdown,
+      regionBreakdown,
       latestPassports,
       beneficiaires: detailedBeneficiaires
     });

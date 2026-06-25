@@ -134,12 +134,6 @@ export default function LoginPage() {
             Créer mon compte
           </Link>
 
-          <Link
-            href="/mjs"
-            className="block w-full text-center py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200"
-          >
-            Acceder a l'espace du ministere de la jeunesse
-          </Link>
         </section>
 
         <footer className="flex items-center justify-center space-x-6 text-outline font-medium text-xs">

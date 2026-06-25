@@ -50,6 +50,7 @@ type MjsStats = {
     tauxInsertionGlobal: number;
     tauxInsertionCertifies: number;
     totalPartners: number;
+    handicappedCount: number;
   };
   sectorsBreakdown: SectorStats[];
   insertionBreakdown: {
@@ -58,6 +59,12 @@ type MjsStats = {
     recherche: number;
     etudes: number;
   };
+  genderBreakdown: {
+    male: number;
+    female: number;
+    total: number;
+  };
+  regionBreakdown: Record<string, number>;
   latestPassports: PassportLog[];
   beneficiaires: Beneficiaire[];
 };
@@ -346,6 +353,130 @@ export default function MjsMinistereDashboard() {
                 <p className="text-sm font-semibold text-on-surface-variant mt-1.5">Taux d'Insertion (Certifiés)</p>
                 <div className="mt-4 flex items-center gap-1.5 text-xs text-on-surface-variant">
                   <span className="font-bold text-[#00853f]">{data.kpis.tauxInsertionGlobal}%</span> de taux global (tous inscrits)
+                </div>
+              </div>
+            </div>
+
+            {/* Demographic Breakdown Section */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Handicap KPI */}
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full translate-x-6 -translate-y-6 group-hover:scale-110 transition-transform" />
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-red-600 text-[22px]">accessibility</span>
+                </div>
+                <p className="text-4xl font-extrabold text-on-background tracking-tight">{data.kpis.handicappedCount}</p>
+                <p className="text-sm font-semibold text-on-surface-variant mt-1.5">Personnes en Situation de Handicap</p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs text-on-surface-variant">
+                  <span className="font-bold text-red-600">
+                    {data.kpis.totalInscrits > 0
+                      ? Math.round((data.kpis.handicappedCount / data.kpis.totalInscrits) * 100)
+                      : 0}
+                    %
+                  </span>{" "}
+                  de la population
+                </div>
+              </div>
+
+              {/* Gender Distribution */}
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="font-bold text-lg text-on-surface">Répartition par Genre</h3>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Hommes et Femmes</p>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant">wc</span>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 text-sm font-semibold text-on-surface">Hommes</div>
+                    <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+                      <div
+                        className="bg-blue-500 h-full rounded-full transition-all"
+                        style={{
+                          width: `${
+                            data.genderBreakdown.total > 0
+                              ? (data.genderBreakdown.male / data.genderBreakdown.total) * 100
+                              : 0
+                          }%`
+                        }}
+                      />
+                    </div>
+                    <div className="w-16 text-right text-sm font-bold text-on-surface">
+                      {data.genderBreakdown.male}{" "}
+                      <span className="text-xs text-on-surface-variant font-normal">
+                        (
+                        {data.genderBreakdown.total > 0
+                          ? Math.round((data.genderBreakdown.male / data.genderBreakdown.total) * 100)
+                          : 0}
+                        %)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <div className="w-20 text-sm font-semibold text-on-surface">Femmes</div>
+                    <div className="flex-1 h-3 bg-surface-container rounded-full overflow-hidden">
+                      <div
+                        className="bg-pink-500 h-full rounded-full transition-all"
+                        style={{
+                          width: `${
+                            data.genderBreakdown.total > 0
+                              ? (data.genderBreakdown.female / data.genderBreakdown.total) * 100
+                              : 0
+                          }%`
+                        }}
+                      />
+                    </div>
+                    <div className="w-16 text-right text-sm font-bold text-on-surface">
+                      {data.genderBreakdown.female}{" "}
+                      <span className="text-xs text-on-surface-variant font-normal">
+                        (
+                        {data.genderBreakdown.total > 0
+                          ? Math.round((data.genderBreakdown.female / data.genderBreakdown.total) * 100)
+                          : 0}
+                        %)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Region Distribution */}
+              <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="font-bold text-lg text-on-surface">Top Régions</h3>
+                    <p className="text-xs text-on-surface-variant mt-0.5">Inscriptions par région sénégalaise</p>
+                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant">location_on</span>
+                </div>
+
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {Object.entries(data.regionBreakdown)
+                    .sort(([, a], [, b]) => b - a)
+                    .slice(0, 8)
+                    .map(([region, count]) => {
+                      const percentage = data.kpis.totalInscrits > 0 ? Math.round((count / data.kpis.totalInscrits) * 100) : 0;
+                      return (
+                        <div key={region} className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <div className="text-xs font-semibold text-on-surface mb-0.5">{region}</div>
+                            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
+                              <div
+                                className="bg-primary h-full rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs font-bold text-on-surface">{count}</div>
+                            <div className="text-xs text-on-surface-variant">{percentage}%</div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             </div>

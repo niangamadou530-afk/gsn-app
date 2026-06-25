@@ -53,6 +53,7 @@ export default function InscriptionBeneficiairePage() {
         tenant_id: "mjs",
         nom,
         prenom,
+        email,
       });
 
     if (insertError) {

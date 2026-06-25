@@ -33,6 +33,7 @@ export default function DetailParcoursPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [inscribing, setInscribing] = useState(false);
+  const [hasActiveParcours, setHasActiveParcours] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -51,27 +52,44 @@ export default function DetailParcoursPage() {
     if (!p) { router.push("/mjs/beneficiaire/parcours"); return; }
     setParcours(p as unknown as ParcoursDetail);
 
-    const { data: insc } = await supabase
-      .from("mjs_inscriptions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("parcours_id", id)
-      .eq("tenant_id", "mjs")
-      .maybeSingle();
-
-    const { data: prog } = await supabase
-      .from("mjs_progression")
-      .select("modules_faits_ids")
-      .eq("user_id", user.id)
-      .eq("parcours_id", id)
-      .eq("tenant_id", "mjs")
-      .maybeSingle();
+    const [{ data: insc }, { data: prog }, { data: allInsc }, { data: allPassports }] = await Promise.all([
+      supabase
+        .from("mjs_inscriptions")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("parcours_id", id)
+        .eq("tenant_id", "mjs")
+        .maybeSingle(),
+      supabase
+        .from("mjs_progression")
+        .select("modules_faits_ids")
+        .eq("user_id", user.id)
+        .eq("parcours_id", id)
+        .eq("tenant_id", "mjs")
+        .maybeSingle(),
+      supabase
+        .from("mjs_inscriptions")
+        .select("parcours_id")
+        .eq("user_id", user.id)
+        .eq("tenant_id", "mjs"),
+      supabase
+        .from("mjs_skill_passports")
+        .select("parcours_id")
+        .eq("user_id", user.id)
+        .eq("tenant_id", "mjs")
+    ]);
 
     if (insc) {
       setDejaInscrit(true);
       const ids: string[] = prog?.modules_faits_ids ?? [];
       setQuizPassed(new Set(ids));
     }
+
+    // Check if there's an active parcours (inscrit but not certified) other than the current one
+    const inscSet = new Set((allInsc ?? []).map((i) => i.parcours_id));
+    const certSet = new Set((allPassports ?? []).map((p) => p.parcours_id));
+    const activeParcours = Array.from(inscSet).find(parId => parId !== id && !certSet.has(parId));
+    setHasActiveParcours(!!activeParcours);
 
     setLoading(false);
   }
@@ -157,7 +175,19 @@ export default function DetailParcoursPage() {
           )}
         </div>
 
-        {!dejaInscrit && (
+        {!dejaInscrit && hasActiveParcours && (
+          <div className="p-4 bg-amber-100 border border-amber-400 rounded-xl text-sm text-amber-900">
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-[20px] shrink-0 mt-0.5">warning</span>
+              <div>
+                <strong>Parcours en cours</strong>
+                <p className="text-xs mt-1">Tu es actuellement inscrit à un autre parcours. Termine-le d'abord avant d'en commencer un nouveau.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!dejaInscrit && !hasActiveParcours && (
           <button
             onClick={sInscrire}
             disabled={inscribing || generating}
