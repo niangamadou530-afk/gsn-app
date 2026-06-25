@@ -114,7 +114,6 @@ export default function BfemPage() {
         setAll(docs);
         const years = [...new Set(docs.map(d => d.annee))].sort((a, b) => b - a);
         setAnnees(years);
-        if (years.length > 0) setAnnee(years[0]);
       }
       setLoading(false);
     }
