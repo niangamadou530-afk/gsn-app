@@ -157,12 +157,18 @@ export default function BfemPage() {
     return ["Toutes", ...Array.from(s).sort()];
   }, [all, annee]);
 
-  const filtered = useMemo(() => all.filter(d => {
-    if (annee !== null && d.annee !== annee) return false;
-    if (docType !== "tous" && d.type !== docType) return false;
-    if (matiere !== "Toutes" && d.matiere !== matiere) return false;
-    return true;
-  }), [all, annee, docType, matiere]);
+  const filtered = useMemo(() => {
+    const result = all.filter(d => {
+      if (annee !== null && d.annee !== annee) return false;
+      if (docType !== "tous" && d.type !== docType) return false;
+      if (matiere !== "Toutes" && d.matiere !== matiere) return false;
+      return true;
+    });
+    if (annee === null && result.length > 50) {
+      result.sort((a, b) => b.annee - a.annee);
+    }
+    return result;
+  }, [all, annee, docType, matiere]);
 
   return (
     <main className="min-h-screen bg-surface text-on-surface flex flex-col">
@@ -242,6 +248,12 @@ export default function BfemPage() {
 
           {/* Filtres année */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <button onClick={() => { setAnnee(null); setMatiere("Toutes"); }}
+              className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
+                annee === null ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
+              }`}>
+              Toutes
+            </button>
             {annees.map(a => (
               <button key={a} onClick={() => { setAnnee(a); setMatiere("Toutes"); }}
                 className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
