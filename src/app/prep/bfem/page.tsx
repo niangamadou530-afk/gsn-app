@@ -10,8 +10,10 @@ interface BfemDoc {
   id: string;
   annee: number;
   matiere: string;
-  type: "epreuve" | "corrige";
+  type: "epreuve" | "corrige" | "annale_preparation";
   url_originale: string;
+  url_storage: string | null;
+  nom_fichier: string | null;
 }
 
 declare global {
@@ -103,7 +105,7 @@ export default function BfemPage() {
 
       const { data, error } = await supabase
         .from("epreuves_bac")
-        .select("id, annee, matiere, type, url_originale")
+        .select("id, annee, matiere, type, url_originale, url_storage, nom_fichier")
         .eq("examen", "BFEM")
         .order("annee", { ascending: false });
 
@@ -130,12 +132,15 @@ export default function BfemPage() {
     setSelected(doc);
     setContentHtml(null);
     setContentLoading(true);
-    const { data } = await supabase
-      .from("epreuves_bac")
-      .select("contenu_html")
-      .eq("id", doc.id)
-      .single();
-    setContentHtml((data as any)?.contenu_html ?? null);
+    // PDF docs already have url_storage from the list — no extra fetch needed
+    if (!doc.url_storage) {
+      const { data } = await supabase
+        .from("epreuves_bac")
+        .select("contenu_html")
+        .eq("id", doc.id)
+        .single();
+      setContentHtml((data as any)?.contenu_html ?? null);
+    }
     setContentLoading(false);
   }
 
@@ -179,9 +184,17 @@ export default function BfemPage() {
         <div className="flex flex-col flex-1">
           <div className="px-4 py-2 flex items-center gap-2 bg-surface-container-lowest border-b border-outline-variant/20">
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              selected.type === "corrige" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+              selected.type === "corrige"
+                ? "bg-green-100 text-green-700"
+                : selected.type === "annale_preparation"
+                ? "bg-orange-100 text-orange-700"
+                : "bg-blue-100 text-blue-700"
             }`}>
-              {selected.type === "corrige" ? "Corrigé" : "Épreuve"}
+              {selected.type === "corrige"
+                ? "Corrigé"
+                : selected.type === "annale_preparation"
+                ? "Annale de préparation"
+                : "Épreuve"}
             </span>
             <span className="text-sm text-on-surface-variant">{selected.annee}</span>
             <a href={selected.url_originale} target="_blank" rel="noopener noreferrer"
@@ -202,6 +215,12 @@ export default function BfemPage() {
               className="flex-1 px-4 py-6 overflow-auto bfem-content"
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
+          ) : selected.url_storage ? (
+            <iframe
+              src={selected.url_storage}
+              className="flex-1 w-full min-h-[600px] border-0"
+              title={selected.nom_fichier ?? `${selected.matiere} ${selected.annee}`}
+            />
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 text-center">
               <div>
@@ -209,7 +228,7 @@ export default function BfemPage() {
                 <p className="font-bold text-on-surface mt-2">Contenu non disponible</p>
                 <a href={selected.url_originale} target="_blank" rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-1 text-sm text-primary font-semibold">
-                  Voir sur sunudaara.com
+                  Voir la source
                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               </div>
@@ -278,18 +297,30 @@ export default function BfemPage() {
                 <button key={d.id} onClick={() => handleSelect(d)}
                   className="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest shadow-sm text-left active:scale-[0.98] transition-transform">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    d.type === "corrige" ? "bg-green-100" : "bg-blue-100"
+                    d.type === "corrige"
+                      ? "bg-green-100"
+                      : d.type === "annale_preparation"
+                      ? "bg-orange-100"
+                      : "bg-blue-100"
                   }`}>
                     <span className={`material-symbols-outlined text-[20px] ${
-                      d.type === "corrige" ? "text-green-600" : "text-blue-600"
+                      d.type === "corrige"
+                        ? "text-green-600"
+                        : d.type === "annale_preparation"
+                        ? "text-orange-600"
+                        : "text-blue-600"
                     }`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                      {d.type === "corrige" ? "check_circle" : "description"}
+                      {d.type === "corrige" ? "check_circle" : d.type === "annale_preparation" ? "auto_stories" : "description"}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-on-surface text-sm truncate">{d.matiere}</p>
                     <p className="text-xs text-on-surface-variant">
-                      {d.type === "corrige" ? "Corrigé" : "Épreuve"} · {d.annee}
+                      {d.type === "corrige"
+                        ? "Corrigé"
+                        : d.type === "annale_preparation"
+                        ? "Annale de préparation"
+                        : "Épreuve"} · {d.annee}
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
