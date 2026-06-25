@@ -207,11 +207,6 @@ export default function BfemPage() {
                 : "Épreuve"}
             </span>
             <span className="text-sm text-on-surface-variant">{selected.annee}</span>
-            <a href={selected.url_originale} target="_blank" rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 text-xs text-primary font-semibold">
-              <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-              Source
-            </a>
           </div>
 
           {contentLoading ? (
