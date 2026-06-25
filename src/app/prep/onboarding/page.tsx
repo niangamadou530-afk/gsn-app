@@ -21,71 +21,56 @@ function PrepOnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedExam = searchParams.get("exam");
-  const inviteCode = searchParams.get("code");
-  const isLockedBFEM = preselectedExam === "BFEM" && !!inviteCode;
+  const inviteCode      = searchParams.get("code");
+  const isLockedBFEM    = preselectedExam === "BFEM" && !!inviteCode;
 
-  const [step, setStep]       = useState(0);
-  const [prenom, setPrenom]   = useState("");
-  const [examType, setExamType] = useState(preselectedExam ?? "");
-  const [serie, setSerie]     = useState("");
-  const [ecole, setEcole]     = useState("");
-  const [classe, setClasse]   = useState("");
-  const [saving, setSaving]   = useState(false);
-  const [error, setError]     = useState("");
-
-  // ── Autocomplete école ──────────────────────────────────────────────────────
-  const [ecoleQuery, setEcoleQuery]             = useState("");
-  const [ecoleSuggestions, setEcoleSuggestions] = useState<{ nom: string; ville: string }[]>([]);
-  const [ecoleManual, setEcoleManual]           = useState(false);
-  const [ecoleLoading, setEcoleLoading]         = useState(false);
-  const [ecoleOpen, setEcoleOpen]               = useState(false);
+  const [step, setStep]                   = useState(0);
+  const [prenom, setPrenom]               = useState("");
+  const [prenomFromDB, setPrenomFromDB]   = useState(false);
+  const [examType, setExamType]           = useState(preselectedExam ?? "");
+  const [serie, setSerie]                 = useState("");
+  const [ecole, setEcole]                 = useState("");
+  const [ecoleManual, setEcoleManual]     = useState(false);
+  const [ecoles, setEcoles]               = useState<{ nom: string; ville: string }[]>([]);
+  const [ecolesLoading, setEcolesLoading] = useState(true);
+  const [classe, setClasse]               = useState("");
+  const [saving, setSaving]               = useState(false);
+  const [error, setError]                 = useState("");
 
   useEffect(() => {
     if (preselectedExam === "BFEM" || preselectedExam === "BAC") setExamType(preselectedExam);
   }, [preselectedExam]);
 
+  // Au montage : charger la liste des écoles + récupérer le prénom depuis le profil
   useEffect(() => {
-    if (ecoleManual || ecoleQuery.trim().length < 2) {
-      setEcoleSuggestions([]);
-      setEcoleOpen(false);
-      setEcoleLoading(false);
-      return;
-    }
-    setEcoleLoading(true);
-    const timer = setTimeout(async () => {
+    (async () => {
       const { data } = await supabase
         .from("etablissements_senegal")
         .select("nom, ville")
-        .ilike("nom", `%${ecoleQuery.trim()}%`)
-        .order("nom")
-        .limit(8);
-      setEcoleSuggestions(data ?? []);
-      setEcoleOpen(true);
-      setEcoleLoading(false);
-    }, 300);
-    return () => { clearTimeout(timer); setEcoleLoading(false); };
-  }, [ecoleQuery, ecoleManual]);
+        .order("nom");
+      setEcoles(data ?? []);
+      setEcolesLoading(false);
+    })();
 
-  function selectEcole(nom: string) {
-    setEcole(nom);
-    setEcoleQuery(nom);
-    setEcoleOpen(false);
-  }
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data?.name) {
+        const firstName = (data.name as string).trim().split(/\s+/)[0];
+        if (firstName.length >= 2) {
+          setPrenom(firstName);
+          setPrenomFromDB(true);
+        }
+      }
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function switchToManual() {
-    setEcoleManual(true);
-    setEcole(ecoleQuery);
-    setEcoleOpen(false);
-  }
-
-  function resetEcoleSearch() {
-    setEcoleManual(false);
-    setEcole("");
-    setEcoleQuery("");
-    setEcoleSuggestions([]);
-  }
-
-  const progress = ((step + 1) / 3) * 100;
+  const progress   = ((step + 1) / 3) * 100;
   const step0Valid = prenom.trim().length >= 2 && examType !== "" && (examType === "BFEM" || serie !== "");
 
   async function saveProfile() {
@@ -96,12 +81,12 @@ function PrepOnboardingInner() {
       if (!user) { router.push("/login"); return; }
 
       const payload = {
-        user_id: user.id,
-        prenom: prenom.trim(),
+        user_id:   user.id,
+        prenom:    prenom.trim(),
         exam_type: examType,
-        serie: serie || null,
-        ecole: ecole.trim() || null,
-        classe: classe.trim() || null,
+        serie:     serie || null,
+        ecole:     ecole.trim() || null,
+        classe:    classe.trim() || null,
       };
 
       const { data: existing } = await supabase
@@ -154,15 +139,23 @@ function PrepOnboardingInner() {
               <p className="text-on-surface-variant text-sm">🇸🇳 Sénégal · Programme officiel Office du BAC</p>
             </div>
 
-            {/* Prénom */}
+            {/* Prénom — lecture seule si récupéré du profil, sinon saisie libre */}
             <div className="space-y-2">
               <label className="font-bold text-on-surface text-sm">Ton prénom</label>
-              <input
-                value={prenom}
-                onChange={e => setPrenom(e.target.value)}
-                placeholder="Ex: Aminata, Ibrahima, Fatou..."
-                className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-              />
+              {prenomFromDB ? (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-primary/30 bg-primary/5">
+                  <span className="material-symbols-outlined text-primary text-[18px]"
+                    style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
+                  <span className="font-semibold text-on-surface">{prenom}</span>
+                </div>
+              ) : (
+                <input
+                  value={prenom}
+                  onChange={e => setPrenom(e.target.value)}
+                  placeholder="Ex: Aminata, Ibrahima, Fatou..."
+                  className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+                />
+              )}
             </div>
 
             {/* Examen */}
@@ -236,99 +229,48 @@ function PrepOnboardingInner() {
 
             <div className="space-y-4">
 
-              {/* ── Champ école avec autocomplete ── */}
+              {/* Menu déroulant alphabétique */}
               <div className="space-y-2">
                 <label className="font-bold text-on-surface text-sm">Nom de l'école ou du lycée</label>
 
-                {ecoleManual ? (
-                  /* Mode saisie manuelle */
-                  <div className="space-y-2">
-                    <input
-                      value={ecole}
-                      onChange={e => setEcole(e.target.value)}
-                      placeholder="Saisir le nom de ton école..."
-                      autoFocus
-                      className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-                    />
-                    <button
-                      type="button"
-                      onClick={resetEcoleSearch}
-                      className="text-xs text-primary underline">
-                      ← Retour à la recherche
-                    </button>
-                  </div>
-                ) : (
-                  /* Mode recherche */
-                  <div className="relative">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[20px]">
-                        search
-                      </span>
-                      <input
-                        value={ecoleQuery}
-                        onChange={e => { setEcoleQuery(e.target.value); setEcole(""); }}
-                        onFocus={() => { if (ecoleSuggestions.length > 0) setEcoleOpen(true); }}
-                        onBlur={() => setTimeout(() => setEcoleOpen(false), 150)}
-                        placeholder="Rechercher mon école…"
-                        className="w-full pl-10 pr-10 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
-                      />
-                      {ecoleLoading && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <div className="w-4 h-4 rounded-full border-2 animate-spin"
-                            style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-                        </div>
-                      )}
-                      {ecole && !ecoleLoading && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-primary text-[20px]"
-                          style={{ fontVariationSettings: "'FILL' 1" }}>
-                          check_circle
-                        </span>
-                      )}
-                    </div>
+                <div className="relative">
+                  <select
+                    value={ecoleManual ? "__manual__" : ecole}
+                    onChange={e => {
+                      const val = e.target.value;
+                      if (val === "__manual__") {
+                        setEcoleManual(true);
+                        setEcole("");
+                      } else {
+                        setEcoleManual(false);
+                        setEcole(val);
+                      }
+                    }}
+                    disabled={ecolesLoading}
+                    className="w-full appearance-none px-4 py-3 pr-10 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary transition-colors disabled:opacity-50 cursor-pointer"
+                  >
+                    <option value="">
+                      {ecolesLoading ? "Chargement…" : "Choisir mon école…"}
+                    </option>
+                    {ecoles.map((s, i) => (
+                      <option key={i} value={s.nom}>{s.nom} — {s.ville}</option>
+                    ))}
+                    <option value="__manual__">— Mon école n'est pas dans la liste —</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-[20px]">
+                    expand_more
+                  </span>
+                </div>
 
-                    {/* Dropdown */}
-                    {ecoleOpen && (
-                      <div className="absolute z-20 w-full mt-1 bg-surface rounded-xl border border-outline-variant shadow-lg overflow-hidden">
-                        {ecoleSuggestions.length === 0 && (
-                          <div className="px-4 py-3 text-sm text-on-surface-variant italic">
-                            Aucun résultat pour « {ecoleQuery} »
-                          </div>
-                        )}
-                        {ecoleSuggestions.map((s, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onMouseDown={() => selectEcole(s.nom)}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container text-left transition-colors border-b border-outline-variant/20 last:border-0">
-                            <span className="material-symbols-outlined text-primary text-[18px] shrink-0"
-                              style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-                            <div className="min-w-0">
-                              <p className="font-semibold text-on-surface text-sm truncate">{s.nom}</p>
-                              <p className="text-xs text-on-surface-variant">{s.ville}</p>
-                            </div>
-                          </button>
-                        ))}
-                        {/* Option manuelle toujours visible en bas du dropdown */}
-                        <button
-                          type="button"
-                          onMouseDown={switchToManual}
-                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-surface-container/60 text-left transition-colors border-t border-outline-variant/30">
-                          <span className="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">edit</span>
-                          <p className="text-sm text-on-surface-variant italic">Mon école n'est pas dans la liste</p>
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Lien de secours quand dropdown fermé mais query >= 2 sans sélection */}
-                    {!ecoleOpen && !ecoleLoading && ecoleQuery.trim().length >= 2 && !ecole && (
-                      <button
-                        type="button"
-                        onClick={switchToManual}
-                        className="mt-2 text-xs text-on-surface-variant underline">
-                        Mon école n'est pas dans la liste →
-                      </button>
-                    )}
-                  </div>
+                {/* Saisie libre si école absente de la liste */}
+                {ecoleManual && (
+                  <input
+                    value={ecole}
+                    onChange={e => setEcole(e.target.value)}
+                    placeholder="Saisir le nom de ton école..."
+                    autoFocus
+                    className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary transition-colors"
+                  />
                 )}
               </div>
 
@@ -364,15 +306,13 @@ function PrepOnboardingInner() {
             </div>
 
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <Row icon="person" label="Prénom" value={prenom} />
+              <Row icon="person"            label="Prénom" value={prenom} />
               <Row icon="workspace_premium" label="Examen" value={`${examType}${serie ? " · Série " + serie : ""}`} />
-              {ecole && <Row icon="school" label="École" value={ecole} />}
-              {classe && <Row icon="class" label="Classe" value={classe} />}
+              {ecole  && <Row icon="school" label="École"  value={ecole} />}
+              {classe && <Row icon="class"  label="Classe" value={classe} />}
             </div>
 
-            {error && (
-              <p className="text-red-500 text-sm text-center">{error}</p>
-            )}
+            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
 
             <button
               onClick={saveProfile}
@@ -393,7 +333,8 @@ function PrepOnboardingInner() {
 function Row({ icon, label, value }: { icon: string; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <span className="material-symbols-outlined text-primary text-[20px]"
+        style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
       <div className="flex-1">
         <span className="text-xs text-on-surface-variant">{label}</span>
         <p className="font-semibold text-on-surface text-sm">{value}</p>
@@ -406,7 +347,8 @@ export default function PrepOnboardingPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-surface flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+        <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin"
+          style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       </div>
     }>
       <PrepOnboardingInner />
