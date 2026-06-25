@@ -86,6 +86,11 @@ export default function BfemPage() {
   const [selected, setSelected]         = useState<BfemDoc | null>(null);
   const [contentHtml, setContentHtml]   = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
+  const [isMobile, setIsMobile]         = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
 
   useEffect(() => {
     async function init() {
@@ -221,11 +226,28 @@ export default function BfemPage() {
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
           ) : selected.url_storage ? (
-            <iframe
-              src={selected.url_storage}
-              className="flex-1 w-full min-h-[600px] border-0"
-              title={selected.nom_fichier ?? `${selected.matiere} ${selected.annee}`}
-            />
+            isMobile ? (
+              <div className="flex-1 flex items-center justify-center p-8 text-center">
+                <div>
+                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
+                  <p className="font-bold text-on-surface mt-2">{selected.matiere} {selected.annee}</p>
+                  <p className="text-sm text-on-surface-variant mt-1">Document PDF</p>
+                  <button
+                    onClick={() => window.open(selected.url_storage!, "_blank")}
+                    className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white active:scale-[0.97] transition-transform"
+                    style={{ backgroundColor: "#FF6B00" }}>
+                    <span className="material-symbols-outlined text-[20px]">open_in_new</span>
+                    Ouvrir le PDF
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <iframe
+                src={selected.url_storage}
+                className="flex-1 w-full min-h-[600px] border-0"
+                title={selected.nom_fichier ?? `${selected.matiere} ${selected.annee}`}
+              />
+            )
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 text-center">
               <div>

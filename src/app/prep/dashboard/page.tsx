@@ -196,7 +196,7 @@ export default function PrepDashboardPage() {
           onClick={() => setShowFeedback(true)}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-outline-variant/30 text-on-surface-variant text-sm font-semibold hover:bg-surface-container transition-colors active:scale-[0.98]">
           <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
-          Donner mon avis 💬
+          Donner mon avis
         </button>
 
       </div>
@@ -226,7 +226,7 @@ export default function PrepDashboardPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  {(["Suggestion 💡", "Bug 🐛", "Compliment 🎉"] as const).map(cat => (
+                  {(["Suggestion", "Bug", "Compliment"] as const).map(cat => (
                     <button key={cat}
                       onClick={() => setFbCategorie(fbCategorie === cat ? null : cat)}
                       className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${fbCategorie === cat ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
