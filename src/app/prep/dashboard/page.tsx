@@ -199,6 +199,15 @@ export default function PrepDashboardPage() {
           Donner mon avis
         </button>
 
+        {/* Support WhatsApp */}
+        <a
+          href="https://wa.me/221781246504?text=Bonjour%2C+j%27ai+une+question+sur+GSN+Prep"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 py-2 text-xs text-on-surface-variant/60 hover:text-on-surface-variant transition-colors">
+          📱 Besoin d&apos;aide ?
+        </a>
+
       </div>
 
       {/* Modal feedback */}

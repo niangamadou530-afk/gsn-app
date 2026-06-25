@@ -557,7 +557,7 @@ function GenererPageInner() {
 
           {/* WhatsApp */}
           <button
-            onClick={() => shareWhatsApp(`J'ai révisé ${activeMat()} avec ${flashcards.length} flashcards sur GSN Prep ! Prépare ton ${examType} → gsn-app.vercel.app`)}
+            onClick={() => shareWhatsApp(`J'ai révisé ${activeMat()} avec ${flashcards.length} flashcards sur GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
             <span className="text-lg">📱</span> Partager sur WhatsApp
           </button>
@@ -691,7 +691,7 @@ function GenererPageInner() {
           )}
 
           <button
-            onClick={() => shareWhatsApp(`J'ai obtenu ${finalScore}/${total} en ${activeMat()} sur GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
+            onClick={() => shareWhatsApp(`J'ai obtenu ${finalScore}/${total} en ${activeMat()} sur GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
             <span className="text-lg">📱</span> Partager sur WhatsApp
           </button>
@@ -733,7 +733,7 @@ function GenererPageInner() {
           <ResumeDisplay texte={texte} matiere={activeMat()} />
 
           <button
-            onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep ! Prépare ton ${examType} avec moi → gsn-app.vercel.app`)}
+            onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
             <span className="text-lg">📱</span> Partager sur WhatsApp
           </button>
