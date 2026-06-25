@@ -233,7 +233,7 @@ export default function BfemPage() {
                   <p className="font-bold text-on-surface mt-2">{selected.matiere} {selected.annee}</p>
                   <p className="text-sm text-on-surface-variant mt-1">Document PDF</p>
                   <button
-                    onClick={() => window.open(selected.url_storage!, "_blank")}
+                    onClick={() => window.open(`/api/prep-pdf-proxy?id=${selected.id}`, "_blank")}
                     className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white active:scale-[0.97] transition-transform"
                     style={{ backgroundColor: "#FF6B00" }}>
                     <span className="material-symbols-outlined text-[20px]">open_in_new</span>
@@ -243,7 +243,7 @@ export default function BfemPage() {
               </div>
             ) : (
               <iframe
-                src={selected.url_storage}
+                src={`/api/prep-pdf-proxy?id=${selected.id}`}
                 className="flex-1 w-full min-h-[600px] border-0"
                 title={selected.nom_fichier ?? `${selected.matiere} ${selected.annee}`}
               />
