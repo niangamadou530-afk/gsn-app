@@ -4,45 +4,44 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { phoneToFakeEmail, normalizePhone, isValidPhone } from "@/lib/phoneUtils";
 
 type ProfileType = "eleve" | "professionnel" | "";
+type AuthMethod  = "email" | "phone";
 
 export default function SignupPage() {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
-  const [profileType, setProfileType] = useState<ProfileType>("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [inviteError, setInviteError] = useState("");
+
+  // Step 1
+  const [profileType, setProfileType]       = useState<ProfileType>("");
+  const [inviteCode, setInviteCode]         = useState("");
+  const [inviteError, setInviteError]       = useState("");
   const [inviteChecking, setInviteChecking] = useState(false);
   const [inviteExamType, setInviteExamType] = useState("BFEM");
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+
+  // Step 2
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [fullName, setFullName]     = useState("");
+  const [email, setEmail]           = useState("");
+  const [phone, setPhone]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [loading, setLoading]       = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleStep1Continue() {
-    if (profileType !== "eleve") {
-      setStep(2);
-      return;
-    }
-    if (!inviteCode.trim()) {
-      setInviteError("Code d'invitation requis pour les élèves.");
-      return;
-    }
+    if (profileType !== "eleve") { setStep(2); return; }
+    if (!inviteCode.trim()) { setInviteError("Code d'invitation requis pour les élèves."); return; }
     setInviteChecking(true);
     setInviteError("");
     try {
-      const res = await fetch("/api/invite-validate", {
+      const res  = await fetch("/api/invite-validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: inviteCode.trim().toUpperCase(), dry_run: true }),
       });
       const data = await res.json();
-      if (!data.valid) {
-        setInviteError(data.error ?? "Code invalide.");
-        return;
-      }
+      if (!data.valid) { setInviteError(data.error ?? "Code invalide."); return; }
       setInviteExamType(data.exam_type ?? "BFEM");
       setStep(2);
     } catch {
@@ -55,12 +54,19 @@ export default function SignupPage() {
   async function handleSignup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
+
+    // Validation du numéro si mode téléphone
+    if (authMethod === "phone" && !isValidPhone(phone)) {
+      setErrorMessage("Numéro invalide — format attendu : +221 7X XXX XX XX");
+      return;
+    }
+
     setLoading(true);
 
-    // Atomic invite code check + increment before creating account
+    // Vérification atomique du code d'invitation
     if (profileType === "eleve") {
       try {
-        const res = await fetch("/api/invite-validate", {
+        const res  = await fetch("/api/invite-validate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: inviteCode.trim().toUpperCase(), dry_run: false }),
@@ -78,16 +84,24 @@ export default function SignupPage() {
       }
     }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    // Email effectif pour Supabase Auth
+    const authEmail = authMethod === "phone" ? phoneToFakeEmail(phone) : email;
+
+    const { data, error } = await supabase.auth.signUp({ email: authEmail, password });
 
     if (error) {
       setLoading(false);
-      setErrorMessage(error.message);
+      setErrorMessage(
+        error.message === "User already registered"
+          ? authMethod === "phone"
+            ? "Ce numéro est déjà associé à un compte."
+            : "Cet email est déjà associé à un compte."
+          : error.message
+      );
       return;
     }
 
     const userId = data.user?.id;
-
     if (userId) {
       const { error: insertError } = await supabase.from("users").insert({
         id: userId,
@@ -95,7 +109,6 @@ export default function SignupPage() {
         score: 0,
         profile_type: profileType || "professionnel",
       });
-
       if (insertError) {
         setLoading(false);
         setErrorMessage(insertError.message);
@@ -105,9 +118,12 @@ export default function SignupPage() {
 
     setLoading(false);
     if (profileType === "eleve") {
-      const code = encodeURIComponent(inviteCode.trim().toUpperCase());
-      const exam = encodeURIComponent(inviteExamType);
-      router.push(`/prep/onboarding?exam=${exam}&code=${code}`);
+      const params = new URLSearchParams({
+        exam: inviteExamType,
+        code: inviteCode.trim().toUpperCase(),
+      });
+      if (authMethod === "phone") params.set("phone", normalizePhone(phone));
+      router.push(`/prep/onboarding?${params.toString()}`);
     } else {
       router.push("/dashboard");
     }
@@ -145,7 +161,7 @@ export default function SignupPage() {
           <div className={`flex-1 h-1 rounded-full transition-colors ${step >= 2 ? "bg-primary" : "bg-surface-container"}`} />
         </div>
 
-        {/* Step 1 — Profile type + invite code */}
+        {/* ── Step 1 : Profil + code d'invitation ── */}
         {step === 1 && (
           <div className="space-y-6">
             <div>
@@ -169,7 +185,7 @@ export default function SignupPage() {
                 </div>
               </button>
 
-              {/* Invite code — affiché uniquement quand "élève" est sélectionné */}
+              {/* Code d'invitation */}
               {profileType === "eleve" && (
                 <div className="space-y-2 pl-2">
                   <p className="text-sm font-bold text-on-surface">Code d'invitation</p>
@@ -215,16 +231,13 @@ export default function SignupPage() {
               {inviteChecking ? (
                 <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
               ) : (
-                <>
-                  Continuer
-                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                </>
+                <>Continuer <span className="material-symbols-outlined text-[20px]">arrow_forward</span></>
               )}
             </button>
           </div>
         )}
 
-        {/* Step 2 — Account details */}
+        {/* ── Step 2 : Identifiants ── */}
         {step === 2 && (
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="flex items-center gap-2 mb-2">
@@ -234,45 +247,79 @@ export default function SignupPage() {
               <div className="flex items-center gap-2">
                 <span className="text-lg">{profileType === "eleve" ? "🎓" : "👨‍💼"}</span>
                 <span className="text-sm font-semibold text-on-surface-variant">
-                  {profileType === "eleve"
-                    ? `Élève ${inviteExamType} · ${inviteCode}`
-                    : "Professionnel"}
+                  {profileType === "eleve" ? `Élève ${inviteExamType} · ${inviteCode}` : "Professionnel"}
                 </span>
               </div>
             </div>
 
             <div className="space-y-3">
+
+              {/* Nom complet */}
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">person</span>
                 <input
                   type="text"
                   placeholder="Nom complet"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={e => setFullName(e.target.value)}
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
                   required
                 />
               </div>
 
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">mail</span>
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
-                  required
-                />
+              {/* Toggle Email / Téléphone */}
+              <div className="flex rounded-xl overflow-hidden border-2 border-outline-variant/30">
+                <button
+                  type="button"
+                  onClick={() => setAuthMethod("email")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "email" ? "bg-primary text-on-primary" : "bg-surface-container-lowest text-on-surface-variant"}`}>
+                  <span className="material-symbols-outlined text-[16px]">mail</span>
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMethod("phone")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "phone" ? "bg-primary text-on-primary" : "bg-surface-container-lowest text-on-surface-variant"}`}>
+                  <span className="material-symbols-outlined text-[16px]">phone</span>
+                  Téléphone
+                </button>
               </div>
 
+              {/* Champ email ou téléphone */}
+              {authMethod === "email" ? (
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">mail</span>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
+                    required
+                  />
+                </div>
+              ) : (
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">phone</span>
+                  <input
+                    type="tel"
+                    placeholder="+221 77 123 45 67"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Mot de passe */}
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">lock</span>
                 <input
                   type="password"
                   placeholder="Mot de passe"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
                   required
                 />
@@ -289,15 +336,11 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mt-2"
-            >
+              className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 mt-2">
               {loading ? (
                 <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
               ) : (
-                <>
-                  Créer mon compte
-                  <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                </>
+                <>Créer mon compte <span className="material-symbols-outlined text-[20px]">arrow_forward</span></>
               )}
             </button>
           </form>
@@ -305,9 +348,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-on-surface-variant mt-8">
           Déjà inscrit ?{" "}
-          <Link href="/login" className="text-primary font-bold hover:underline">
-            Se connecter
-          </Link>
+          <Link href="/login" className="text-primary font-bold hover:underline">Se connecter</Link>
         </p>
       </div>
 

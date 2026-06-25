@@ -22,6 +22,7 @@ function PrepOnboardingInner() {
   const searchParams = useSearchParams();
   const preselectedExam = searchParams.get("exam");
   const inviteCode      = searchParams.get("code");
+  const phoneFromSignup = searchParams.get("phone") ?? "";
   const isLockedBFEM    = preselectedExam === "BFEM" && !!inviteCode;
 
   const [step, setStep]                   = useState(0);
@@ -87,6 +88,7 @@ function PrepOnboardingInner() {
         serie:     serie || null,
         ecole:     ecole.trim() || null,
         classe:    classe.trim() || null,
+        telephone: phoneFromSignup || null,
       };
 
       const { data: existing } = await supabase
