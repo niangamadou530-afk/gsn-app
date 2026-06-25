@@ -9,8 +9,19 @@ const DAILY_LIMITS: Record<UsageField, number> = {
   coach_count: 15,
 };
 
-export const LIMIT_MESSAGE =
-  "Tu as atteint ta limite du jour pour cette fonctionnalité. Reviens demain pour continuer à réviser.";
+export function limitMessage(field: UsageField): string {
+  const lim = DAILY_LIMITS[field];
+  switch (field) {
+    case "quiz_count":
+      return `Tu as atteint ta limite de quiz pour aujourd'hui (${lim}/${lim}). Les flashcards et le coach restent disponibles ! Reviens demain pour plus de quiz.`;
+    case "flashcards_count":
+      return `Tu as atteint ta limite de flashcards pour aujourd'hui (${lim}/${lim}). Tu peux toujours faire des quiz ou parler au coach. Reviens demain.`;
+    case "resume_count":
+      return `Tu as atteint ta limite de résumés pour aujourd'hui (${lim}/${lim}). Continue avec les quiz et flashcards ! Reviens demain pour un nouveau résumé.`;
+    case "coach_count":
+      return `Tu as atteint ta limite de messages au coach pour aujourd'hui (${lim}/${lim}). Les quiz, flashcards et résumés restent disponibles. Reviens demain.`;
+  }
+}
 
 function sbWithToken(token: string) {
   return createClient(

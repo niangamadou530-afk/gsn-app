@@ -31,11 +31,39 @@ export default function PrepDashboardPage() {
   const [loading, setLoading]   = useState(true);
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [flashCount, setFlashCount] = useState(0);
+  const [userId, setUserId]     = useState<string | null>(null);
+
+  // Feedback modal state
+  const [showFeedback, setShowFeedback]   = useState(false);
+  const [fbCategorie, setFbCategorie]     = useState<string | null>(null);
+  const [fbMessage, setFbMessage]         = useState("");
+  const [fbSent, setFbSent]               = useState(false);
+  const [fbLoading, setFbLoading]         = useState(false);
+
+  async function submitFeedback() {
+    if (!fbMessage.trim() || !userId) return;
+    setFbLoading(true);
+    await supabase.from("prep_feedback").insert({
+      user_id: userId,
+      categorie: fbCategorie,
+      message: fbMessage.trim(),
+    });
+    setFbSent(true);
+    setFbLoading(false);
+  }
+
+  function closeFeedback() {
+    setShowFeedback(false);
+    setFbCategorie(null);
+    setFbMessage("");
+    setFbSent(false);
+  }
 
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/login"); return; }
+      setUserId(user.id);
 
       const { data: stu } = await supabase
         .from("prep_students")
@@ -163,7 +191,69 @@ export default function PrepDashboardPage() {
           <ToolCard href={student?.exam_type === "BFEM" ? "/prep/bfem" : "/prep/epreuves"} icon="description" label="Épreuves & Corrigés" desc={student?.exam_type === "BFEM" ? "Sujets officiels BFEM" : "Sujets officiels BAC"} color="#f59e0b" bg="bg-amber-50" />
         </div>
 
+        {/* Bouton avis */}
+        <button
+          onClick={() => setShowFeedback(true)}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-outline-variant/30 text-on-surface-variant text-sm font-semibold hover:bg-surface-container transition-colors active:scale-[0.98]">
+          <span className="material-symbols-outlined text-[18px]">chat_bubble</span>
+          Donner mon avis 💬
+        </button>
+
       </div>
+
+      {/* Modal feedback */}
+      {showFeedback && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={closeFeedback}>
+          <div className="w-full max-w-lg bg-surface rounded-t-3xl p-6 space-y-4 pb-8" onClick={e => e.stopPropagation()}>
+            {fbSent ? (
+              <div className="flex flex-col items-center py-6 gap-3">
+                <span className="text-4xl">✅</span>
+                <p className="font-black text-on-surface text-lg text-center">Merci pour ton retour !</p>
+                <p className="text-sm text-on-surface-variant text-center">Ton avis nous aide à améliorer GSN Prep.</p>
+                <button onClick={closeFeedback}
+                  className="mt-2 px-6 py-3 rounded-2xl font-bold text-white"
+                  style={{ backgroundColor: "#FF6B00" }}>
+                  Fermer
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-black text-on-surface text-lg">Donner mon avis</h2>
+                  <button onClick={closeFeedback} className="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container">
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+
+                <div className="flex gap-2">
+                  {(["Suggestion 💡", "Bug 🐛", "Compliment 🎉"] as const).map(cat => (
+                    <button key={cat}
+                      onClick={() => setFbCategorie(fbCategorie === cat ? null : cat)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all ${fbCategorie === cat ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <textarea
+                  value={fbMessage}
+                  onChange={e => setFbMessage(e.target.value)}
+                  placeholder="Écris ton message ici..."
+                  className="w-full min-h-[120px] px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary resize-none"
+                />
+
+                <button
+                  onClick={submitFeedback}
+                  disabled={!fbMessage.trim() || fbLoading}
+                  className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 active:scale-[0.98] transition-all"
+                  style={{ backgroundColor: "#FF6B00" }}>
+                  {fbLoading ? "Envoi…" : "Envoyer"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

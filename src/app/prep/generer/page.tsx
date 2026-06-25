@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres, getInfoMatiere } from "@/data/programmes";
@@ -11,8 +11,7 @@ import { getCompetences } from "@/data/competences";
 type GenType   = "flashcards" | "quiz" | "resume";
 type QuizMode  = "qcm" | "redaction";
 type Phase =
-  | "home"
-  | "setup_a" | "setup_b"
+  | "setup_b"
   | "generating"
   | "flashcards_result"
   | "quiz_qcm"
@@ -49,11 +48,6 @@ function GenererPageInner() {
   const [userId, setUserId]     = useState<string | null>(null);
   const [authToken, setAuthToken] = useState("");
 
-  // Mode A
-  const [fileA, setFileA]         = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState("");
-  const [matiereA, setMatiereA]   = useState("");
-
   // Mode B
   const [matiereB, setMatiereB]   = useState("");
   const [chapitreB, setChapitreB] = useState("");
@@ -80,13 +74,11 @@ function GenererPageInner() {
   const [videos, setVideos]             = useState<YoutubeVideo[]>([]);
   const [videoPlaying, setVideoPlaying] = useState<string | null>(null);
 
-  const [phase, setPhase]     = useState<Phase>("home");
+  const [phase, setPhase]     = useState<Phase>("setup_b");
   const [error, setError]     = useState("");
-  const [mode, setMode]       = useState<"A" | "B" | null>(null);
   const [flashSaved, setFlashSaved]   = useState(false);
   const [resumeSaved, setResumeSaved] = useState(false);
   const [retrySeconds, setRetrySeconds] = useState(0);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // Sections sauvegardées
   const [savedFlashcards, setSavedFlashcards] = useState<SavedFlashcard[]>([]);
@@ -152,8 +144,6 @@ function GenererPageInner() {
           if (pMat) {
             setMatiereB(pMat);
             if (pChap) setChapitreB(pChap);
-            setMode("B");
-            setPhase("setup_b");
           }
         });
     });
@@ -163,22 +153,9 @@ function GenererPageInner() {
   function matieres(): string[] { return getMatieres(examType, serie); }
   function chapitres(m: string): string[] { return getChapitres(examType, serie, m); }
 
-  function activeMat(): string { return mode === "A" ? matiereA : matiereB; }
+  function activeMat(): string { return matiereB; }
   function activeChapitre(): string {
-    if (mode === "A") return "";
     return chapitreB === "Autre" || chapitreB === "" ? themeLibre : chapitreB;
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setFileA(f);
-    if (f.type.startsWith("image/")) {
-      const url = URL.createObjectURL(f);
-      setFilePreview(url);
-    } else {
-      setFilePreview("");
-    }
   }
 
   async function fetchVideos(matiere: string, chapitre: string) {
@@ -203,33 +180,15 @@ function GenererPageInner() {
     const chap = activeChapitre();
 
     try {
-      let body: Record<string, unknown>;
-
-      if (mode === "A" && fileA) {
-        // Convert file to base64
-        const ab = await fileA.arrayBuffer();
-        const b64 = Buffer.from(ab).toString("base64");
-        body = {
-          mode: "document",
-          type: genType,
-          quizMode,
-          matiere: mat,
-          fileBase64: b64,
-          fileType: fileA.type,
-          examType,
-          serie,
-        };
-      } else {
-        body = {
-          mode: "knowledge",
-          type: genType,
-          quizMode,
-          matiere: mat,
-          chapitre: chap,
-          examType,
-          serie,
-        };
-      }
+      const body: Record<string, unknown> = {
+        mode: "knowledge",
+        type: genType,
+        quizMode,
+        matiere: mat,
+        chapitre: chap,
+        examType,
+        serie,
+      };
 
       const res = await fetch("/api/prep-generate", {
         method: "POST",
@@ -241,7 +200,7 @@ function GenererPageInner() {
         const e = await res.json();
         setError(e.error ?? "Beaucoup de demandes en ce moment. Réessaie dans quelques secondes.");
         setRetrySeconds(5);
-        setPhase(mode === "A" ? "setup_a" : "setup_b");
+        setPhase("setup_b");
         return;
       }
 
@@ -285,7 +244,7 @@ function GenererPageInner() {
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erreur inconnue");
-      setPhase(mode === "A" ? "setup_a" : "setup_b");
+      setPhase("setup_b");
     }
   }
 
@@ -386,122 +345,13 @@ function GenererPageInner() {
   /* ── Render ── */
   const genLabel = genType === "flashcards" ? "Flashcards" : genType === "quiz" ? "Quiz" : "Résumé";
 
-  // ── HOME ──
-  if (phase === "home") return (
-    <main className="min-h-screen bg-surface text-on-surface">
-      <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">Générer avec l'IA</h1>
-        <p className="text-on-surface-variant text-sm mt-1">Flashcards · Quiz · Résumé</p>
-      </header>
-      <div className="px-6 space-y-4 pb-8">
-        <p className="font-bold text-on-surface">Comment veux-tu travailler ?</p>
-        <button
-          onClick={() => { setMode("A"); setPhase("setup_a"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
-          <div>
-            <p className="font-extrabold text-on-surface text-lg">J'ai un document</p>
-            <p className="text-sm text-on-surface-variant mt-0.5">Photo de cours, PDF — l'IA génère depuis ton document</p>
-          </div>
-        </button>
-        <button
-          onClick={() => { setMode("B"); setPhase("setup_b"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-          <div>
-            <p className="font-extrabold text-on-surface text-lg">Je n'ai pas de document</p>
-            <p className="text-sm text-on-surface-variant mt-0.5">Choisis ta matière et un thème — l'IA génère depuis le programme officiel</p>
-          </div>
-        </button>
-
-        {/* Bibliothèque */}
-        <div className="pt-2">
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Mes contenus sauvegardés</p>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              { key: "mes_flashcards", icon: "style",        label: "Mes Flashcards", color: "#6366f1" },
-              { key: "mes_quiz",       icon: "quiz",          label: "Mes Quiz",       color: "#10b981" },
-              { key: "mes_resumes",    icon: "auto_stories",  label: "Mes Résumés",    color: "#f59e0b" },
-            ] as const).map(s => (
-              <button key={s.key}
-                onClick={() => loadLibrary(s.key)}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
-                <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </main>
-  );
-
-  // ── SETUP A ──
-  if (phase === "setup_a") return (
-    <main className="min-h-screen bg-surface text-on-surface">
-      <PageHeader title="Depuis un document" onBack={() => setPhase("home")} />
-      <div className="px-6 py-4 space-y-5">
-
-        {/* Upload */}
-        <div>
-          <p className="font-bold text-sm mb-2">1. Upload ton document</p>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="w-full h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-            {filePreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={filePreview} alt="preview" className="h-28 object-contain rounded-xl" />
-            ) : fileA ? (
-              <>
-                <span className="material-symbols-outlined text-[36px] text-primary">description</span>
-                <p className="text-sm font-semibold text-primary">{fileA.name}</p>
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[36px] text-primary">add_photo_alternate</span>
-                <p className="text-sm text-on-surface-variant">Photo ou PDF</p>
-              </>
-            )}
-          </button>
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-        </div>
-
-        {/* Matière */}
-        <div>
-          <p className="font-bold text-sm mb-2">2. Matière</p>
-          <div className="flex flex-wrap gap-2">
-            {(matieres().length > 0 ? matieres() : ["Mathématiques", "Français", "SVT", "Anglais", "Histoire", "Philosophie"]).map(m => (
-              <button key={m}
-                onClick={() => setMatiereA(m)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereA === m ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
-                {m}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
-
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-
-        <button
-          disabled={!fileA || !matiereA || retrySeconds > 0}
-          onClick={generate}
-          className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "#FF6B00" }}>
-          {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : `Générer ${genLabel}`}
-        </button>
-      </div>
-    </main>
-  );
-
   // ── SETUP B ──
   if (phase === "setup_b") {
     const chaps = matiereB ? chapitres(matiereB) : [];
     const showFree = chapitreB === "Autre" || chaps.length <= 1;
     return (
       <main className="min-h-screen bg-surface text-on-surface">
-        <PageHeader title="Depuis le programme" onBack={() => setPhase("home")} />
+        <PageHeader title="Générer avec l'IA" onBack={() => router.push("/prep/dashboard")} />
         <div className="px-6 py-4 space-y-5">
 
           {/* Matière */}
@@ -603,6 +453,25 @@ function GenererPageInner() {
             style={{ backgroundColor: "#FF6B00" }}>
             {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : `Générer ${genLabel}`}
           </button>
+
+          {/* Bibliothèque */}
+          <div className="pt-2">
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Mes contenus sauvegardés</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "mes_flashcards", icon: "style",       label: "Mes Flashcards", color: "#6366f1" },
+                { key: "mes_quiz",       icon: "quiz",         label: "Mes Quiz",       color: "#10b981" },
+                { key: "mes_resumes",    icon: "auto_stories", label: "Mes Résumés",    color: "#f59e0b" },
+              ] as const).map(s => (
+                <button key={s.key}
+                  onClick={() => loadLibrary(s.key)}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
+                  <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                  <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -625,7 +494,7 @@ function GenererPageInner() {
     const mastered = flashcards.filter(c => c.maitrisee).length;
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Flashcards · ${activeMat()}`} onBack={() => setPhase("home")} />
+        <PageHeader title={`Flashcards · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           {/* Confirmation sauvegarde */}
@@ -706,7 +575,7 @@ function GenererPageInner() {
     const selected = qcmAnswers[qcmCurrent];
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Quiz QCM · ${activeMat()}`} onBack={() => setPhase("home")} />
+        <PageHeader title={`Quiz QCM · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
         <div className="flex-1 px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-on-surface-variant">{qcmCurrent + 1} / {qcmQuestions.length}</span>
@@ -763,7 +632,7 @@ function GenererPageInner() {
   // ── QUIZ RÉDACTION ──
   if (phase === "quiz_redaction") return (
     <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-      <PageHeader title={`Quiz Rédaction · ${activeMat()}`} onBack={() => setPhase("home")} />
+      <PageHeader title={`Quiz Rédaction · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
       <div className="flex-1 px-6 py-4 space-y-5">
         <p className="text-on-surface-variant text-sm">Réponds à chaque question, puis soumets pour être évalué par l'IA.</p>
         {redactionQs.map((q, i) => (
@@ -802,7 +671,7 @@ function GenererPageInner() {
 
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Résultat · ${activeMat()}`} onBack={() => setPhase("home")} />
+        <PageHeader title={`Résultat · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           <div className="rounded-2xl p-6 text-center text-white" style={{ backgroundColor: pct >= 60 ? "#22c55e" : pct >= 40 ? "#f97316" : "#ef4444" }}>
@@ -828,7 +697,7 @@ function GenererPageInner() {
           </button>
 
           <button
-            onClick={() => setPhase("home")}
+            onClick={() => setPhase("setup_b")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "#FF6B00" }}>
             Nouvelle génération
@@ -845,7 +714,7 @@ function GenererPageInner() {
     const texte = (resume as { texte?: string }).texte ?? "";
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Résumé · ${activeMat()}`} onBack={() => setPhase("home")} />
+        <PageHeader title={`Résumé · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           {resumeSaved && (
@@ -870,7 +739,7 @@ function GenererPageInner() {
           </button>
 
           <button
-            onClick={() => setPhase("home")}
+            onClick={() => setPhase("setup_b")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "#FF6B00" }}>
             Nouvelle génération
@@ -946,7 +815,7 @@ function GenererPageInner() {
     }
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Flashcards" onBack={() => setPhase("home")} />
+        <PageHeader title="Mes Flashcards" onBack={() => setPhase("setup_b")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {Object.keys(grouped).length === 0 ? (
@@ -982,7 +851,7 @@ function GenererPageInner() {
   if (phase === "mes_quiz") {
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Quiz" onBack={() => setPhase("home")} />
+        <PageHeader title="Mes Quiz" onBack={() => setPhase("setup_b")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {savedQuiz.length === 0 ? (
@@ -1013,7 +882,7 @@ function GenererPageInner() {
   if (phase === "mes_resumes") {
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Résumés" onBack={() => setPhase("home")} />
+        <PageHeader title="Mes Résumés" onBack={() => setPhase("setup_b")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {savedResumes.length === 0 ? (

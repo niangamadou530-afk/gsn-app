@@ -3,7 +3,7 @@ import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getMatieres, getChapitres } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
-import { checkUsage, incrementUsage, LIMIT_MESSAGE } from "@/lib/prepUsage";
+import { checkUsage, incrementUsage, limitMessage } from "@/lib/prepUsage";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   const check = await checkUsage(token, "coach_count");
   if (!check.allowed) {
     const status = check.reason === "auth" ? 401 : 429;
-    const error  = check.reason === "auth" ? "Non authentifié" : LIMIT_MESSAGE;
+    const error  = check.reason === "auth" ? "Non authentifié" : limitMessage("coach_count");
     return NextResponse.json({ error }, { status });
   }
 
