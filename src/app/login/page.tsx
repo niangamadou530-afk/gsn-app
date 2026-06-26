@@ -134,7 +134,13 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex justify-between items-center px-1">
                 <label className="text-sm font-semibold text-on-surface" htmlFor="password">Mot de passe</label>
-                <a className="text-xs font-bold text-primary hover:underline" href="#">Mot de passe oublié ?</a>
+                <a
+                  href="https://wa.me/221781246504?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20GSN%20Prep.%20Mon%20identifiant%20de%20connexion%20%28email%20ou%20num%C3%A9ro%20de%20t%C3%A9l%C3%A9phone%29%20est%20%3A%20%5B%C3%A0%20compl%C3%A9ter%5D"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-primary hover:underline">
+                  Mot de passe oublié ?
+                </a>
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">lock</span>
