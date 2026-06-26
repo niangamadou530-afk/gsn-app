@@ -34,6 +34,7 @@ export default function DetailParcoursPage() {
   const [generating, setGenerating] = useState(false);
   const [inscribing, setInscribing] = useState(false);
   const [hasActiveParcours, setHasActiveParcours] = useState(false);
+  const [abandoning, setAbandoning] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -125,6 +126,49 @@ export default function DetailParcoursPage() {
     } finally {
       setInscribing(false);
       setGenerating(false);
+    }
+  }
+
+  async function abandonnerParcours() {
+    if (!parcours || !userId) return;
+    const confirmAbandon = confirm(
+      "Es-tu sûr de vouloir abandonner ce parcours ? Ta progression actuelle sera réinitialisée."
+    );
+    if (!confirmAbandon) return;
+
+    setAbandoning(true);
+    try {
+      const [{ error: deleteInsc }, { error: deleteProg }] = await Promise.all([
+        supabase
+          .from("mjs_inscriptions")
+          .delete()
+          .eq("user_id", userId)
+          .eq("parcours_id", id)
+          .eq("tenant_id", "mjs"),
+        supabase
+          .from("mjs_progression")
+          .delete()
+          .eq("user_id", userId)
+          .eq("parcours_id", id)
+          .eq("tenant_id", "mjs"),
+      ]);
+
+      if (deleteInsc || deleteProg) {
+        throw new Error(
+          (deleteInsc?.message || deleteProg?.message) ??
+            "Erreur lors de l'abandon du parcours"
+        );
+      }
+
+      alert("Parcours abandonné avec succès.");
+      setDejaInscrit(false);
+      setQuizPassed(new Set());
+      load();
+    } catch (err: any) {
+      console.error("Abandon error:", err);
+      alert("Erreur lors de l'abandon du parcours : " + (err.message || "réessaie"));
+    } finally {
+      setAbandoning(false);
     }
   }
 
@@ -266,6 +310,19 @@ export default function DetailParcoursPage() {
                 Passer le test →
               </button>
             )}
+          </div>
+        )}
+
+        {dejaInscrit && (
+          <div className="pt-6 text-center">
+            <button
+              onClick={abandonnerParcours}
+              disabled={abandoning}
+              className="px-6 py-2.5 bg-error/10 text-error hover:bg-error/20 font-bold text-xs rounded-xl active:scale-95 transition-all inline-flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[15px]">cancel</span>
+              Abandonner ce parcours
+            </button>
           </div>
         )}
       </div>

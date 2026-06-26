@@ -13,6 +13,54 @@ export default function CertificatePage() {
   const [userName, setUserName] = useState("Apprenant");
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const downloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const element = document.querySelector(".cert-wrap");
+      if (!element) return;
+
+      const [html2canvasModule, jspdfModule] = await Promise.all([
+        import("html2canvas-pro"),
+        import("jspdf")
+      ]);
+
+      const html2canvasPro = html2canvasModule.default;
+      const jsPDF = jspdfModule.jsPDF;
+
+      const canvas = await html2canvasPro(element as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
+      
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
+      
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4"
+      });
+      
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let position = 0;
+      if (imgHeight < pageHeight) {
+        position = (pageHeight - imgHeight) / 2;
+      }
+      
+      pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
+      pdf.save(`GSN_Certificate_${userName.replace(/\s+/g, "_")}.pdf`);
+    } catch (error) {
+      console.error("PDF download error:", error);
+      alert("Une erreur est survenue lors du téléchargement du certificat.");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => { load(); }, [courseId]);
 
@@ -93,8 +141,11 @@ export default function CertificatePage() {
 
               {/* Logo */}
               <div className="mb-8 flex flex-col items-center">
-                <div className="w-14 h-14 bg-gradient-to-br from-primary to-primary-container flex items-center justify-center rounded-xl mb-3 shadow-lg shadow-primary/20">
-                  <span className="text-on-primary font-black text-xl tracking-tighter">GSN</span>
+                <div 
+                  className="w-14 h-14 flex items-center justify-center rounded-xl mb-3 shadow-lg shadow-primary/20"
+                  style={{ background: 'linear-gradient(135deg, #005bbf, #1a73e8)', color: '#ffffff' }}
+                >
+                  <span className="text-white font-black text-xl tracking-tighter">GSN</span>
                 </div>
                 <span className="text-on-surface-variant text-xs tracking-[0.3em] font-semibold uppercase">Global Skills Network</span>
               </div>
@@ -153,11 +204,13 @@ export default function CertificatePage() {
           {/* Action buttons — hidden on print */}
           <div className="no-print mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
-              onClick={() => window.print()}
-              className="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
+              onClick={downloadPDF}
+              disabled={downloading}
+              className="w-full sm:w-auto px-8 py-4 font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+              style={{ background: 'linear-gradient(135deg, #005bbf, #1a73e8)', color: '#ffffff' }}
             >
               <span className="material-symbols-outlined">download</span>
-              Télécharger en PDF
+              {downloading ? "Téléchargement..." : "Télécharger en PDF"}
             </button>
             <Link
               href="/score"

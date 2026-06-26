@@ -56,11 +56,12 @@ CREATE POLICY "recruteur_read_beneficiaires" ON mjs_beneficiaires
     )
   );
 
--- 4. Mise à jour du trigger pour copier automatiquement l'email lors de la création d'un utilisateur auth
+-- 4. Mise à jour du trigger pour copier automatiquement les profils bénéficiaire et recruteur lors de la création d'un utilisateur auth
 CREATE OR REPLACE FUNCTION public.handle_new_mjs_user()
 RETURNS trigger AS $$
 BEGIN
   IF new.raw_user_meta_data->>'prenom' IS NOT NULL THEN
+    -- C'est un bénéficiaire
     INSERT INTO public.mjs_beneficiaires (user_id, tenant_id, nom, prenom, email)
     VALUES (
       new.id, 
@@ -68,7 +69,18 @@ BEGIN
       new.raw_user_meta_data->>'nom', 
       new.raw_user_meta_data->>'prenom',
       new.email
-    );
+    )
+    ON CONFLICT (user_id) DO NOTHING;
+  ELSIF new.raw_user_meta_data->>'entreprise' IS NOT NULL THEN
+    -- C'est un recruteur
+    INSERT INTO public.mjs_recruteurs (user_id, tenant_id, nom, entreprise)
+    VALUES (
+      new.id, 
+      'mjs', 
+      new.raw_user_meta_data->>'nom', 
+      new.raw_user_meta_data->>'entreprise'
+    )
+    ON CONFLICT (user_id) DO NOTHING;
   END IF;
   RETURN new;
 END;

@@ -11,6 +11,8 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.100.0",
     "groq-sdk": "^1.1.1",
+    "html2canvas-pro": "^2.2.0",
+    "jspdf": "^4.2.1",
     "next": "16.2.1",
     "openai": "^6.32.0",
     "pdf-parse": "^2.4.5",

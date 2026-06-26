@@ -27,8 +27,8 @@ export default function InscriptionRecruteurPage() {
     const { data, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: { data: { nom, entreprise } },
     });
-
 
     if (authError) {
       console.error(authError);
@@ -45,17 +45,25 @@ export default function InscriptionRecruteurPage() {
       return;
     }
 
+    // Si la confirmation par e-mail est activée dans Supabase, la session sera nulle
+    if (data.user && !data.session) {
+      alert("Inscription réussie ! Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte mail pour activer votre compte.");
+      router.push("/mjs/recruteur/connexion");
+      return;
+    }
+
+    // Créer ou mettre à jour la fiche recruteur (en utilisant upsert pour éviter le doublon avec le trigger SQL)
     const { error: insertError } = await supabase
       .from("mjs_recruteurs")
-      .insert({
+      .upsert({
         user_id: data.user.id,
         tenant_id: "mjs",
         nom,
         entreprise,
-      });
+      }, { onConflict: 'user_id' });
 
     if (insertError) {
-      console.error("Insert error:", insertError);
+      console.error("Insert/Upsert error:", insertError);
       setError("Compte créé mais erreur lors de l'enregistrement du profil.");
       setLoading(false);
       return;
