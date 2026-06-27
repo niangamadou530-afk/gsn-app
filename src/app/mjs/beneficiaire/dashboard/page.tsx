@@ -70,13 +70,13 @@ export default function DashboardBeneficiairePage() {
         setBeneficiaire((prev) =>
           prev
             ? {
-                ...prev,
-                telephone: profileData.telephone || null,
-                genre: profileData.genre || null,
-                region: profileData.region || null,
-                situation_handicap: profileData.situation_handicap,
-                statut_insertion: profileData.statut_insertion,
-              }
+              ...prev,
+              telephone: profileData.telephone || null,
+              genre: profileData.genre || null,
+              region: profileData.region || null,
+              situation_handicap: profileData.situation_handicap,
+              statut_insertion: profileData.statut_insertion,
+            }
             : null
         );
         setShowProfileModal(false);
@@ -180,11 +180,7 @@ export default function DashboardBeneficiairePage() {
   const parcoursActifs = inscriptions.filter((i) => !i.certifie);
   const parcoursTermines = inscriptions.filter((i) => i.certifie);
 
-  const moyenne = inscriptions.length > 0
-    ? Math.round(
-        inscriptions.reduce((sum, i) => sum + i.pourcentage, 0) / inscriptions.length
-      )
-    : 0;
+
 
   return (
     <main className="min-h-screen bg-surface text-on-surface">
@@ -220,21 +216,7 @@ export default function DashboardBeneficiairePage() {
           </div>
         </div>
 
-        {/* Métriques globales */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
-            <p className="text-4xl font-extrabold text-primary">{inscriptions.length}</p>
-            <p className="text-sm text-on-surface-variant mt-1">Parcours suivis</p>
-          </div>
-          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
-            <p className="text-4xl font-extrabold text-primary">{moyenne}%</p>
-            <p className="text-sm text-on-surface-variant mt-1">Progression moyenne</p>
-          </div>
-          <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm">
-            <p className="text-4xl font-extrabold text-tertiary">{parcoursTermines.length}</p>
-            <p className="text-sm text-on-surface-variant mt-1">Parcours terminés</p>
-          </div>
-        </div>
+
 
         {/* Profil & Infos de contact */}
         <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-6 mb-10">
@@ -275,10 +257,10 @@ export default function DashboardBeneficiairePage() {
                 {beneficiaire.statut_insertion === "insere"
                   ? "Salarié/Inséré"
                   : beneficiaire.statut_insertion === "entrepreneuriat"
-                  ? "Indépendant"
-                  : beneficiaire.statut_insertion === "etudes"
-                  ? "Études/Formation"
-                  : "En recherche"}
+                    ? "Indépendant"
+                    : beneficiaire.statut_insertion === "etudes"
+                      ? "Études/Formation"
+                      : "En recherche"}
               </p>
             </div>
           </div>
@@ -286,7 +268,7 @@ export default function DashboardBeneficiairePage() {
 
         {/* Parcours en cours */}
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-extrabold">Mes parcours en cours</h2>
+          <h2 className="text-xl font-extrabold">Parcours en cours</h2>
           <button
             onClick={() => router.push("/mjs/beneficiaire/parcours")}
             className="text-primary text-sm font-bold hover:opacity-80 transition-opacity"
@@ -339,33 +321,7 @@ export default function DashboardBeneficiairePage() {
           </div>
         )}
 
-        {/* Parcours terminés */}
-        {parcoursTermines.length > 0 && (
-          <>
-            <h2 className="text-xl font-extrabold mb-4">Parcours terminés</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {parcoursTermines.map((i) => {
-                const p = i.mjs_parcours;
-                if (!p) return null;
-                return (
-                  <button
-                    key={i.parcours_id}
-                    onClick={() => router.push(`/mjs/beneficiaire/skill-passport/${p.id}`)}
-                    className="text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm hover:shadow-md flex items-center gap-3 active:scale-[0.98] transition-all"
-                  >
-                    <div className="w-11 h-11 rounded-xl bg-tertiary-container flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-on-tertiary-container text-[22px]">workspace_premium</span>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-on-surface text-sm truncate">{p.titre}</p>
-                      <p className="text-xs text-on-surface-variant">{p.mjs_secteurs?.nom} · Certifié</p>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        )}
+
 
       </div>
 

@@ -212,9 +212,10 @@ export default function MjsScorePage() {
                 const icon = SECTOR_ICONS[slug] || "workspace_premium";
 
                 return (
-                  <div
+                  <button
                     key={passport.id}
-                    className="bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm space-y-4 flex flex-col justify-between"
+                    onClick={() => router.push(`/mjs/beneficiaire/skill-passport/${passport.parcours_id}`)}
+                    className="text-left bg-surface-container-lowest p-5 rounded-3xl border border-outline-variant/20 shadow-sm space-y-4 flex flex-col justify-between hover:shadow-md active:scale-[0.98] transition-all cursor-pointer w-full"
                     style={{ borderLeft: `4px solid ${color}` }}
                   >
                     <div>
@@ -229,7 +230,7 @@ export default function MjsScorePage() {
                           100%
                         </span>
                       </div>
-
+ 
                       <div className="space-y-1">
                         <h3 className="font-extrabold text-sm text-on-surface leading-tight">
                           {passport.parcours?.titre || "Parcours"}
@@ -239,8 +240,8 @@ export default function MjsScorePage() {
                         </p>
                       </div>
                     </div>
-
-                    <div className="space-y-3 pt-3 border-t border-outline-variant/10">
+ 
+                    <div className="space-y-3 pt-3 border-t border-outline-variant/10 w-full">
                       <div className="flex items-center justify-between text-xs text-on-surface-variant">
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">calendar_today</span>
@@ -256,7 +257,7 @@ export default function MjsScorePage() {
                       </div>
                       <p className="font-mono text-[9px] text-outline break-all uppercase">ID : {passport.id}</p>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
