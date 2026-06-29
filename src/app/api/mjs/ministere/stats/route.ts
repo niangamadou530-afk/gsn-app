@@ -24,7 +24,8 @@ export async function GET() {
       { data: inscriptions, error: inscErr },
       { data: secteurs, error: sectErr },
       { data: parcours, error: parcErr },
-      { count: recruitersCount, error: recErr }
+      { data: recruteurs, error: recErr },
+      { data: offres, error: offresErr }
     ] = await Promise.all([
       supabaseAdmin.from("mjs_beneficiaires").select("*"),
       supabaseAdmin.from("mjs_skill_passports").select("*"),
@@ -32,11 +33,12 @@ export async function GET() {
       supabaseAdmin.from("mjs_inscriptions").select("*"),
       supabaseAdmin.from("mjs_secteurs").select("*"),
       supabaseAdmin.from("mjs_parcours").select("*"),
-      supabaseAdmin.from("mjs_recruteurs").select("*", { count: "exact", head: true })
+      supabaseAdmin.from("mjs_recruteurs").select("*"),
+      supabaseAdmin.from("mjs_offres").select("*")
     ]);
 
-    if (benErr || passErr || progErr || inscErr || sectErr || parcErr || recErr) {
-      console.error("Database query error:", { benErr, passErr, progErr, inscErr, sectErr, parcErr, recErr });
+    if (benErr || passErr || progErr || inscErr || sectErr || parcErr || recErr || offresErr) {
+      console.error("Database query error:", { benErr, passErr, progErr, inscErr, sectErr, parcErr, recErr, offresErr });
       return NextResponse.json(
         { error: "Erreur lors de la récupération des données" },
         { status: 500 }
@@ -49,6 +51,8 @@ export async function GET() {
     const safeInscriptions = inscriptions || [];
     const safeSecteurs = secteurs || [];
     const safeParcours = parcours || [];
+    const safeRecruteurs = recruteurs || [];
+    const safeOffres = offres || [];
 
     // 2. Fetch auth user emails using admin client (optional, fallback if fails)
     const emailMap = new Map<string, string>();
@@ -102,6 +106,9 @@ export async function GET() {
         email: emailMap.get(b.user_id) || `${b.prenom.toLowerCase()}.${b.nom.toLowerCase()}@exemple.com`,
         created_at: b.created_at,
         statut_insertion,
+        genre: b.genre || null,
+        region: b.region || null,
+        situation_handicap: !!b.situation_handicap,
         parcours: userParcours,
         avg_progress: averageProgress,
         certifications_count: totalCertifications
@@ -118,7 +125,6 @@ export async function GET() {
     const totalPassports = safePassports.length;
 
     // Insertion rate calculation
-    // Insere count = 'insere' + 'entrepreneuriat'
     const insereCount = detailedBeneficiaires.filter(
       (b) => b.statut_insertion === "insere" || b.statut_insertion === "entrepreneuriat"
     ).length;
@@ -165,8 +171,23 @@ export async function GET() {
       etudes: detailedBeneficiaires.filter((b) => b.statut_insertion === "etudes").length
     };
 
-    // 7. Latest passports (last 5)
-    const latestPassports = safePassports
+    // Detailed Recruiters List
+    const detailedRecruteurs = safeRecruteurs.map((r) => {
+      const recruiterOffres = safeOffres.filter((o) => o.recruteur_id === r.user_id);
+      return {
+        id: r.id,
+        user_id: r.user_id,
+        nom: r.nom,
+        entreprise: r.entreprise,
+        email: emailMap.get(r.user_id) || `${r.nom.toLowerCase().replace(/\s+/g, "")}@entreprise.com`,
+        created_at: r.created_at,
+        offres_count: recruiterOffres.length,
+        regions: Array.from(new Set(recruiterOffres.map((o) => o.localisation)))
+      };
+    });
+
+    // All Passports List
+    const allPassports = safePassports
       .map((p) => {
         const ben = safeBeneficiaires.find((b) => b.user_id === p.user_id);
         const parc = safeParcours.find((pc) => pc.id === p.parcours_id);
@@ -175,13 +196,16 @@ export async function GET() {
           id: p.id,
           delivre_le: p.delivre_le,
           beneficiaire_nom: ben ? `${ben.prenom} ${ben.nom}` : "Bénéficiaire inconnu",
+          parcours_id: p.parcours_id,
           parcours_titre: parc?.titre || "Parcours inconnu",
           secteur_nom: sect?.nom || "Inconnu",
           secteur_slug: sect?.slug || "default"
         };
       })
-      .sort((a, b) => new Date(b.delivre_le).getTime() - new Date(a.delivre_le).getTime())
-      .slice(0, 5);
+      .sort((a, b) => new Date(b.delivre_le).getTime() - new Date(a.delivre_le).getTime());
+
+    // Latest passports (last 5)
+    const latestPassports = allPassports.slice(0, 5);
 
     // Demographic Breakdown (genre, région, handicap)
     const maleCount = safeBeneficiaires.filter((b) => b.genre === "M").length;
@@ -209,7 +233,7 @@ export async function GET() {
         totalCertifies,
         tauxInsertionGlobal,
         tauxInsertionCertifies,
-        totalPartners: recruitersCount || 0,
+        totalPartners: safeRecruteurs.length,
         handicappedCount
       },
       sectorsBreakdown,
@@ -217,6 +241,8 @@ export async function GET() {
       genderBreakdown,
       regionBreakdown,
       latestPassports,
+      allPassports,
+      recruteurs: detailedRecruteurs,
       beneficiaires: detailedBeneficiaires
     });
   } catch (error: any) {

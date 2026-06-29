@@ -203,7 +203,7 @@ export default function DashboardBeneficiairePage() {
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
-                router.push("/mjs");
+                router.push("/mjs/login");
               }}
               className="w-11 h-11 rounded-xl bg-surface-container-high border border-outline-variant/20 flex items-center justify-center hover:bg-surface-container active:scale-95 transition-all text-on-surface-variant"
               title="Se déconnecter"

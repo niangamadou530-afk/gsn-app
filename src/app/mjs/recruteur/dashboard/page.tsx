@@ -22,6 +22,10 @@ type ProfilCertifie = {
   parcours_titre: string;
   secteur_nom: string;
   delivre_le: string;
+  region: string | null;
+  genre: string | null;
+  situation_handicap: boolean | null;
+  statut_insertion: string | null;
 };
 
 export default function DashboardRecruteurPage() {
@@ -30,6 +34,10 @@ export default function DashboardRecruteurPage() {
   const [profils, setProfils] = useState<ProfilCertifie[]>([]);
   const [offres, setOffres] = useState<Offre[]>([]);
   const [secteurFiltre, setSecteurFiltre] = useState<string | null>(null);
+  const [regionFiltre, setRegionFiltre] = useState<string | null>(null);
+  const [statutFiltre, setStatutFiltre] = useState<string | null>(null);
+  const [genreFiltre, setGenreFiltre] = useState<string | null>(null);
+  const [handicapFiltre, setHandicapFiltre] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ titre: "", description: "", localisation: "", salaire: "" });
   const [candidatures, setCandidatures] = useState<any[]>([]);
@@ -83,7 +91,7 @@ export default function DashboardRecruteurPage() {
       const userIds = Array.from(new Set(passportsRaw.map((p) => p.user_id)));
       const { data: beneficiaires, error: benErr } = await supabase
         .from("mjs_beneficiaires")
-        .select("user_id, prenom, nom")
+        .select("user_id, prenom, nom, region, genre, situation_handicap, statut_insertion")
         .in("user_id", userIds)
         .eq("tenant_id", "mjs");
 
@@ -91,14 +99,21 @@ export default function DashboardRecruteurPage() {
 
       const benMap = new Map((beneficiaires ?? []).map((b) => [b.user_id, b]));
 
-      const mapped = (passportsRaw as any[]).map((p) => ({
-        user_id: p.user_id,
-        prenom: benMap.get(p.user_id)?.prenom ?? "—",
-        nom: benMap.get(p.user_id)?.nom ?? "",
-        parcours_titre: p.mjs_parcours?.titre ?? "—",
-        secteur_nom: p.mjs_parcours?.mjs_secteurs?.nom ?? "—",
-        delivre_le: p.delivre_le,
-      }));
+      const mapped = (passportsRaw as any[]).map((p) => {
+        const ben = benMap.get(p.user_id);
+        return {
+          user_id: p.user_id,
+          prenom: ben?.prenom ?? "—",
+          nom: ben?.nom ?? "",
+          parcours_titre: p.mjs_parcours?.titre ?? "—",
+          secteur_nom: p.mjs_parcours?.mjs_secteurs?.nom ?? "—",
+          delivre_le: p.delivre_le,
+          region: ben?.region ?? null,
+          genre: ben?.genre ?? null,
+          situation_handicap: ben?.situation_handicap ?? null,
+          statut_insertion: ben?.statut_insertion ?? null,
+        };
+      });
       setProfils(mapped);
 
       // Fetch candidatures for recruiter's offers
@@ -201,7 +216,14 @@ export default function DashboardRecruteurPage() {
   if (!recruteur) return null;
 
   const secteurs = Array.from(new Set(profils.map((p) => p.secteur_nom)));
-  const profilsFiltres = secteurFiltre ? profils.filter((p) => p.secteur_nom === secteurFiltre) : profils;
+  const profilsFiltres = profils.filter((p) => {
+    if (secteurFiltre && p.secteur_nom !== secteurFiltre) return false;
+    if (regionFiltre && p.region !== regionFiltre) return false;
+    if (statutFiltre && p.statut_insertion !== statutFiltre) return false;
+    if (genreFiltre && p.genre !== genreFiltre) return false;
+    if (handicapFiltre && !p.situation_handicap) return false;
+    return true;
+  });
 
   return (
     <main className="min-h-screen bg-surface text-on-surface">
@@ -407,7 +429,7 @@ export default function DashboardRecruteurPage() {
         </div>
 
         {/* Filtres par secteur */}
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="flex flex-wrap gap-2 mb-6">
           <button
             onClick={() => setSecteurFiltre(null)}
             className={`text-sm font-bold px-4 py-2 rounded-full transition-colors ${
@@ -429,9 +451,66 @@ export default function DashboardRecruteurPage() {
           ))}
         </div>
 
+        {/* Filtres de recherche avancés */}
+        <div className="bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 mb-8 grid grid-cols-1 sm:grid-cols-4 gap-4 text-on-surface">
+          <div>
+            <label className="text-xs font-bold text-on-surface-variant mb-1 block">Région</label>
+            <select
+              value={regionFiltre || ""}
+              onChange={(e) => setRegionFiltre(e.target.value || null)}
+              className="w-full px-3 py-2 bg-surface-container border border-outline-variant/20 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Toutes les régions</option>
+              {["Dakar", "Thiès", "Diourbel", "Saint-Louis", "Kaolack", "Ziguinchor", "Kolda", "Fatick", "Louga", "Matam", "Tambacounda", "Kédougou", "Sédhiou", "Kaffrine"].map((r) => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-on-surface-variant mb-1 block">Statut Professionnel</label>
+            <select
+              value={statutFiltre || ""}
+              onChange={(e) => setStatutFiltre(e.target.value || null)}
+              className="w-full px-3 py-2 bg-surface-container border border-outline-variant/20 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="recherche">En recherche d'emploi</option>
+              <option value="insere">Salarié / Inséré</option>
+              <option value="entrepreneuriat">Auto-emploi / Entrepreneur</option>
+              <option value="etudes">En études / Formation</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-on-surface-variant mb-1 block">Genre</label>
+            <select
+              value={genreFiltre || ""}
+              onChange={(e) => setGenreFiltre(e.target.value || null)}
+              className="w-full px-3 py-2 bg-surface-container border border-outline-variant/20 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Tous</option>
+              <option value="M">Homme</option>
+              <option value="F">Femme</option>
+            </select>
+          </div>
+
+          <div className="flex items-end pb-1.5">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none text-xs font-bold text-on-surface-variant">
+              <input
+                type="checkbox"
+                checked={handicapFiltre}
+                onChange={(e) => setHandicapFiltre(e.target.checked)}
+                className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
+              />
+              En situation de handicap
+            </label>
+          </div>
+        </div>
+
         {profilsFiltres.length === 0 ? (
           <p className="text-on-surface-variant text-center py-16">
-            Aucun profil certifié pour l'instant{secteurFiltre ? " dans ce secteur" : ""}.
+            Aucun profil certifié ne correspond à ces critères de recherche.
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -439,20 +518,42 @@ export default function DashboardRecruteurPage() {
               <button
                 key={i}
                 onClick={() => router.push(`/mjs/recruteur/profil/${p.user_id}`)}
-                className="text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm hover:shadow-md active:scale-[0.98] transition-all"
+                className="text-left bg-surface-container-lowest rounded-2xl p-5 shadow-sm hover:shadow-md active:scale-[0.98] transition-all flex flex-col justify-between min-h-[170px]"
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
-                    {p.prenom[0]}{p.nom[0]}
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-11 h-11 rounded-full bg-primary-container flex items-center justify-center font-bold text-on-primary-container flex-shrink-0">
+                      {p.prenom[0]}{p.nom[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
+                      <p className="text-xs text-on-surface-variant truncate">
+                        {p.region || "Région n/a"} · {p.genre === "M" ? "Homme" : p.genre === "F" ? "Femme" : "Genre n/a"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="font-bold text-on-surface text-sm truncate">{p.prenom} {p.nom}</p>
-                    <p className="text-xs text-on-surface-variant">{p.secteur_nom}</p>
+                  <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
+                    <p className="text-xs font-bold text-on-tertiary-container line-clamp-1">{p.parcours_titre}</p>
                   </div>
                 </div>
-                <div className="bg-tertiary-container rounded-xl px-3 py-2 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-on-tertiary-container text-[18px]">workspace_premium</span>
-                  <p className="text-xs font-bold text-on-tertiary-container">{p.parcours_titre}</p>
+
+                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-outline-variant/10 w-full mt-auto">
+                  {p.situation_handicap && (
+                    <span className="text-[10px] font-bold bg-error-container text-on-error-container px-2 py-0.5 rounded-full">
+                      Handicap
+                    </span>
+                  )}
+                  {p.statut_insertion && (
+                    <span className="text-[10px] font-bold bg-secondary/10 text-secondary px-2 py-0.5 rounded-full">
+                      {p.statut_insertion === "recherche" ? "En recherche" :
+                       p.statut_insertion === "insere" ? "Inséré" :
+                       p.statut_insertion === "entrepreneuriat" ? "Auto-emploi" : "Études"}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold bg-surface-container-high text-on-surface-variant px-2 py-0.5 rounded-full">
+                    {p.secteur_nom}
+                  </span>
                 </div>
               </button>
             ))}
