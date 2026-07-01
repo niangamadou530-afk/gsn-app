@@ -66,9 +66,6 @@ export default function LoginPage() {
 
         {/* Header */}
         <header className="flex flex-col items-center space-y-4">
-          <div className="w-20 h-20 rounded-2xl bg-surface-container-lowest flex items-center justify-center shadow-[0_8px_24px_rgba(25,28,35,0.08)]">
-            <span className="text-3xl font-black text-primary">G</span>
-          </div>
           <div className="text-center">
             <h1 className="text-5xl font-extrabold tracking-tight text-primary leading-none mb-2">GSN</h1>
             <p className="text-on-surface-variant font-medium tracking-wide">Apprends, travaille, gagne</p>

@@ -144,9 +144,6 @@ export default function SignupPage() {
 
         {/* Branding */}
         <div className="mb-10">
-          <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-primary/20">
-            <span className="text-on-primary font-black text-xl">GSN</span>
-          </div>
           <h1 className="text-[2.2rem] font-extrabold tracking-tight text-on-background leading-tight mb-2">
             Crée ton<br /><span className="text-primary">compte GSN</span>
           </h1>
@@ -208,20 +205,17 @@ export default function SignupPage() {
                 </div>
               )}
 
-              <button
-                onClick={() => setProfileType("professionnel")}
-                className={`w-full p-5 rounded-2xl border-2 text-left transition-all active:scale-[0.98] ${profileType === "professionnel" ? "border-primary bg-primary/5" : "border-outline-variant/30 bg-surface-container-lowest shadow-sm"}`}>
+              {/* Professionnel — accès verrouillé (phase test) */}
+              <div className="w-full p-5 rounded-2xl border-2 border-outline-variant/20 bg-surface-container-lowest opacity-40 cursor-not-allowed select-none">
                 <div className="flex items-center gap-4">
                   <span className="text-3xl">👨‍💼</span>
                   <div>
                     <p className="font-bold text-on-surface">Professionnel</p>
                     <p className="text-xs text-on-surface-variant mt-0.5">Je cherche des missions, formations ou emplois</p>
                   </div>
-                  {profileType === "professionnel" && (
-                    <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                  )}
+                  <span className="ml-auto material-symbols-outlined text-outline text-[20px]">lock</span>
                 </div>
-              </button>
+              </div>
             </div>
 
             <button
