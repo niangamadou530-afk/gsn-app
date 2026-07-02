@@ -125,11 +125,18 @@ export default function MctnEmployerDashboard() {
         </div>
 
         {/* Actions */}
-        <Link href="/mctn/employer/missions/new"
-          className="flex items-center gap-3 w-full bg-primary text-on-primary font-bold py-4 px-6 rounded-2xl shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-[0.98] transition-all">
-          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
-          Publier une offre NDT
-        </Link>
+        <div className="flex gap-3">
+          <Link href="/mctn/employer/missions/new"
+            className="flex-1 flex items-center gap-3 bg-primary text-on-primary font-bold py-4 px-6 rounded-2xl shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-[0.98] transition-all">
+            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>add_circle</span>
+            Publier une offre NDT
+          </Link>
+          <Link href="/mctn/admin"
+            className="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-bold py-4 px-4 rounded-2xl hover:bg-surface-container active:scale-[0.98] transition-all">
+            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>bar_chart</span>
+            <span className="text-sm">KPIs</span>
+          </Link>
+        </div>
 
         {/* Missions list */}
         <section className="space-y-4">
