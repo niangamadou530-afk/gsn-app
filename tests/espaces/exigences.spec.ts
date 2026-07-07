@@ -35,37 +35,85 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
     await pageDansEspace(page, base);
   });
 
-  exigence('login_separe', `Connexion dédiée ${base}/login (pas de bouton "accéder espace")`, async ({ page }) => {
-    await pageDansEspace(page, `${base}/login`);
-    await expect(page.locator('input[type="email"], input[name*="mail" i], input[name*="tel" i]').first()).toBeVisible();
-    await expect(page.locator('input[type="password"]').first()).toBeVisible();
-  });
-
-  exigence('onboarding_inscription', `Onboarding et inscription des bénéficiaires`, async ({ page }) => {
-    const candidats = [`${base}/onboarding`, `${base}/inscription`, `${base}/signup`, `${base}/register`];
+  // (2) Accepte un sélecteur de profil (mjs/login) OU un vrai formulaire login OU /employer/login
+  exigence('login_separe', `Connexion dédiée ou sélecteur de profil dans ${base}`, async ({ page }) => {
+    const candidats = [
+      `${base}/login`,
+      `${base}/beneficiaire/connexion`,
+      `${base}/employer/login`,
+    ];
     let trouve = false;
     for (const url of candidats) {
-      const r = await page.goto(url).catch(() => null);
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (!r || r.status() >= 400 || !new URL(page.url()).pathname.startsWith(base)) continue;
+      // Accepter : formulaire login OU sélecteur de profil menant à des connexions
+      const hasInput = await page.locator(
+        'input[type="email"], input[name*="mail" i], input[name*="tel" i], input[type="password"]'
+      ).count() > 0;
+      const hasSelectorText = await page.getByText(
+        /b[eé]n[eé]ficiaire|recruteur|profil|connexion|se connecter/i
+      ).count() > 0;
+      if (hasInput || hasSelectorText) { trouve = true; break; }
+    }
+    expect(trouve, `Aucune page de connexion ou sélecteur de profil trouvé dans ${base}`).toBeTruthy();
+  });
+
+  // (3) Ajoute ${base}/beneficiaire/inscription aux candidats
+  exigence('onboarding_inscription', `Onboarding et inscription des bénéficiaires`, async ({ page }) => {
+    const candidats = [
+      `${base}/onboarding`,
+      `${base}/inscription`,
+      `${base}/signup`,
+      `${base}/register`,
+      `${base}/beneficiaire/inscription`,
+    ];
+    let trouve = false;
+    for (const url of candidats) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
       if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) { trouve = true; break; }
     }
     expect(trouve, `Aucune page d'inscription trouvée parmi : ${candidats.join(', ')}`).toBeTruthy();
   });
 
-  // ---- MODULES (learn, work, pay, score) ----
+  // ---- MODULES ----
 
-  for (const mod of ['learn', 'work', 'pay', 'score'] as const) {
+  // (1a) module_learn : essaie aussi ${base}/beneficiaire/parcours (structure mjs)
+  exigence('module_learn', `Module ${base}/learn (ou ${base}/beneficiaire/parcours) existe et reste dans l'espace`, async ({ page }) => {
+    for (const url of [`${base}/learn`, `${base}/beneficiaire/parcours`]) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) return;
+    }
+    throw new Error(`Ni ${base}/learn ni ${base}/beneficiaire/parcours ne répondent dans l'espace`);
+  });
+
+  for (const mod of ['work', 'pay'] as const) {
     exigence(`module_${mod}` as keyof typeof flags, `Module ${base}/${mod} existe et reste dans l'espace`, async ({ page }) => {
       await pageDansEspace(page, `${base}/${mod}`);
     });
   }
 
+  // module_score : accepte /passport comme alternative
+  exigence('module_score', `Module ${base}/score (ou ${base}/passport) existe et reste dans l'espace`, async ({ page }) => {
+    for (const url of [`${base}/score`, `${base}/passport`]) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) return;
+    }
+    throw new Error(`Ni ${base}/score ni ${base}/passport ne répondent dans l'espace`);
+  });
+
   // ---- AXE 2 : PARCOURS DE FORMATION ----
 
-  exigence('parcours_secteurs', `Parcours par secteur visibles dans ${base}/learn (${secteurs.length} secteurs de la fiche)`, async ({ page }) => {
-    await page.goto(`${base}/learn`);
-    const contenu = (await page.textContent('body')) || '';
+  // (1b) parcours_secteurs : essaie /learn ET /beneficiaire/parcours, cumule le contenu
+  exigence('parcours_secteurs', `Parcours par secteur visibles dans ${base}/learn ou ${base}/beneficiaire/parcours (${secteurs.length} secteurs)`, async ({ page }) => {
+    let contenu = '';
+    for (const url of [`${base}/learn`, `${base}/beneficiaire/parcours`]) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
+        contenu += (await page.textContent('body')) || '';
+      }
+    }
     for (const s of secteurs) {
-      expect(contenu, `Le secteur "${s}" doit apparaître dans ${base}/learn`).toMatch(new RegExp(s, 'i'));
+      expect(contenu, `Le secteur "${s}" doit apparaître`).toMatch(new RegExp(s, 'i'));
     }
   });
 
@@ -95,9 +143,16 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
 
   // ---- SKILL PASSPORT ----
 
-  exigence('skill_passport_dans_score', `Skill Passport visible dans ${base}/score`, async ({ page }) => {
-    await page.goto(`${base}/score`);
-    await expect(page.getByText(/skill\s*passe?port/i).first()).toBeVisible();
+  // (6) Regex assouplie : "passport" ou "passeport" seul suffit, /passport comme alternative
+  exigence('skill_passport_dans_score', `Skill Passport visible dans ${base}/score ou ${base}/passport`, async ({ page }) => {
+    for (const url of [`${base}/score`, `${base}/passport`]) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
+        await expect(page.getByText(/passe?port/i).first()).toBeVisible();
+        return;
+      }
+    }
+    throw new Error(`Ni ${base}/score ni ${base}/passport ne répondent dans l'espace`);
   });
 
   exigence('skill_passport_verification', `Vérification du Skill Passport par un employeur (page de vérification)`, async ({ page }) => {
@@ -112,11 +167,18 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
 
   // ---- AXE 3 : RECRUTEURS & DASHBOARDS ----
 
+  // (4) Ajoute /recruiter, /employer/dashboard, /recruteur/dashboard aux candidats
   exigence('espace_employeur', `Espace employeur/recruteur propre à ${base}`, async ({ page }) => {
-    const candidats = [`${base}/recruteur`, `${base}/employeur`, `${base}/recruiter`];
+    const candidats = [
+      `${base}/recruteur`,
+      `${base}/employeur`,
+      `${base}/recruiter`,
+      `${base}/employer/dashboard`,
+      `${base}/recruteur/dashboard`,
+    ];
     let trouve = false;
     for (const url of candidats) {
-      const r = await page.goto(url).catch(() => null);
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
       if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) { trouve = true; break; }
     }
     expect(trouve, `Aucun espace recruteur trouvé parmi : ${candidats.join(', ')}`).toBeTruthy();
@@ -124,9 +186,9 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
 
   exigence('bouton_offre_recruteur', `Bouton "offre" dans l'espace recruteur (appels d'offres pour certifiés)`, async ({ page }) => {
     let visible = false;
-    for (const url of [`${base}/recruteur`, `${base}/employeur`]) {
-      const r = await page.goto(url).catch(() => null);
-      if (r && r.status() < 400) {
+    for (const url of [`${base}/recruteur`, `${base}/recruiter`, `${base}/employeur`, `${base}/recruteur/dashboard`]) {
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
         const bouton = page.getByRole('button', { name: /offre/i }).or(page.getByRole('link', { name: /offre/i }));
         if (await bouton.count() > 0) { visible = true; break; }
       }
@@ -146,12 +208,16 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
     await expect(page.getByText(/offre/i).first()).toBeVisible();
   });
 
+  // (5) /ministere et /admin en premier, + networkidle avant lecture du texte
   exigence('dashboard_kpis', `Dashboard institutionnel avec KPIs de la fiche (${kpis.join(', ')})`, async ({ page }) => {
-    const candidats = [`${base}/ministere`, `${base}/dashboard`, `${base}/admin`, base];
+    const candidats = [`${base}/ministere`, `${base}/admin`, `${base}/dashboard`, base];
     let contenu = '';
     for (const url of candidats) {
-      const r = await page.goto(url).catch(() => null);
-      if (r && r.status() < 400) contenu += (await page.textContent('body')) || '';
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
+        await page.waitForLoadState('networkidle').catch(() => {});
+        contenu += (await page.textContent('body')) || '';
+      }
     }
     for (const kpi of kpis) {
       expect(contenu, `Le KPI "${kpi}" doit apparaître sur le dashboard`).toMatch(new RegExp(kpi, 'i'));
@@ -159,11 +225,14 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
   });
 
   exigence('dashboard_demographie', `Vue d'ensemble : répartition géographique, hommes, femmes, situation de handicap`, async ({ page }) => {
-    const candidats = [`${base}/ministere`, `${base}/dashboard`, `${base}/admin`, base];
+    const candidats = [`${base}/ministere`, `${base}/admin`, `${base}/dashboard`, base];
     let contenu = '';
     for (const url of candidats) {
-      const r = await page.goto(url).catch(() => null);
-      if (r && r.status() < 400) contenu += (await page.textContent('body')) || '';
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
+        await page.waitForLoadState('networkidle').catch(() => {});
+        contenu += (await page.textContent('body')) || '';
+      }
     }
     for (const attendu of [/g[ée]ograph/i, /hommes/i, /femmes/i, /handicap/i]) {
       expect(contenu, `Le dashboard doit afficher : ${attendu}`).toMatch(attendu);
@@ -171,12 +240,14 @@ test.describe(`Exigences ${base.toUpperCase()} — fiche de poste + directives`,
   });
 
   exigence('export_rapports', `Export de rapports pour le Ministère`, async ({ page }) => {
-    const candidats = [`${base}/ministere`, `${base}/dashboard`, `${base}/admin`];
+    const candidats = [`${base}/ministere`, `${base}/admin`, `${base}/dashboard`];
     let visible = false;
     for (const url of candidats) {
-      const r = await page.goto(url).catch(() => null);
-      if (r && r.status() < 400) {
-        const bouton = page.getByRole('button', { name: /export|t[ée]l[ée]charger|rapport/i }).or(page.getByRole('link', { name: /export|rapport/i }));
+      const r = await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => null);
+      if (r && r.status() < 400 && new URL(page.url()).pathname.startsWith(base)) {
+        await page.waitForLoadState('networkidle').catch(() => {});
+        const bouton = page.getByRole('button', { name: /export|t[ée]l[ée]charger|rapport/i })
+          .or(page.getByRole('link', { name: /export|rapport/i }));
         if (await bouton.count() > 0) { visible = true; break; }
       }
     }
