@@ -5,6 +5,7 @@ import { getMatiereData } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
 import { checkUsage, incrementUsage, limitMessage, type UsageField } from "@/lib/prepUsage";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -419,6 +420,15 @@ export async function POST(req: Request) {
   const fileBase64 = body.fileBase64 as string | undefined;
   const fileType   = body.fileType as string | undefined;
 
+  // Cache check (mode B uniquement — pas document, pas evaluate)
+  const generateCacheKey = (mode !== "document" && mode !== "evaluate")
+    ? buildCacheKey("generate", type, examType, serie, matiere, chapitre)
+    : "";
+  if (generateCacheKey) {
+    const cached = await getCached(generateCacheKey);
+    if (cached) return NextResponse.json(cached);
+  }
+
   // Vérification quota quotidien (sauf pour l'évaluation de rédaction)
   const token = req.headers.get("authorization")?.replace("Bearer ", "") ?? "";
   type UsageCtx = { field: UsageField; userId: string; current: number; rowExists: boolean };
@@ -560,6 +570,7 @@ export async function POST(req: Request) {
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
       await bump();
+      if (generateCacheKey) await setCached(generateCacheKey, { texte });
       return NextResponse.json({ texte });
     }
 
@@ -574,8 +585,10 @@ export async function POST(req: Request) {
       temperature: 0.4,
     });
 
+    const parsed = parseJson(completion.choices[0]?.message?.content ?? "");
     await bump();
-    return NextResponse.json(parseJson(completion.choices[0]?.message?.content ?? ""));
+    if (generateCacheKey) await setCached(generateCacheKey, parsed);
+    return NextResponse.json(parsed);
 
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : String(error);

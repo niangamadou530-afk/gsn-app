@@ -101,6 +101,17 @@ export default function SignupPage() {
       return;
     }
 
+    // Supabase renvoie l'utilisateur existant sans erreur quand les confirmations sont désactivées
+    if (!data.session) {
+      setLoading(false);
+      setErrorMessage(
+        authMethod === "phone"
+          ? "Ce numéro est déjà associé à un compte. Connecte-toi ou réinitialise ton mot de passe."
+          : "Cet email est déjà associé à un compte. Connecte-toi ou réinitialise ton mot de passe."
+      );
+      return;
+    }
+
     const userId = data.user?.id;
     if (userId) {
       const { error: insertError } = await supabase.from("users").insert({

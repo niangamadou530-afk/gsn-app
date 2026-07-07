@@ -42,6 +42,16 @@ export async function checkUsage(token: string, field: UsageField): Promise<Usag
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { allowed: false, reason: "auth" };
 
+  // Comptes illimités (stagiaires / testeurs)
+  const { data: studentRow } = await sb
+    .from("prep_students")
+    .select("unlimited")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (studentRow?.unlimited === true) {
+    return { allowed: true, userId: user.id, current: 0, rowExists: false };
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const { data: row } = await sb
     .from("prep_usage_quotidien")

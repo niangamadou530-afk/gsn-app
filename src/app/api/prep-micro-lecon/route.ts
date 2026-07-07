@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
-  if (!(await acquireGroqSlot())) return rateLimitResponse();
   try {
     const { subject, chapter, serie } = await req.json();
 
     if (!subject || !chapter) {
       return NextResponse.json({ error: "Paramètres manquants." }, { status: 400 });
     }
+
+    const cacheKey = buildCacheKey("micro-lecon", subject, serie, chapter);
+    const cached = await getCached(cacheKey);
+    if (cached) return NextResponse.json(cached);
+
+    if (!(await acquireGroqSlot())) return rateLimitResponse();
 
     const prompt = `Tu es un professeur sénégalais expert en ${subject}. Génère une micro-leçon claire et concise sur ce chapitre, fidèle au programme officiel du BAC sénégalais.
 
@@ -38,7 +44,9 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown, sans explication):
     if (!jsonMatch) throw new Error("Réponse IA invalide.");
 
     const lecon = JSON.parse(jsonMatch[0]);
-    return NextResponse.json({ lecon });
+    const result = { lecon };
+    await setCached(cacheKey, result);
+    return NextResponse.json(result);
   } catch (err: unknown) {
     console.error("[prep-micro-lecon]", err);
     return NextResponse.json({ error: "Erreur de génération." }, { status: 500 });

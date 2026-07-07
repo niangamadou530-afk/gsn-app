@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getCompetences } from "@/data/competences";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -78,7 +79,6 @@ const PROGRAMMES_OFFICIELS: Record<string, Record<string, string>> = {
 export async function POST(req: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
-  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   let body: { subject: string; examType: string; serie?: string; chapitre?: string; questionCount?: number; count?: number; annee?: string; examBlanc?: boolean };
   try {
@@ -90,6 +90,12 @@ export async function POST(req: Request) {
 
   const { subject, examType, serie = "", chapitre = "", questionCount, count, annee } = body;
   const n = Math.min(count || questionCount || 10, 20);
+
+  const cacheKey = buildCacheKey("quiz", examType, serie, subject, chapitre, annee);
+  const cached = await getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   // Récupérer contenu officiel depuis Supabase
   const contenuOfficiel = await fetchContenu(examType, serie, subject, chapitre);
@@ -159,6 +165,7 @@ Règles :
     const quiz = JSON.parse(match[0]);
     if (!Array.isArray(quiz.questions)) throw new Error("Structure invalide");
 
+    await setCached(cacheKey, quiz);
     return NextResponse.json(quiz);
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : String(error);

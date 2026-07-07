@@ -1,0 +1,57 @@
+{
+  "_mode_emploi": "false = en attente (non bloquant, visible dans le rapport). Le stagiaire passe le flag à true dans sa PR quand la fonctionnalité est TERMINÉE. Le test s'active alors et devient bloquant.",
+
+  "mjs": {
+    "route_base": false,
+    "login_separe": false,
+    "onboarding_inscription": false,
+    "migrations_sql": false,
+    "module_learn": false,
+    "module_work": false,
+    "module_pay": false,
+    "module_score": false,
+    "parcours_secteurs": false,
+    "parcours_unique": false,
+    "suivi_progression": false,
+    "skill_passport_dans_score": false,
+    "skill_passport_verification": false,
+    "espace_employeur": false,
+    "bouton_offre_recruteur": false,
+    "matching_certifies_offres": false,
+    "dashboard_kpis": false,
+    "dashboard_demographie": false,
+    "export_rapports": false
+  },
+
+  "mctn": {
+    "route_base": false,
+    "login_separe": false,
+    "onboarding_inscription": false,
+    "migrations_sql": false,
+    "module_learn": false,
+    "module_work": false,
+    "module_pay": false,
+    "module_score": false,
+    "parcours_secteurs": false,
+    "parcours_unique": false,
+    "suivi_progression": false,
+    "skill_passport_dans_score": false,
+    "skill_passport_verification": false,
+    "espace_employeur": false,
+    "bouton_offre_recruteur": false,
+    "matching_certifies_offres": false,
+    "dashboard_kpis": false,
+    "dashboard_demographie": false,
+    "export_rapports": false
+  },
+
+  "_secteurs": {
+    "mjs": ["Agriculture", "Num[ée]rique", "BTP", "Commerce", "Tourisme"],
+    "mctn": ["[Dd][ée]v|[Ww]eb|[Mm]obile", "[Dd]ata", "[Cc]ybers[ée]curit[ée]", "UX", "[Ee].?commerce", "[Cc]loud"]
+  },
+
+  "_kpis": {
+    "mjs": ["b[ée]n[ée]ficiaires", "[Ss]kill [Pp]ass", "insertion"],
+    "mctn": ["dipl[ôo]m[ée]s", "startups", "insertion"]
+  }
+}

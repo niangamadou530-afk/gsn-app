@@ -3,6 +3,7 @@ import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { getCompetences } from "@/data/competences";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -45,7 +46,6 @@ function buildContenuCtx(contenu: ContenuOfficiel): string {
 export async function POST(request: Request) {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "GROQ_API_KEY manquante" }, { status: 500 });
-  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   const body = await request.json().catch(() => ({}));
   const chapter         = body?.chapter         || "Révision générale";
@@ -54,6 +54,12 @@ export async function POST(request: Request) {
   const serie           = body?.serie           || "";
   const count           = Math.min(body?.count || 10, 20);
   const programmeContenu: string = body?.programmeContenu || "";
+
+  const cacheKey = buildCacheKey("flashcards", examType, serie, subject, chapter);
+  const cached = await getCached(cacheKey);
+  if (cached) return NextResponse.json(cached);
+
+  if (!(await acquireGroqSlot())) return rateLimitResponse();
 
   // Récupérer contenu officiel depuis Supabase
   const contenuOfficiel = await fetchContenu(examType, serie, subject, chapter);
@@ -114,6 +120,7 @@ Règles :
     const result = JSON.parse(match[0]);
     if (!Array.isArray(result.flashcards)) throw new Error("Structure invalide");
 
+    await setCached(cacheKey, result);
     return NextResponse.json(result);
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : String(error);
