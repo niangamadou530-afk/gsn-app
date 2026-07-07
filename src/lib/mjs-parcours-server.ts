@@ -6,6 +6,44 @@ import { buildParcoursPrompt, parseModulesJson } from "@/lib/mjs-parcours-utils"
 export async function ensureInscription(userId: string, parcoursId: string) {
   const admin = createSupabaseAdmin();
 
+  // Check if already enrolled in this exact course
+  const { data: existingTarget } = await admin
+    .from("mjs_inscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("parcours_id", parcoursId)
+    .eq("tenant_id", "mjs")
+    .maybeSingle();
+
+  if (!existingTarget) {
+    // Fetch all current inscriptions
+    const { data: allInsc, error: inscFetchError } = await admin
+      .from("mjs_inscriptions")
+      .select("parcours_id")
+      .eq("user_id", userId)
+      .eq("tenant_id", "mjs");
+
+    if (inscFetchError) throw inscFetchError;
+
+    if (allInsc && allInsc.length > 0) {
+      // Fetch all delivered passports (completed courses)
+      const { data: allPassports, error: passFetchError } = await admin
+        .from("mjs_skill_passports")
+        .select("parcours_id")
+        .eq("user_id", userId)
+        .eq("tenant_id", "mjs");
+
+      if (passFetchError) throw passFetchError;
+
+      const certSet = new Set((allPassports ?? []).map((p) => p.parcours_id));
+      const activeParcours = allInsc.find((i) => !certSet.has(i.parcours_id));
+
+      if (activeParcours) {
+        throw new Error("Vous suivez déjà un parcours actif. Vous devez l'abandonner ou le terminer avant de vous inscrire à un autre.");
+      }
+    }
+  }
+
   const { error: inscError } = await admin
     .from("mjs_inscriptions")
     .upsert(

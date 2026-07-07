@@ -321,7 +321,45 @@ export default function DashboardBeneficiairePage() {
           </div>
         )}
 
-
+        {/* Mes Certifications PNACIJ */}
+        {parcoursTermines.length > 0 && (
+          <div className="mt-10">
+            <h2 className="text-xl font-extrabold mb-4">Mes Certifications PNACIJ</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {parcoursTermines.map((i) => {
+                const p = i.mjs_parcours;
+                if (!p) return null;
+                return (
+                  <button
+                    key={i.parcours_id}
+                    onClick={() => router.push(`/mjs/beneficiaire/skill-passport/${p.id}`)}
+                    className="text-left bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 shadow-sm hover:shadow-md active:scale-[0.98] transition-all relative overflow-hidden group"
+                  >
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-tertiary/5 rounded-full translate-x-4 -translate-y-4 group-hover:scale-110 transition-transform" />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-11 h-11 rounded-xl bg-tertiary-container flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-on-tertiary-container text-[22px]">workspace_premium</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-on-surface text-sm truncate">{p.titre}</p>
+                        <p className="text-xs text-on-surface-variant">{p.mjs_secteurs?.nom}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-outline-variant/10">
+                      <span className="text-[10px] font-bold text-tertiary bg-tertiary/10 px-2 py-0.5 rounded-full">
+                        ★ Certifié
+                      </span>
+                      <span className="text-xs text-primary font-semibold flex items-center gap-0.5">
+                        Voir le Passeport
+                        <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </div>
 
