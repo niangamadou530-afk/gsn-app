@@ -4,30 +4,50 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { phoneToFakeEmail, isValidPhone } from "@/lib/phoneUtils";
+
+type AuthMethod = "email" | "phone";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [email, setEmail]           = useState("");
+  const [phone, setPhone]           = useState("");
+  const [password, setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]       = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
+
+    if (authMethod === "phone" && !isValidPhone(phone)) {
+      setErrorMessage("Numéro invalide — format attendu : +221 7X XXX XX XX");
+      return;
+    }
+
     setLoading(true);
-    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) { setLoading(false); setErrorMessage(error.message); return; }
+    const authEmail = authMethod === "phone" ? phoneToFakeEmail(phone) : email;
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
+
+    if (error) {
+      setLoading(false);
+      setErrorMessage(
+        error.message === "Invalid login credentials"
+          ? authMethod === "phone"
+            ? "Numéro ou mot de passe incorrect."
+            : "Email ou mot de passe incorrect."
+          : error.message
+      );
+      return;
+    }
+
     const userId = authData.user?.id;
     if (userId) {
-      const { data: profile } = await supabase.from("users").select("profile_type, tenant_id").eq("id", userId).single();
+      const { data: profile } = await supabase.from("users").select("profile_type").eq("id", userId).single();
       setLoading(false);
-      if (profile?.tenant_id === "mctn") {
-        router.push("/mctn/dashboard");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(profile?.profile_type === "eleve" ? "/prep/dashboard" : "/dashboard");
     } else {
       setLoading(false);
       router.push("/dashboard");
@@ -46,9 +66,6 @@ export default function LoginPage() {
 
         {/* Header */}
         <header className="flex flex-col items-center space-y-4">
-          <div className="w-20 h-20 rounded-2xl bg-surface-container-lowest flex items-center justify-center shadow-[0_8px_24px_rgba(25,28,35,0.08)]">
-            <span className="text-3xl font-black text-primary">G</span>
-          </div>
           <div className="text-center">
             <h1 className="text-5xl font-extrabold tracking-tight text-primary leading-none mb-2">GSN</h1>
             <p className="text-on-surface-variant font-medium tracking-wide">Apprends, travaille, gagne</p>
@@ -59,28 +76,68 @@ export default function LoginPage() {
         <section className="w-full bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(25,28,35,0.06)] space-y-6">
           <form onSubmit={handleLogin} className="space-y-5">
 
-            {/* Email */}
+            {/* Toggle Email / Téléphone */}
+            <div className="flex rounded-xl overflow-hidden border-2 border-outline-variant/30">
+              <button
+                type="button"
+                onClick={() => { setAuthMethod("email"); setErrorMessage(""); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "email" ? "bg-primary text-on-primary" : "bg-surface-container-low text-on-surface-variant"}`}>
+                <span className="material-symbols-outlined text-[16px]">mail</span>
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAuthMethod("phone"); setErrorMessage(""); }}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "phone" ? "bg-primary text-on-primary" : "bg-surface-container-low text-on-surface-variant"}`}>
+                <span className="material-symbols-outlined text-[16px]">phone</span>
+                Téléphone
+              </button>
+            </div>
+
+            {/* Email ou numéro */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="email">Email</label>
+              <label className="block text-sm font-semibold text-on-surface ml-1">
+                {authMethod === "email" ? "Email" : "Numéro de téléphone"}
+              </label>
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">mail</span>
-                <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nom@exemple.com"
-                  required
-                  className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
-                />
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">
+                  {authMethod === "email" ? "mail" : "phone"}
+                </span>
+                {authMethod === "email" ? (
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="nom@exemple.com"
+                    required
+                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
+                  />
+                ) : (
+                  <input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="+221 77 123 45 67"
+                    required
+                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
+                  />
+                )}
               </div>
             </div>
 
-            {/* Password */}
+            {/* Mot de passe */}
             <div className="space-y-2">
               <div className="flex justify-between items-center px-1">
                 <label className="text-sm font-semibold text-on-surface" htmlFor="password">Mot de passe</label>
-                <a className="text-xs font-bold text-primary hover:underline" href="#">Mot de passe oublié ?</a>
+                <a
+                  href="https://wa.me/221781246504?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20GSN%20Prep.%20Mon%20identifiant%20de%20connexion%20%28email%20ou%20num%C3%A9ro%20de%20t%C3%A9l%C3%A9phone%29%20est%20%3A%20%5B%C3%A0%20compl%C3%A9ter%5D"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-primary hover:underline">
+                  Mot de passe oublié ?
+                </a>
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">lock</span>
@@ -88,7 +145,7 @@ export default function LoginPage() {
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   className="w-full pl-12 pr-12 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
@@ -96,8 +153,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors"
-                >
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors">
                   <span className="material-symbols-outlined text-[20px]">
                     {showPassword ? "visibility_off" : "visibility"}
                   </span>
@@ -115,8 +171,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.2)] hover:shadow-[0_8px_24px_rgba(0,91,191,0.3)] active:scale-[0.98] transition-all duration-200 disabled:opacity-60"
-            >
+              className="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.2)] hover:shadow-[0_8px_24px_rgba(0,91,191,0.3)] active:scale-[0.98] transition-all duration-200 disabled:opacity-60">
               {loading ? "Connexion…" : "Se connecter"}
             </button>
           </form>
@@ -129,8 +184,7 @@ export default function LoginPage() {
 
           <Link
             href="/signup"
-            className="block w-full text-center py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200"
-          >
+            className="block w-full text-center py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200">
             Créer mon compte
           </Link>
         </section>
