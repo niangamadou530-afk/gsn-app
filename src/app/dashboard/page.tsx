@@ -53,11 +53,6 @@ export default function DashboardPage() {
       setFullName(data?.name ?? "Utilisateur");
       setScore(data?.score ?? 0);
       setProfileType((data?.profile_type as "eleve" | "professionnel") ?? "professionnel");
-      // Redirect eleve to PREP dashboard
-      if (data?.profile_type === "eleve") {
-        router.replace("/prep/dashboard");
-        return;
-      }
     }
 
     const currentScore = data?.score ?? 0;
@@ -127,8 +122,7 @@ export default function DashboardPage() {
 
         {/* Feature bento */}
         <section className="space-y-4">
-          {profileType !== "eleve" && (
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
               <Link href="/learn" className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border-l-4 border-primary space-y-3 hover:shadow-md transition-all active:scale-[0.98]">
                 <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
                   <span className="material-symbols-outlined text-primary text-[20px]">school</span>
@@ -148,9 +142,22 @@ export default function DashboardPage() {
                 </div>
               </Link>
             </div>
-          )}
-          {profileType !== "eleve" && (
-            <Link href="/wallet" className="block bg-gradient-to-br from-primary to-primary-container p-5 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.99]">
+          <Link href="/prep" className="block bg-surface-container-lowest p-5 rounded-2xl shadow-sm border-l-4 hover:shadow-md transition-all active:scale-[0.98]" style={{ borderColor: "#FF6B00" }}>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FF6B0020" }}>
+                <span className="material-symbols-outlined text-[20px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>school</span>
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-on-surface text-sm">GSN PREP</h3>
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: "#FF6B00" }}>NOUVEAU</span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">Prépare ton BFEM ou BAC avec l&apos;IA</p>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant text-[20px]">arrow_forward_ios</span>
+            </div>
+          </Link>
+          <Link href="/wallet" className="block bg-gradient-to-br from-primary to-primary-container p-5 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.99]">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <h3 className="font-bold text-on-primary">GSN Pay</h3>
@@ -159,7 +166,6 @@ export default function DashboardPage() {
                 <span className="material-symbols-outlined text-on-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
               </div>
             </Link>
-          )}
         </section>
 
         {/* Recommended missions */}
@@ -215,18 +221,18 @@ export default function DashboardPage() {
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
           <span className="text-[10px] font-medium mt-0.5">Accueil</span>
         </Link>
-        {profileType !== "eleve" && (
-          <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
+        <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">school</span>
             <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
           </Link>
-        )}
-        {profileType !== "eleve" && (
           <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">assignment</span>
             <span className="text-[10px] font-medium mt-0.5">Missions</span>
           </Link>
-        )}
+        <Link href="/prep" className="flex flex-col items-center active:scale-90 transition-transform relative">
+          <span className="material-symbols-outlined" style={{ color: "#FF6B00" }}>school</span>
+          <span className="text-[10px] font-medium mt-0.5" style={{ color: "#FF6B00" }}>PREP</span>
+        </Link>
         <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">stars</span>
           <span className="text-[10px] font-medium mt-0.5">Score</span>
