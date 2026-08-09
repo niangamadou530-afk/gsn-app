@@ -98,31 +98,6 @@ body {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── PREP V2 — Indigo Theme (scoped to prep section) ── */
-[data-section="prep"] {
-  --color-primary: #6366F1;
-  --color-on-primary: #ffffff;
-  --color-primary-container: #4F46E5;
-  --color-on-primary-container: #ffffff;
-  --color-surface: #F4F5FB;
-  --color-surface-dim: #D8DAF0;
-  --color-surface-bright: #F4F5FB;
-  --color-surface-variant: #E4E6F5;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #F0F1FA;
-  --color-surface-container: #ECEEF8;
-  --color-surface-container-high: #E4E6F5;
-  --color-surface-container-highest: #DCDFF2;
-  --color-on-surface: #1E1B4B;
-  --color-on-surface-variant: #6366A0;
-  --color-outline: #9396B8;
-  --color-outline-variant: rgba(99,102,241,0.15);
-  --color-error: #DC2626;
-  --color-secondary: #4F46E5;
-  --color-on-secondary: #ffffff;
-  background-color: #F4F5FB;
-}
-
 /* BFEM HTML content rendering */
 .bfem-content { font-size: 0.95rem; line-height: 1.7; color: #191c23; overflow-x: auto; }
 .bfem-content h1, .bfem-content h2, .bfem-content h3, .bfem-content h4 { font-weight: 700; margin: 1.2em 0 0.5em; line-height: 1.3; }
