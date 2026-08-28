@@ -188,6 +188,7 @@ export default function LoginPage() {
             className="block w-full text-center py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200">
             {t("auth.login.createAccount")}
           </Link>
+
         </section>
 
         <footer className="flex items-center justify-center space-x-6 text-outline font-medium text-xs">

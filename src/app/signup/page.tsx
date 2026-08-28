@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { phoneToFakeEmail, normalizePhone, isValidPhone } from "@/lib/phoneUtils";
 import { t } from "@/lib/i18n";
 
-type ProfileType = "eleve" | "professionnel" | "";
+type ProfileType = "eleve" | "professionnel" | "Beneficiaire du PNACIJ" | "";
 type AuthMethod  = "email" | "phone";
 
 export default function SignupPage() {
@@ -152,10 +152,11 @@ export default function SignupPage() {
                   )}
                 </div>
               </button>
+
             </div>
 
             <button
-              disabled={!profileType}
+              disabled={!profileType} 
               onClick={() => setStep(2)}
               className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 mt-2">
               {t("auth.signup.step1.continue")}
