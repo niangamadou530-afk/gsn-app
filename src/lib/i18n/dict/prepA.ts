@@ -124,6 +124,10 @@ export const en: Dict = {
   "prep.coach.headerTitle": "AI Coach",
   "prep.coach.headerSubtitle": "Personal · GSN PREP",
   "prep.coach.inputPlaceholder": "Ask the Coach a question...",
+  "prep.coach.rateLimited": "Lots of requests right now. Try again in a few seconds.",
+  "prep.coach.limitReached": "Limit reached. Come back tomorrow to keep revising.",
+  "prep.coach.retryIn": "Retry in {seconds}s…",
+  "prep.coach.retry": "Retry",
 
   // prep/epreuves/page.tsx
   "prep.epreuves.title": "Exams & Answer Keys BAC",
@@ -267,6 +271,10 @@ export const fr: Dict = {
   "prep.coach.headerTitle": "Coach IA",
   "prep.coach.headerSubtitle": "Personnel · GSN PREP",
   "prep.coach.inputPlaceholder": "Pose ta question au Coach...",
+  "prep.coach.rateLimited": "Beaucoup de demandes en ce moment. Réessaie dans quelques secondes.",
+  "prep.coach.limitReached": "Limite atteinte. Reviens demain pour continuer à réviser.",
+  "prep.coach.retryIn": "Réessayer dans {seconds}s…",
+  "prep.coach.retry": "Réessayer",
 
   // prep/epreuves/page.tsx
   "prep.epreuves.title": "Épreuves & Corrigés BAC",

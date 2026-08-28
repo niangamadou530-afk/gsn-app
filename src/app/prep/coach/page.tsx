@@ -7,7 +7,7 @@ import { getMatieres, getMatiereData } from "@/data/programmes";
 import { t } from "@/lib/i18n";
 
 const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-15";
+const BFEM_DATE = "2026-07-14";
 
 function daysUntil(d: string) {
   return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000));
@@ -24,6 +24,9 @@ export default function CoachPage() {
   const [input, setInput]         = useState("");
   const [sending, setSending]     = useState(false);
   const [loading, setLoading]     = useState(true);
+  const [authToken, setAuthToken] = useState("");
+  const [retrySeconds, setRetrySeconds] = useState(0);
+  const [lastUserMsg, setLastUserMsg]   = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,6 +52,8 @@ export default function CoachPage() {
         stats[m] = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
       }
       setQuizStats(stats);
+      const { data: { session } } = await supabase.auth.getSession();
+      setAuthToken(session?.access_token ?? "");
       setLoading(false);
 
       const prenom = p?.prenom ?? t("prep.coach.defaultName");
@@ -69,13 +74,29 @@ export default function CoachPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
+  useEffect(() => {
+    if (retrySeconds <= 0) return;
+    const timer = setTimeout(() => setRetrySeconds(s => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [retrySeconds]);
+
+  async function retryMessage() {
+    if (!lastUserMsg || retrySeconds > 0 || sending) return;
+    setSending(true);
+    await doSend(lastUserMsg);
+  }
+
   async function sendMessage() {
     if (!input.trim() || sending) return;
     const userMsg = input.trim();
     setInput("");
+    setLastUserMsg(userMsg);
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setSending(true);
+    await doSend(userMsg);
+  }
 
+  async function doSend(userMsg: string) {
     try {
       const exam  = profile?.exam_type ?? "BAC";
       const serie = profile?.serie ?? "";
@@ -138,7 +159,7 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
         body: JSON.stringify({
           systemPrompt,
           message: userMsg,
@@ -149,9 +170,17 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
           serie: serie || "",
         }),
       });
+      if (res.status === 503) {
+        const d = await res.json();
+        setMessages(prev => [...prev, { role: "assistant", content: d.error ?? t("prep.coach.rateLimited") }]);
+        setRetrySeconds(5);
+        return;
+      }
+
       const data = await res.json();
-      const rawMsg = data.message ?? t("prep.coach.noResponseFallback");
+      const rawMsg = res.ok ? (data.message ?? t("prep.coach.noResponseFallback")) : (data.error ?? t("prep.coach.limitReached"));
       setMessages(prev => [...prev, { role: "assistant", content: nettoyer(rawMsg) }]);
+      setLastUserMsg("");
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: t("prep.coach.connectionError") }]);
     } finally {
@@ -208,6 +237,17 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
         <div ref={bottomRef} />
       </div>
 
+      {lastUserMsg && !sending && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={retryMessage}
+            disabled={retrySeconds > 0}
+            className="w-full py-2.5 rounded-xl font-bold text-sm border-2 transition-all disabled:opacity-50"
+            style={{ borderColor: "#FF6B00", color: retrySeconds > 0 ? "#999" : "#FF6B00", backgroundColor: retrySeconds > 0 ? "transparent" : "#FF6B0010" }}>
+            {retrySeconds > 0 ? t("prep.coach.retryIn", { seconds: retrySeconds }) : t("prep.coach.retry")}
+          </button>
+        </div>
+      )}
       <div className="border-t border-outline-variant/20 px-4 py-3 pb-6 flex items-end gap-3">
         <textarea
           value={input}
