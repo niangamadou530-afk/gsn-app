@@ -175,7 +175,7 @@ Règles :
             { type: "text", text: orientationPrompt("(voir image du relevé ci-dessus)") },
           ],
         }],
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "qwen/qwen3.6-27b",
         max_tokens: 2000,
         temperature: 0.2,
       });
@@ -193,7 +193,7 @@ Règles :
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown." },
           { role: "user", content: orientationPrompt(text || "Document PDF — extrait les informations visibles.") },
         ],
-        model: "llama-3.1-8b-instant",
+        model: "openai/gpt-oss-20b",
         max_tokens: 2000,
         temperature: 0.2,
       });

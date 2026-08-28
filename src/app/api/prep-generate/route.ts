@@ -476,7 +476,7 @@ export async function POST(req: Request) {
       const prompt = evaluatePrompt(questions, answers, matiere, chapitre, examType, serie);
       const completion = await groq.chat.completions.create({
         messages: [sysJson(), { role: "user", content: prompt }],
-        model: "llama-3.1-8b-instant",
+        model: "openai/gpt-oss-20b",
         max_tokens: 2000,
         temperature: 0.3,
       });
@@ -503,7 +503,7 @@ export async function POST(req: Request) {
               { type: "text", text: prompt },
             ],
           }],
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          model: "qwen/qwen3.6-27b",
           max_tokens: 3000,
           temperature: 0.3,
         });
@@ -522,7 +522,7 @@ export async function POST(req: Request) {
 
         const completion = await groq.chat.completions.create({
           messages: msgs,
-          model: "llama-3.1-8b-instant",
+          model: "openai/gpt-oss-20b",
           max_tokens: 3000,
           temperature: 0.3,
         });
@@ -564,7 +564,7 @@ export async function POST(req: Request) {
       const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx, sujetsBlock);
       const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
-        model: "llama-3.3-70b-versatile",
+        model: "openai/gpt-oss-120b",
         max_tokens: 4000,
         temperature: 0.4,
       });
@@ -580,7 +580,7 @@ export async function POST(req: Request) {
 
     const completion = await groq.chat.completions.create({
       messages: [sysJson(), { role: "user", content: prompt }],
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       max_tokens: 3000,
       temperature: 0.4,
     });

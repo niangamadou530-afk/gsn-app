@@ -29,7 +29,7 @@ export async function POST(req: Request) {
         { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans texte, sans markdown." },
         { role: "user", content: message },
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       max_tokens: 8000,
       temperature: 0.2,
     });

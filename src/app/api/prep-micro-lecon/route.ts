@@ -33,7 +33,7 @@ Réponds UNIQUEMENT avec ce JSON (sans markdown, sans explication):
 }`;
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 600,
       temperature: 0.4,

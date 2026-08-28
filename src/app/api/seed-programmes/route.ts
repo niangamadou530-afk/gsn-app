@@ -149,7 +149,7 @@ Exactement 5 points_cles. Tout en français. N'utilise pas de backslash dans le 
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown ni backticks ni backslash dans les valeurs." },
           { role: "user", content: makePrompt(attempt === 2) },
         ],
-        model: "llama-3.1-8b-instant",
+        model: "openai/gpt-oss-20b",
         max_tokens: attempt === 2 ? 800 : 1200,
         temperature: attempt === 0 ? 0.3 : 0.1,
       });

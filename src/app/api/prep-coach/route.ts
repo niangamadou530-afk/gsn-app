@@ -137,7 +137,7 @@ export async function POST(req: Request) {
         ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
         { role: "user", content: message },
       ],
-      model: "llama-3.1-8b-instant",
+      model: "openai/gpt-oss-20b",
       max_tokens: 500,
       temperature: 0.7,
     });

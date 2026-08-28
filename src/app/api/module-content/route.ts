@@ -57,7 +57,7 @@ Règles strictes:
         { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown, sans texte autour." },
         { role: "user", content: prompt },
       ],
-      model: "llama-3.3-70b-versatile",
+      model: "openai/gpt-oss-120b",
       max_tokens: 8000,
       temperature: 0.3,
     });
