@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 export default function EmployerLoginPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function EmployerLoginPage() {
     setLoading(true);
     try {
       const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (authErr || !authData.user) { setError("Email ou mot de passe incorrect."); return; }
+      if (authErr || !authData.user) { setError(t("work.employerLogin.errorInvalidCreds")); return; }
 
       console.log("[login] auth user id:", authData.user.id, "email:", authData.user.email);
 
@@ -40,11 +41,11 @@ export default function EmployerLoginPage() {
         }
       }
 
-      if (!emp) { setError("Aucun compte employeur associé à cet email."); return; }
+      if (!emp) { setError(t("work.employerLogin.errorNoEmployerAccount")); return; }
 
       router.push("/employer/dashboard");
     } catch {
-      setError("Une erreur est survenue. Réessaie.");
+      setError(t("work.employerLogin.errorGeneric"));
     } finally {
       setLoading(false);
     }
@@ -65,8 +66,8 @@ export default function EmployerLoginPage() {
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 mb-1">
             <span className="material-symbols-outlined text-on-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>business</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">Espace Employeur</h1>
-          <p className="text-on-surface-variant text-sm">GSN Global Skills Network</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">{t("work.employerLogin.title")}</h1>
+          <p className="text-on-surface-variant text-sm">{t("work.employerLogin.subtitle")}</p>
         </header>
 
         {/* Card */}
@@ -74,11 +75,11 @@ export default function EmployerLoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
 
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="email">Email professionnel</label>
+              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="email">{t("work.employerLogin.emailLabel")}</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">mail</span>
                 <input
-                  id="email" type="email" placeholder="contact@entreprise.com" required
+                  id="email" type="email" placeholder={t("work.employerLogin.emailPlaceholder")} required
                   value={email} onChange={e => setEmail(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
                 />
@@ -86,7 +87,7 @@ export default function EmployerLoginPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="password">Mot de passe</label>
+              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="password">{t("work.employerLogin.passwordLabel")}</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">lock</span>
                 <input
@@ -111,30 +112,30 @@ export default function EmployerLoginPage() {
             <button type="submit" disabled={loading}
               className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2">
               {loading ? (
-                <><div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" /> Connexion…</>
+                <><div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" /> {t("work.employerLogin.submitting")}</>
               ) : (
-                <><span className="material-symbols-outlined text-[20px]">login</span> Accéder au tableau de bord</>
+                <><span className="material-symbols-outlined text-[20px]">login</span> {t("work.employerLogin.submit")}</>
               )}
             </button>
           </form>
 
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-outline-variant/30" />
-            <span className="flex-shrink mx-4 text-outline-variant text-xs font-medium">OU</span>
+            <span className="flex-shrink mx-4 text-outline-variant text-xs font-medium">{t("work.employerLogin.or")}</span>
             <div className="flex-grow border-t border-outline-variant/30" />
           </div>
 
           <Link href="/employer/signup"
             className="flex w-full items-center justify-center gap-2 py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98]">
             <span className="material-symbols-outlined text-[18px]">add_business</span>
-            Créer un compte employeur
+            {t("work.employerLogin.signupCta")}
           </Link>
         </section>
 
         <footer className="flex items-center justify-center space-x-6 text-outline font-medium text-xs">
-          <Link href="/login" className="hover:text-on-surface transition-colors">Espace apprenant</Link>
+          <Link href="/login" className="hover:text-on-surface transition-colors">{t("work.employerLogin.footerLearner")}</Link>
           <span className="w-1 h-1 bg-outline-variant rounded-full" />
-          <Link href="/" className="hover:text-on-surface transition-colors">Accueil GSN</Link>
+          <Link href="/" className="hover:text-on-surface transition-colors">{t("work.employerLogin.footerHome")}</Link>
         </footer>
       </div>
     </main>

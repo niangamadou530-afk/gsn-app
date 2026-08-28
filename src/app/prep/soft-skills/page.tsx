@@ -2,33 +2,34 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { t } from "@/lib/i18n";
 
 type Tab = "stress" | "pomodoro" | "methodes" | "motivation";
 
 const CHECKLIST = [
-  "Pièce d'identité",
-  "Convocation",
-  "Stylos (2 minimum)",
-  "Règle et calculatrice",
-  "Montre",
-  "Eau et en-cas léger",
-  "Tenue correcte",
-  "Arriver 30 min avant",
+  t("prep.softSkills.checklist.item1"),
+  t("prep.softSkills.checklist.item2"),
+  t("prep.softSkills.checklist.item3"),
+  t("prep.softSkills.checklist.item4"),
+  t("prep.softSkills.checklist.item5"),
+  t("prep.softSkills.checklist.item6"),
+  t("prep.softSkills.checklist.item7"),
+  t("prep.softSkills.checklist.item8"),
 ];
 
 const METHODES = [
-  { title: "Comment lire un sujet de dissertation", steps: ["Lire 2 fois sans noter", "Identifier les mots-clés", "Dégager la problématique", "Faire un plan au brouillon avant de rédiger"] },
-  { title: "Gérer le temps en salle d'examen", steps: ["Lire tout le sujet en 5 min", "Répartir le temps par partie", "Rédiger l'introduction en dernier", "Garder 10 min pour relire"] },
-  { title: "Technique de mémorisation — répétition espacée", steps: ["Apprendre une notion J0", "Réviser J+1 (5 min)", "Réviser J+3 (3 min)", "Réviser J+7 (2 min)", "Mémorisé à long terme ✓"] },
-  { title: "Mind mapping (carte mentale)", steps: ["Mot central au milieu", "Branches principales : les grandes idées", "Sous-branches : les détails", "Couleurs + dessins pour mémoriser"] },
+  { title: t("prep.softSkills.methodes.method1.title"), steps: [t("prep.softSkills.methodes.method1.step1"), t("prep.softSkills.methodes.method1.step2"), t("prep.softSkills.methodes.method1.step3"), t("prep.softSkills.methodes.method1.step4")] },
+  { title: t("prep.softSkills.methodes.method2.title"), steps: [t("prep.softSkills.methodes.method2.step1"), t("prep.softSkills.methodes.method2.step2"), t("prep.softSkills.methodes.method2.step3"), t("prep.softSkills.methodes.method2.step4")] },
+  { title: t("prep.softSkills.methodes.method3.title"), steps: [t("prep.softSkills.methodes.method3.step1"), t("prep.softSkills.methodes.method3.step2"), t("prep.softSkills.methodes.method3.step3"), t("prep.softSkills.methodes.method3.step4"), t("prep.softSkills.methodes.method3.step5")] },
+  { title: t("prep.softSkills.methodes.method4.title"), steps: [t("prep.softSkills.methodes.method4.step1"), t("prep.softSkills.methodes.method4.step2"), t("prep.softSkills.methodes.method4.step3"), t("prep.softSkills.methodes.method4.step4")] },
 ];
 
 const QUOTES = [
-  "Le succès, c'est tomber sept fois et se relever huit.",
-  "Chaque heure de révision est une brique de ton avenir.",
-  "Tu ne travailles pas pour les notes, tu travailles pour ta liberté.",
-  "La discipline est le pont entre les objectifs et les résultats.",
-  "Commence là où tu es. Utilise ce que tu as. Fais ce que tu peux.",
+  t("prep.softSkills.quotes.q1"),
+  t("prep.softSkills.quotes.q2"),
+  t("prep.softSkills.quotes.q3"),
+  t("prep.softSkills.quotes.q4"),
+  t("prep.softSkills.quotes.q5"),
 ];
 
 export default function SoftSkillsPage() {
@@ -108,16 +109,16 @@ export default function SoftSkillsPage() {
   }
 
   const breathLabel: Record<typeof breathPhase, string> = {
-    inspire: "Inspire… 🌬️", retiens: "Retiens… 😶", expire: "Expire… 💨", idle: "Prêt",
+    inspire: t("prep.softSkills.breath.inspire"), retiens: t("prep.softSkills.breath.retiens"), expire: t("prep.softSkills.breath.expire"), idle: t("prep.softSkills.breath.idle"),
   };
 
   const breathSize = breathPhase === "inspire" ? "scale-125" : breathPhase === "retiens" ? "scale-125" : breathPhase === "expire" ? "scale-75" : "scale-100";
 
   const TABS: { id: Tab; icon: string; label: string }[] = [
-    { id: "stress", icon: "self_improvement", label: "Stress" },
-    { id: "pomodoro", icon: "timer", label: "Pomodoro" },
-    { id: "methodes", icon: "menu_book", label: "Méthodes" },
-    { id: "motivation", icon: "emoji_events", label: "Motivation" },
+    { id: "stress", icon: "self_improvement", label: t("prep.softSkills.tabs.stress") },
+    { id: "pomodoro", icon: "timer", label: t("prep.softSkills.tabs.pomodoro") },
+    { id: "methodes", icon: "menu_book", label: t("prep.softSkills.tabs.methodes") },
+    { id: "motivation", icon: "emoji_events", label: t("prep.softSkills.tabs.motivation") },
   ];
 
   return (
@@ -126,7 +127,7 @@ export default function SoftSkillsPage() {
         <Link href="/prep/dashboard" className="text-outline hover:text-on-surface">
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </Link>
-        <p className="font-bold text-on-surface">Méthodes & Bien-être</p>
+        <p className="font-bold text-on-surface">{t("prep.softSkills.headerTitle")}</p>
       </header>
 
       {/* Tabs */}
@@ -147,13 +148,13 @@ export default function SoftSkillsPage() {
         {tab === "stress" && (
           <>
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Gestion du stress</h2>
-              <p className="text-on-surface-variant text-sm">La respiration régule immédiatement l&apos;anxiété.</p>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">{t("prep.softSkills.stress.title")}</h2>
+              <p className="text-on-surface-variant text-sm">{t("prep.softSkills.stress.subtitle")}</p>
             </div>
 
             {/* Breathing exercise */}
             <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm space-y-5">
-              <p className="font-bold text-on-surface">Exercice de respiration 4-4-4</p>
+              <p className="font-bold text-on-surface">{t("prep.softSkills.stress.breathingTitle")}</p>
               <div className="flex items-center justify-center">
                 <div className={`w-28 h-28 rounded-full border-4 border-primary transition-all duration-4000 ${breathSize}`}
                   style={{ backgroundColor: breathPhase !== "idle" ? "#1a73e820" : "transparent" }}>
@@ -162,22 +163,22 @@ export default function SoftSkillsPage() {
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-on-surface-variant">Cycles complétés : <strong>{breathCount}</strong></p>
+              <p className="text-sm text-on-surface-variant">{t("prep.softSkills.stress.cyclesLabel")} <strong>{breathCount}</strong></p>
               <div className="flex gap-3 justify-center">
                 <button onClick={startBreathing} disabled={breathPhase !== "idle"}
                   className="px-5 py-2.5 font-bold text-white text-sm rounded-xl disabled:opacity-40"
                   style={{ backgroundColor: "#FF6B00" }}>
-                  Démarrer
+                  {t("prep.softSkills.stress.startBreathing")}
                 </button>
                 <button onClick={stopBreathing} className="px-5 py-2.5 font-bold text-on-surface-variant text-sm rounded-xl border-2 border-outline-variant/30 hover:bg-surface-container transition-colors">
-                  Arrêter
+                  {t("prep.softSkills.stress.stopBreathing")}
                 </button>
               </div>
             </div>
 
             {/* Stress journal */}
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-4">
-              <p className="font-bold text-on-surface">Journal de stress — aujourd&apos;hui</p>
+              <p className="font-bold text-on-surface">{t("prep.softSkills.stress.journalTitle")}</p>
               <div className="flex items-center gap-3">
                 {[1, 2, 3, 4, 5].map(n => (
                   <button key={n} onClick={() => { setStressLevel(n); setStressSaved(false); }}
@@ -188,24 +189,24 @@ export default function SoftSkillsPage() {
                 ))}
               </div>
               <p className="text-xs text-on-surface-variant text-center">
-                {stressLevel <= 2 ? "😊 Très calme" : stressLevel === 3 ? "😐 Neutre" : stressLevel === 4 ? "😟 Un peu stressé" : "😰 Très stressé"}
+                {stressLevel <= 2 ? t("prep.softSkills.stress.veryCalm") : stressLevel === 3 ? t("prep.softSkills.stress.neutral") : stressLevel === 4 ? t("prep.softSkills.stress.bitStressed") : t("prep.softSkills.stress.veryStressed")}
               </p>
               <button onClick={() => setStressSaved(true)}
                 className="w-full py-2.5 font-bold text-white text-sm rounded-xl"
                 style={{ backgroundColor: "#FF6B00" }}>
-                {stressSaved ? "✓ Sauvegardé" : "Enregistrer mon niveau de stress"}
+                {stressSaved ? t("prep.softSkills.stress.saved") : t("prep.softSkills.stress.saveButton")}
               </button>
             </div>
 
             {/* Tips */}
             <div className="space-y-2">
-              <p className="font-bold text-on-surface">Conseils anti-stress</p>
+              <p className="font-bold text-on-surface">{t("prep.softSkills.stress.tipsTitle")}</p>
               {[
-                "Dors au moins 8h la veille de l'examen.",
-                "Révise par petites sessions de 25 min, pas de marathon.",
-                "Fais une promenade de 15 min par jour.",
-                "Évite les réseaux sociaux le soir avant l'examen.",
-                "Prépare ta trousse et tes documents la veille.",
+                t("prep.softSkills.stress.tip1"),
+                t("prep.softSkills.stress.tip2"),
+                t("prep.softSkills.stress.tip3"),
+                t("prep.softSkills.stress.tip4"),
+                t("prep.softSkills.stress.tip5"),
               ].map((tip, i) => (
                 <div key={i} className="flex items-start gap-2 bg-surface-container-lowest rounded-xl p-3 shadow-sm">
                   <span className="text-lg shrink-0">{["🧘", "⏰", "🚶", "📵", "🎒"][i]}</span>
@@ -220,8 +221,8 @@ export default function SoftSkillsPage() {
         {tab === "pomodoro" && (
           <>
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Technique Pomodoro</h2>
-              <p className="text-on-surface-variant text-sm">25 min de travail intense · 5 min de pause · Répéter.</p>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">{t("prep.softSkills.pomodoro.title")}</h2>
+              <p className="text-on-surface-variant text-sm">{t("prep.softSkills.pomodoro.subtitle")}</p>
             </div>
 
             <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm space-y-5">
@@ -229,25 +230,25 @@ export default function SoftSkillsPage() {
                 <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {pomodoroPhase === "travail" ? "psychology" : "coffee"}
                 </span>
-                {pomodoroPhase === "travail" ? "Travail" : "Pause"}
+                {pomodoroPhase === "travail" ? t("prep.softSkills.pomodoro.work") : t("prep.softSkills.pomodoro.pause")}
               </div>
               <p className="text-6xl font-black text-on-surface">{formatTime(pomodoroTime)}</p>
               <div className="flex gap-3 justify-center">
                 <button onClick={() => setPomodoroRunning(r => !r)}
                   className="px-6 py-3 font-black text-white rounded-xl text-sm"
                   style={{ backgroundColor: pomodoroRunning ? "#6b7280" : "#FF6B00" }}>
-                  {pomodoroRunning ? "⏸ Pause" : "▶ Démarrer"}
+                  {pomodoroRunning ? t("prep.softSkills.pomodoro.pauseButton") : t("prep.softSkills.pomodoro.startButton")}
                 </button>
                 <button onClick={resetPomodoro}
                   className="px-4 py-3 font-bold text-on-surface-variant rounded-xl border-2 border-outline-variant/30 text-sm hover:bg-surface-container transition-colors">
-                  Réinitialiser
+                  {t("prep.softSkills.pomodoro.reset")}
                 </button>
               </div>
             </div>
 
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <p className="font-bold text-on-surface">Comment ça marche</p>
-              {["Choisis une matière à réviser", "Travaille 25 min sans interruption", "Fais une pause de 5 min", "Après 4 cycles → pause longue (15-30 min)"].map((s, i) => (
+              <p className="font-bold text-on-surface">{t("prep.softSkills.pomodoro.howItWorks")}</p>
+              {[t("prep.softSkills.pomodoro.step1"), t("prep.softSkills.pomodoro.step2"), t("prep.softSkills.pomodoro.step3"), t("prep.softSkills.pomodoro.step4")].map((s, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-black text-white shrink-0" style={{ backgroundColor: "#FF6B00" }}>{i + 1}</span>
                   <p className="text-sm text-on-surface-variant">{s}</p>
@@ -261,8 +262,8 @@ export default function SoftSkillsPage() {
         {tab === "methodes" && (
           <>
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Méthodes d&apos;examen</h2>
-              <p className="text-on-surface-variant text-sm">Techniques éprouvées pour maximiser tes résultats.</p>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">{t("prep.softSkills.methodes.title")}</h2>
+              <p className="text-on-surface-variant text-sm">{t("prep.softSkills.methodes.subtitle")}</p>
             </div>
 
             {METHODES.map((m, i) => (
@@ -281,7 +282,7 @@ export default function SoftSkillsPage() {
 
             {/* Checklist J-1 */}
             <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm space-y-3">
-              <p className="font-bold text-on-surface">Checklist le jour J ✅</p>
+              <p className="font-bold text-on-surface">{t("prep.softSkills.methodes.checklistTitle")}</p>
               <div className="space-y-2">
                 {CHECKLIST.map(item => (
                   <button key={item} onClick={() => setChecked(p => { const n = new Set(p); n.has(item) ? n.delete(item) : n.add(item); return n; })}
@@ -293,7 +294,7 @@ export default function SoftSkillsPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-on-surface-variant text-center">{checked.size}/{CHECKLIST.length} préparé{checked.size > 1 ? "s" : ""}</p>
+              <p className="text-xs text-on-surface-variant text-center">{t("prep.softSkills.methodes.checklistProgress", { done: checked.size, total: CHECKLIST.length, plural: checked.size > 1 ? "s" : "" })}</p>
             </div>
           </>
         )}
@@ -302,21 +303,21 @@ export default function SoftSkillsPage() {
         {tab === "motivation" && (
           <>
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Reste motivé !</h2>
-              <p className="text-on-surface-variant text-sm">Chaque jour de révision compte.</p>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">{t("prep.softSkills.motivation.title")}</h2>
+              <p className="text-on-surface-variant text-sm">{t("prep.softSkills.motivation.subtitle")}</p>
             </div>
 
             <div className="rounded-2xl p-6 text-center space-y-3 text-white" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
               <span className="material-symbols-outlined text-[40px] text-white/80" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
               <p className="text-lg font-bold leading-snug">&ldquo;{QUOTES[quoteIdx]}&rdquo;</p>
-              <p className="text-white/70 text-xs">Citation du jour</p>
+              <p className="text-white/70 text-xs">{t("prep.softSkills.motivation.quoteLabel")}</p>
             </div>
 
             {[
-              { icon: "🎓", title: "Ton objectif", desc: "Avoir ton diplôme, c'est ouvrir la porte à toutes les opportunités." },
-              { icon: "💪", title: "Tu as déjà commencé", desc: "Le fait d'être ici et de réviser te place déjà dans le top." },
-              { icon: "🌟", title: "Chaque progrès compte", desc: "Même 30 minutes de révision sérieuse font avancer." },
-              { icon: "🚀", title: "GSN Learn t'attend", desc: "Après ton examen, lance-toi dans une formation pro avec GSN Learn." },
+              { icon: "🎓", title: t("prep.softSkills.motivation.card1.title"), desc: t("prep.softSkills.motivation.card1.desc") },
+              { icon: "💪", title: t("prep.softSkills.motivation.card2.title"), desc: t("prep.softSkills.motivation.card2.desc") },
+              { icon: "🌟", title: t("prep.softSkills.motivation.card3.title"), desc: t("prep.softSkills.motivation.card3.desc") },
+              { icon: "🚀", title: t("prep.softSkills.motivation.card4.title"), desc: t("prep.softSkills.motivation.card4.desc") },
             ].map((m, i) => (
               <div key={i} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-start gap-3">
                 <span className="text-2xl">{m.icon}</span>
@@ -330,7 +331,7 @@ export default function SoftSkillsPage() {
             <Link href="/prep/orientation"
               className="block w-full py-3.5 text-center font-black text-white rounded-2xl"
               style={{ backgroundColor: "#FF6B00" }}>
-              Voir mon orientation après l&apos;examen →
+              {t("prep.softSkills.motivation.viewOrientation")}
             </Link>
           </>
         )}

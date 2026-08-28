@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Mission = {
   id: string;
@@ -74,9 +75,16 @@ export default function MissionsPage() {
   }
 
   function durationLabel(type: string) {
-    if (type === "short") return "Court terme";
-    if (type === "long") return "Long terme";
-    return "Freelance";
+    if (type === "short") return t("work.missions.duration.short");
+    if (type === "long") return t("work.missions.duration.long");
+    return t("work.missions.duration.freelance");
+  }
+
+  function filterLabel(f: string) {
+    if (f === "Court terme") return t("work.missions.filters.short");
+    if (f === "Long terme") return t("work.missions.filters.long");
+    if (f === "Freelance") return t("work.missions.filters.freelance");
+    return t("work.missions.filters.all");
   }
 
   function durationIcon(type: string) {
@@ -108,8 +116,8 @@ export default function MissionsPage() {
       <div className="pt-24 px-6 max-w-2xl mx-auto">
 
         <div className="mb-6">
-          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-1">Missions</h1>
-          <p className="text-on-surface-variant text-sm">Opportunités publiées par des employeurs GSN.</p>
+          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-1">{t("work.missions.title")}</h1>
+          <p className="text-on-surface-variant text-sm">{t("work.missions.subtitle")}</p>
         </div>
 
         {/* Filters */}
@@ -117,7 +125,7 @@ export default function MissionsPage() {
           {FILTERS.map(f => (
             <button key={f} onClick={() => setActiveFilter(f)}
               className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${activeFilter === f ? "bg-primary text-on-primary shadow-md shadow-primary/20" : "bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-high"}`}>
-              {f}
+              {filterLabel(f)}
             </button>
           ))}
         </div>
@@ -157,7 +165,7 @@ export default function MissionsPage() {
                         <button
                           onClick={() => toggleDesc(mission.id)}
                           className="text-primary font-semibold ml-1 hover:underline">
-                          {expandedDescs.has(mission.id) ? "Voir moins" : "Voir plus"}
+                          {expandedDescs.has(mission.id) ? t("work.missions.showLess") : t("work.missions.showMore")}
                         </button>
                       )}
                     </div>
@@ -174,7 +182,7 @@ export default function MissionsPage() {
                     {mission.min_gsn_score > 0 && (
                       <span className="flex items-center gap-1 text-xs bg-surface-container-low text-on-surface-variant font-medium px-2.5 py-1 rounded-full">
                         <span className="material-symbols-outlined text-[13px]">verified</span>
-                        Score min. {mission.min_gsn_score}%
+                        {t("work.missions.minScoreBadge", { score: mission.min_gsn_score })}
                       </span>
                     )}
                   </div>
@@ -184,17 +192,17 @@ export default function MissionsPage() {
                     {applied.has(mission.id) ? (
                       <div className="flex items-center gap-1.5 text-sm text-primary font-semibold">
                         <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                        Candidature envoyée
+                        {t("work.missions.applied")}
                       </div>
                     ) : userScore < mission.min_gsn_score ? (
                       <div className="flex items-center gap-1.5 text-sm text-outline font-medium">
                         <span className="material-symbols-outlined text-[18px]">lock</span>
-                        Score {mission.min_gsn_score}% requis (vous avez {userScore}%)
+                        {t("work.missions.scoreRequired", { required: mission.min_gsn_score, score: userScore })}
                       </div>
                     ) : (
                       <button onClick={() => handleApply(mission.id)}
                         className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl text-sm shadow-sm hover:opacity-90 active:scale-[0.98] transition-all">
-                        Postuler
+                        {t("work.missions.applyButton")}
                       </button>
                     )}
                   </div>
@@ -204,7 +212,7 @@ export default function MissionsPage() {
               {isUnlocked && displayedMissions.length === 0 && (
                 <div className="text-center py-16 text-on-surface-variant">
                   <span className="material-symbols-outlined text-[48px] mb-3 block text-outline-variant">search_off</span>
-                  <p className="font-medium">Aucune mission active pour ce filtre.</p>
+                  <p className="font-medium">{t("work.missions.emptyFiltered")}</p>
                 </div>
               )}
             </div>
@@ -216,14 +224,14 @@ export default function MissionsPage() {
                   <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5">
                     <span className="material-symbols-outlined text-4xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
                   </div>
-                  <h2 className="text-xl font-bold mb-2 text-on-surface">Missions verrouillées</h2>
+                  <h2 className="text-xl font-bold mb-2 text-on-surface">{t("work.missions.lockedTitle")}</h2>
                   <p className="text-on-surface-variant text-sm mb-6">
-                    Atteignez un score de <span className="text-primary font-bold">5%</span> pour accéder aux missions.
-                    <br /><span className="font-semibold text-on-surface">Score actuel : {userScore}%</span>
+                    {t("work.missions.lockedBody.before")}<span className="text-primary font-bold">5%</span>{t("work.missions.lockedBody.after")}
+                    <br /><span className="font-semibold text-on-surface">{t("work.missions.lockedBody.currentScore", { score: userScore })}</span>
                   </p>
                   <Link href="/learn/onboarding"
                     className="block w-full bg-primary text-on-primary font-bold py-3.5 rounded-xl shadow-lg shadow-primary/30 active:scale-95 transition-all text-center">
-                    Améliorer mon score
+                    {t("work.missions.lockedCta")}
                   </Link>
                 </div>
               </div>
@@ -238,23 +246,23 @@ export default function MissionsPage() {
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
         <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
         </Link>
         <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">school</span>
-          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
         </Link>
         <Link href="/missions" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>assignment</span>
-          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
         </Link>
         <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">account_balance_wallet</span>
-          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
         </Link>
         <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">stars</span>
-          <span className="text-[10px] font-medium mt-0.5">Score</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
         </Link>
       </nav>
     </main>

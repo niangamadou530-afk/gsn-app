@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { t } from "@/lib/i18n";
 
 type Etablissement = {
   nom: string; type: string; filiere: string;
@@ -50,10 +51,10 @@ export default function OrientationPage() {
       fd.append("examType", examType);
       fd.append("serie", serie);
       const res = await fetch("/api/prep-orientation", { method: "POST", body: fd });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? "Erreur serveur"); }
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error ?? t("prep.orientation.error.server")); }
       setResult(await res.json());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
+      setError(err instanceof Error ? err.message : t("prep.orientation.error.unknown"));
     } finally {
       setAnalyzing(false);
     }
@@ -68,11 +69,11 @@ export default function OrientationPage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-8">
       <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">Orientation</h1>
+        <h1 className="text-2xl font-extrabold">{t("prep.orientation.title")}</h1>
         <p className="text-on-surface-variant text-sm">
           {examType === "BFEM"
-            ? "Upload ton bulletin général annuel pour des recommandations de lycée"
-            : "Upload ton relevé de notes ou relevé de BAC pour des recommandations personnalisées"}
+            ? t("prep.orientation.subtitle.bfem")
+            : t("prep.orientation.subtitle.bac")}
         </p>
       </header>
 
@@ -87,15 +88,15 @@ export default function OrientationPage() {
               {analyzing ? (
                 <>
                   <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-                  <p className="text-sm text-on-surface-variant">Analyse en cours…</p>
+                  <p className="text-sm text-on-surface-variant">{t("prep.orientation.analyzing")}</p>
                 </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[40px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
                   <p className="font-bold text-on-surface">
-                    {examType === "BFEM" ? "Upload ton bulletin général annuel" : "Upload ton relevé de notes ou relevé de BAC"}
+                    {examType === "BFEM" ? t("prep.orientation.uploadButton.bfem") : t("prep.orientation.uploadButton.bac")}
                   </p>
-                  <p className="text-sm text-on-surface-variant">Photo ou PDF · IA Vision</p>
+                  <p className="text-sm text-on-surface-variant">{t("prep.orientation.uploadHint")}</p>
                 </>
               )}
             </button>
@@ -104,11 +105,11 @@ export default function OrientationPage() {
             {error && <p className="text-red-500 text-sm">{error}</p>}
 
             <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
-              <p className="font-bold text-on-surface text-sm mb-1">Comment ça marche ?</p>
+              <p className="font-bold text-on-surface text-sm mb-1">{t("prep.orientation.howItWorks")}</p>
               <ol className="space-y-1 text-sm text-on-surface-variant">
-                <li>1. Prends une photo de {examType === "BFEM" ? "ton bulletin général annuel" : "ton relevé de notes ou relevé de BAC"}</li>
-                <li>2. L'IA analyse tes résultats ({examType}{serie ? " " + serie : ""})</li>
-                <li>3. Tu reçois des recommandations {examType === "BFEM" ? "de lycée (séries L et S)" : "d'orientation au Sénégal"}</li>
+                <li>{examType === "BFEM" ? t("prep.orientation.step1.bfem") : t("prep.orientation.step1.bac")}</li>
+                <li>{t("prep.orientation.step2", { examInfo: `${examType}${serie ? " " + serie : ""}` })}</li>
+                <li>{examType === "BFEM" ? t("prep.orientation.step3.bfem") : t("prep.orientation.step3.bac")}</li>
               </ol>
             </div>
           </>
@@ -128,7 +129,7 @@ export default function OrientationPage() {
             {/* Notes extraites */}
             {result.notes_extraites && Object.keys(result.notes_extraites).length > 0 && (
               <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
-                <p className="font-bold text-on-surface text-sm mb-3">Notes extraites</p>
+                <p className="font-bold text-on-surface text-sm mb-3">{t("prep.orientation.extractedGrades")}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {Object.entries(result.notes_extraites).map(([m, n]) => (
                     <div key={m} className="flex items-center justify-between bg-surface-container rounded-lg px-3 py-2">
@@ -150,7 +151,7 @@ export default function OrientationPage() {
             {/* Établissements */}
             {result.etablissements_recommandes?.length > 0 && (
               <div>
-                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Établissements recommandés</p>
+                <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("prep.orientation.recommendedInstitutions")}</p>
                 <div className="space-y-3">
                   {result.etablissements_recommandes.map((e, i) => (
                     <div key={i} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm space-y-1">
@@ -172,14 +173,14 @@ export default function OrientationPage() {
             {/* GSN Learn */}
             {result.parcours_gsn_learn?.length > 0 && (
               <div className="bg-primary/5 border-2 border-primary/20 rounded-2xl p-4">
-                <p className="font-bold text-on-surface text-sm mb-2">Parcours GSN Learn recommandés</p>
+                <p className="font-bold text-on-surface text-sm mb-2">{t("prep.orientation.recommendedPaths")}</p>
                 <div className="flex flex-wrap gap-2">
                   {result.parcours_gsn_learn.map(p => (
                     <span key={p} className="text-xs font-bold bg-primary/10 text-primary px-3 py-1.5 rounded-full">{p}</span>
                   ))}
                 </div>
                 <Link href="/learn" className="mt-3 block text-center text-sm font-bold text-primary underline">
-                  Voir GSN Learn →
+                  {t("prep.orientation.viewGsnLearn")}
                 </Link>
               </div>
             )}
@@ -187,7 +188,7 @@ export default function OrientationPage() {
             <button onClick={() => { setResult(null); setFileName(""); }}
               className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
               style={{ backgroundColor: "#FF6B00" }}>
-              {examType === "BFEM" ? "Analyser un autre bulletin" : "Analyser un autre relevé de notes ou relevé de BAC"}
+              {examType === "BFEM" ? t("prep.orientation.analyzeAnother.bfem") : t("prep.orientation.analyzeAnother.bac")}
             </button>
           </>
         )}

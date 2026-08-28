@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Mission = {
   id: string | number;
@@ -16,7 +17,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [fullName, setFullName] = useState("Utilisateur");
+  const [fullName, setFullName] = useState(t("dashboard.defaultName"));
   const [score, setScore] = useState(0);
   const [profileType, setProfileType] = useState<"eleve" | "professionnel" | null>(null);
   const [recommendedMissions, setRecommendedMissions] = useState<Mission[]>([]);
@@ -46,11 +47,9 @@ export default function DashboardPage() {
       .single();
 
     if (error) {
-      setErrorMessage(
-        "Connexion réussie, mais impossible de charger le profil utilisateur."
-      );
+      setErrorMessage(t("dashboard.errorProfile"));
     } else {
-      setFullName(data?.name ?? "Utilisateur");
+      setFullName(data?.name ?? t("dashboard.defaultName"));
       setScore(data?.score ?? 0);
       setProfileType((data?.profile_type as "eleve" | "professionnel") ?? "professionnel");
       // Redirect eleve to PREP dashboard
@@ -75,7 +74,7 @@ export default function DashboardPage() {
     const { data: missionsData, error: missionsError } = await missionsQuery.limit(3);
 
     if (missionsError) {
-      setErrorMessage("Impossible de charger les missions recommandées.");
+      setErrorMessage(t("dashboard.errorMissions"));
     } else {
       setRecommendedMissions((missionsData ?? []) as Mission[]);
     }
@@ -95,7 +94,7 @@ export default function DashboardPage() {
           <Link href="/score" className="p-2 rounded-full hover:bg-surface-container transition-colors">
             <span className="material-symbols-outlined text-on-surface-variant">notifications</span>
           </Link>
-          <button onClick={handleSignout} className="p-2 rounded-full hover:bg-surface-container transition-colors" title="Se déconnecter">
+          <button onClick={handleSignout} className="p-2 rounded-full hover:bg-surface-container transition-colors" title={t("common.nav.signOut")}>
             <span className="material-symbols-outlined text-on-surface-variant">logout</span>
           </button>
           <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center">
@@ -108,13 +107,13 @@ export default function DashboardPage() {
 
         {/* Hero greeting */}
         <section className="space-y-3">
-          <p className="text-sm text-on-surface-variant font-medium">Tableau de bord</p>
+          <p className="text-sm text-on-surface-variant font-medium">{t("dashboard.eyebrow")}</p>
           <h1 className="text-[2.2rem] font-extrabold tracking-tight text-on-background leading-tight">
-            Bonjour,<br /><span className="text-primary">{firstName} 👋</span>
+            {t("dashboard.greeting")}<br /><span className="text-primary">{firstName} 👋</span>
           </h1>
           <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full">
             <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-            <span className="text-primary font-bold text-sm">{score} pts GSN</span>
+            <span className="text-primary font-bold text-sm">{t("dashboard.points", { score })}</span>
           </div>
         </section>
 
@@ -134,8 +133,8 @@ export default function DashboardPage() {
                   <span className="material-symbols-outlined text-primary text-[20px]">school</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-on-surface text-sm">GSN Learn</h3>
-                  <p className="text-xs text-on-surface-variant mt-0.5">Formations IA</p>
+                  <h3 className="font-bold text-on-surface text-sm">{t("dashboard.learnCard.title")}</h3>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{t("dashboard.learnCard.subtitle")}</p>
                 </div>
               </Link>
               <Link href="/missions" className="bg-surface-container-lowest p-5 rounded-2xl shadow-sm border-l-4 border-secondary space-y-3 hover:shadow-md transition-all active:scale-[0.98]">
@@ -143,8 +142,8 @@ export default function DashboardPage() {
                   <span className="material-symbols-outlined text-secondary text-[20px]">assignment</span>
                 </div>
                 <div>
-                  <h3 className="font-bold text-on-surface text-sm">GSN Work</h3>
-                  <p className="text-xs text-on-surface-variant mt-0.5">Missions & emplois</p>
+                  <h3 className="font-bold text-on-surface text-sm">{t("dashboard.workCard.title")}</h3>
+                  <p className="text-xs text-on-surface-variant mt-0.5">{t("dashboard.workCard.subtitle")}</p>
                 </div>
               </Link>
             </div>
@@ -153,8 +152,8 @@ export default function DashboardPage() {
             <Link href="/wallet" className="block bg-gradient-to-br from-primary to-primary-container p-5 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.99]">
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <h3 className="font-bold text-on-primary">GSN Pay</h3>
-                  <p className="text-xs text-on-primary/80">Suis tes gains et paiements</p>
+                  <h3 className="font-bold text-on-primary">{t("dashboard.payCard.title")}</h3>
+                  <p className="text-xs text-on-primary/80">{t("dashboard.payCard.subtitle")}</p>
                 </div>
                 <span className="material-symbols-outlined text-on-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
               </div>
@@ -165,14 +164,14 @@ export default function DashboardPage() {
         {/* Recommended missions */}
         <section className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold tracking-tight text-on-surface">Pour toi</h2>
-            <Link href="/missions" className="text-primary text-xs font-bold hover:underline">Voir tout</Link>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">{t("dashboard.forYou")}</h2>
+            <Link href="/missions" className="text-primary text-xs font-bold hover:underline">{t("dashboard.seeAll")}</Link>
           </div>
 
           {!loading && recommendedMissions.length === 0 ? (
             <div className="bg-surface-container-low rounded-2xl p-6 text-center">
               <span className="material-symbols-outlined text-3xl text-outline-variant mb-2 block">search_off</span>
-              <p className="text-on-surface-variant text-sm">Aucune mission recommandée pour le moment.</p>
+              <p className="text-on-surface-variant text-sm">{t("dashboard.noMissions")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -187,7 +186,7 @@ export default function DashboardPage() {
                       <p className="text-xs text-on-surface-variant mt-0.5 line-clamp-1">{mission.description}</p>
                     </div>
                   </div>
-                  <span className="text-primary font-bold text-sm shrink-0">{mission.reward} pts</span>
+                  <span className="text-primary font-bold text-sm shrink-0">{mission.reward} {t("dashboard.points.short")}</span>
                 </div>
               ))}
             </div>
@@ -201,8 +200,8 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
             </div>
             <div>
-              <p className="font-bold text-on-surface text-sm">Skill Passport</p>
-              <p className="text-xs text-on-surface-variant">Voir mon score & certifications</p>
+              <p className="font-bold text-on-surface text-sm">{t("dashboard.skillPassport.title")}</p>
+              <p className="text-xs text-on-surface-variant">{t("dashboard.skillPassport.subtitle")}</p>
             </div>
           </div>
           <span className="material-symbols-outlined text-on-surface-variant">arrow_forward_ios</span>
@@ -213,23 +212,23 @@ export default function DashboardPage() {
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
         <Link href="/dashboard" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
         </Link>
         {profileType !== "eleve" && (
           <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">school</span>
-            <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
           </Link>
         )}
         {profileType !== "eleve" && (
           <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">assignment</span>
-            <span className="text-[10px] font-medium mt-0.5">Missions</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
           </Link>
         )}
         <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">stars</span>
-          <span className="text-[10px] font-medium mt-0.5">Score</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
         </Link>
       </nav>
     </main>

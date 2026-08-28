@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type StudentData = {
   exam_type: string;
@@ -44,7 +45,7 @@ export default function ParentPage() {
     const code = Math.random().toString(36).slice(2, 8).toUpperCase();
     const { error } = await supabase.from("prep_parent_links").upsert({
       student_user_id: user.id,
-      parent_email: myEmail || "non-renseigné",
+      parent_email: myEmail || t("prep.parent.emailNotProvided"),
       access_code: code,
     }, { onConflict: "student_user_id" });
     if (!error) { setMyCode(code); setCodeSaved(true); }
@@ -65,19 +66,20 @@ export default function ParentPage() {
 
       const studentId = link[0].student_user_id;
 
-      const [{ data: stu }, { data: prog }, { data: res }] = await Promise.all([
+      const [{ data: profile }, { data: stu }, { data: prog }, { data: res }] = await Promise.all([
+        supabase.from("users").select("name").eq("id", studentId).single(),
         supabase.from("prep_students").select("*").eq("user_id", studentId).limit(1),
         supabase.from("prep_programs").select("exam_date").eq("user_id", studentId).limit(1),
         supabase.from("prep_results").select("subject, score, created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
       ]);
 
-      setStudentName((stu?.[0] as { prenom?: string | null } | undefined)?.prenom ?? "Élève");
+      setStudentName(profile?.name ?? t("prep.parent.studentFallback"));
       setStudentData((stu?.[0] as StudentData) ?? null);
       setExamDate(prog?.[0]?.exam_date ?? "");
       setResults((res ?? []) as typeof results);
       setMode("student_view");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Erreur");
+      setError(e instanceof Error ? e.message : t("prep.parent.error.generic"));
     } finally {
       setLoading(false);
     }
@@ -100,7 +102,7 @@ export default function ParentPage() {
         <Link href="/prep" className="text-outline hover:text-on-surface">
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </Link>
-        <p className="font-bold text-on-surface">Espace Parent</p>
+        <p className="font-bold text-on-surface">{t("prep.parent.title")}</p>
       </header>
 
       <div className="max-w-xl mx-auto px-6 py-8 space-y-6">
@@ -108,19 +110,19 @@ export default function ParentPage() {
         {/* Student: generate code */}
         {isStudent && (
           <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 space-y-3">
-            <p className="font-bold text-on-surface">Partage ta progression avec tes parents</p>
-            <p className="text-sm text-on-surface-variant">Génère un code que tes parents peuvent entrer pour suivre ta progression.</p>
+            <p className="font-bold text-on-surface">{t("prep.parent.share.title")}</p>
+            <p className="text-sm text-on-surface-variant">{t("prep.parent.share.desc")}</p>
             <input type="email" value={myEmail} onChange={e => setMyEmail(e.target.value)}
-              placeholder="Email du parent (optionnel)"
+              placeholder={t("prep.parent.share.emailPlaceholder")}
               className="w-full p-3 rounded-xl border-2 border-outline-variant/30 bg-surface text-sm focus:border-primary focus:outline-none" />
             <button onClick={generateCode}
               className="w-full py-3 font-bold text-white rounded-xl text-sm"
               style={{ backgroundColor: "#FF6B00" }}>
-              Générer mon code parental
+              {t("prep.parent.share.generateButton")}
             </button>
             {codeSaved && myCode && (
               <div className="bg-white border-2 border-green-400 rounded-xl p-4 text-center">
-                <p className="text-xs text-on-surface-variant mb-1">Donne ce code à tes parents</p>
+                <p className="text-xs text-on-surface-variant mb-1">{t("prep.parent.share.giveCode")}</p>
                 <p className="text-3xl font-black text-on-surface tracking-widest">{myCode}</p>
               </div>
             )}
@@ -131,8 +133,8 @@ export default function ParentPage() {
         {mode === "lookup" && (
           <>
             <div>
-              <h1 className="text-2xl font-extrabold text-on-surface mb-1">Suivre la progression de mon enfant</h1>
-              <p className="text-on-surface-variant text-sm">Entrez le code fourni par votre enfant pour accéder à son tableau de bord.</p>
+              <h1 className="text-2xl font-extrabold text-on-surface mb-1">{t("prep.parent.lookup.title")}</h1>
+              <p className="text-on-surface-variant text-sm">{t("prep.parent.lookup.desc")}</p>
             </div>
 
             <div className="space-y-3">
@@ -140,14 +142,14 @@ export default function ParentPage() {
                 type="text"
                 value={accessCode}
                 onChange={e => setAccessCode(e.target.value.toUpperCase())}
-                placeholder="Ex : AB12CD"
+                placeholder={t("prep.parent.lookup.placeholder")}
                 maxLength={6}
                 className="w-full p-4 text-center text-2xl font-black tracking-widest rounded-2xl border-2 border-outline-variant/30 bg-surface-container-lowest focus:border-primary focus:outline-none uppercase" />
               {error && <p className="text-red-500 text-sm text-center">{error}</p>}
               <button onClick={lookupCode} disabled={loading || accessCode.length < 6}
                 className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all"
                 style={{ backgroundColor: "#FF6B00" }}>
-                {loading ? "Recherche…" : "Accéder au suivi"}
+                {loading ? t("prep.parent.lookup.searching") : t("prep.parent.lookup.submit")}
               </button>
             </div>
           </>
@@ -157,10 +159,10 @@ export default function ParentPage() {
         {mode === "not_found" && (
           <div className="text-center py-10 space-y-3">
             <span className="material-symbols-outlined text-[48px] text-outline-variant">search_off</span>
-            <p className="font-bold text-on-surface">Code introuvable</p>
-            <p className="text-sm text-on-surface-variant">Vérifiez le code avec votre enfant.</p>
+            <p className="font-bold text-on-surface">{t("prep.parent.notFound.title")}</p>
+            <p className="text-sm text-on-surface-variant">{t("prep.parent.notFound.desc")}</p>
             <button onClick={() => { setMode("lookup"); setAccessCode(""); }} className="text-primary font-bold text-sm hover:underline">
-              Réessayer
+              {t("prep.parent.notFound.retry")}
             </button>
           </div>
         )}
@@ -174,7 +176,7 @@ export default function ParentPage() {
               </div>
               <div>
                 <p className="font-extrabold text-on-surface text-lg">{studentName}</p>
-                <p className="text-sm text-on-surface-variant">{studentData.exam_type}{studentData.serie ? " série " + studentData.serie : ""} · {studentData.country}</p>
+                <p className="text-sm text-on-surface-variant">{studentData.exam_type}{studentData.serie ? " " + t("prep.parent.serieSuffix", { serie: studentData.serie }) : ""} · {studentData.country}</p>
               </div>
             </div>
 
@@ -182,7 +184,7 @@ export default function ParentPage() {
             {daysLeft() !== null && (
               <div className="rounded-2xl p-4 text-white flex items-center justify-between" style={{ background: "linear-gradient(135deg,#FF6B00,#FF8C40)" }}>
                 <div>
-                  <p className="text-white/80 text-sm">Compte à rebours</p>
+                  <p className="text-white/80 text-sm">{t("prep.parent.countdown")}</p>
                   <p className="text-3xl font-black">J-{daysLeft()}</p>
                 </div>
                 <span className="material-symbols-outlined text-[40px] text-white/30" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
@@ -192,9 +194,9 @@ export default function ParentPage() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Score moyen", value: `${globalAvg}%`, color: "text-primary" },
-                { label: "Jours révisés", value: reviewedDays.toString(), color: "text-green-600" },
-                { label: "Examens blancs", value: results.length.toString(), color: "text-purple-600" },
+                { label: t("prep.parent.stats.avgScore"), value: `${globalAvg}%`, color: "text-primary" },
+                { label: t("prep.parent.stats.daysReviewed"), value: reviewedDays.toString(), color: "text-green-600" },
+                { label: t("prep.parent.stats.mockExams"), value: results.length.toString(), color: "text-purple-600" },
               ].map(s => (
                 <div key={s.label} className="bg-surface-container-lowest rounded-2xl p-4 text-center shadow-sm">
                   <p className={`text-2xl font-extrabold ${s.color}`}>{s.value}</p>
@@ -205,7 +207,7 @@ export default function ParentPage() {
 
             {/* Levels */}
             <div className="space-y-2">
-              <p className="font-bold text-on-surface">Niveau par matière</p>
+              <p className="font-bold text-on-surface">{t("prep.parent.levelsTitle")}</p>
               {Object.entries(studentData.level_per_subject).map(([subj, info]) => (
                 <div key={subj} className="bg-surface-container-lowest rounded-xl p-3 shadow-sm flex items-center justify-between gap-3">
                   <p className="text-sm font-semibold text-on-surface flex-1">{subj}</p>
@@ -224,7 +226,7 @@ export default function ParentPage() {
             {/* Recent exams */}
             {results.length > 0 && (
               <div className="space-y-2">
-                <p className="font-bold text-on-surface">Derniers examens blancs</p>
+                <p className="font-bold text-on-surface">{t("prep.parent.recentExams")}</p>
                 {results.slice(0, 5).map((r, i) => (
                   <div key={i} className="bg-surface-container-lowest rounded-xl p-3 shadow-sm flex items-center justify-between">
                     <p className="text-sm font-semibold text-on-surface">{r.subject}</p>
@@ -239,7 +241,7 @@ export default function ParentPage() {
 
             <button onClick={() => { setMode("lookup"); setAccessCode(""); }}
               className="w-full py-3 border-2 border-outline-variant/30 rounded-xl font-bold text-on-surface-variant text-sm hover:bg-surface-container transition-colors">
-              Entrer un autre code
+              {t("prep.parent.enterAnotherCode")}
             </button>
           </>
         )}

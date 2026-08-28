@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { t } from "@/lib/i18n";
 
 type Epreuve = {
   id: number;
@@ -96,7 +97,7 @@ export default function BibliothequePage() {
         </Link>
         <div>
           <p className="text-xs text-on-surface-variant">🇸🇳 officedubac.sn</p>
-          <p className="font-bold text-on-surface">Épreuves BAC · BFEM Sénégal</p>
+          <p className="font-bold text-on-surface">{t("prep.bibliotheque.headerTitle")}</p>
         </div>
       </header>
 
@@ -104,7 +105,7 @@ export default function BibliothequePage() {
 
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
           <span className="material-symbols-outlined text-blue-600 text-[18px] shrink-0 mt-0.5">info</span>
-          <p className="text-xs text-blue-800">Les épreuves s&apos;ouvrent sur <strong>officedubac.sn</strong>, la source officielle de l&apos;Office du Baccalauréat du Sénégal.</p>
+          <p className="text-xs text-blue-800">{t("prep.bibliotheque.infoPart1")}<strong>officedubac.sn</strong>{t("prep.bibliotheque.infoPart2")}</p>
         </div>
 
         {/* Filters */}
@@ -150,7 +151,7 @@ export default function BibliothequePage() {
         </div>
 
         <p className="text-sm text-on-surface-variant font-medium">
-          {filtered.length} épreuve{filtered.length !== 1 ? "s" : ""} · Sénégal
+          {t(filtered.length !== 1 ? "prep.bibliotheque.resultsCountPlural" : "prep.bibliotheque.resultsCountSingular", { count: filtered.length })}
         </p>
 
         {/* List */}
@@ -171,7 +172,7 @@ export default function BibliothequePage() {
                     </span>
                     <span className="text-[11px] text-on-surface-variant font-medium">{e.annee}</span>
                     {e.hasCorrige && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">✓ Corrigé</span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-100 text-green-700">{t("prep.bibliotheque.correctedBadge")}</span>
                     )}
                   </div>
                   <p className="font-bold text-on-surface">{e.matiere}</p>
@@ -181,12 +182,12 @@ export default function BibliothequePage() {
                   <a href={officedubacUrl(e)} target="_blank" rel="noopener noreferrer"
                     className="px-3 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-xl hover:bg-blue-100 transition-colors flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                    Voir
+                    {t("prep.bibliotheque.viewLink")}
                   </a>
                   <button
                     onClick={() => setExpanded(expanded === e.id ? null : e.id)}
                     className="px-3 py-1.5 bg-primary/10 text-primary font-bold text-xs rounded-xl hover:bg-primary/20 transition-colors">
-                    {expanded === e.id ? "Fermer" : "Quiz"}
+                    {expanded === e.id ? t("prep.bibliotheque.closeLabel") : t("prep.bibliotheque.quizLabel")}
                   </button>
                 </div>
               </div>
@@ -196,12 +197,12 @@ export default function BibliothequePage() {
                   <div className="bg-surface-container rounded-xl p-4 text-sm space-y-3">
                     <p className="font-bold text-on-surface">{e.matiere} {e.examen}{e.serie ? " " + e.serie : ""} {e.annee}</p>
                     <p className="text-on-surface-variant text-xs leading-relaxed">
-                      Entraîne-toi sur ce type d&apos;épreuve avec des questions générées par l&apos;IA à partir du programme officiel.
+                      {t("prep.bibliotheque.quizHint")}
                     </p>
                     <Link href={`/prep/simulateur?matiere=${encodeURIComponent(e.matiere)}`}
                       className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline">
                       <span className="material-symbols-outlined text-[14px]">quiz</span>
-                      Examen blanc — {e.matiere}
+                      {t("prep.bibliotheque.mockExamLink", { matiere: e.matiere })}
                     </Link>
                   </div>
                 </div>
@@ -213,7 +214,7 @@ export default function BibliothequePage() {
         {filtered.length === 0 && (
           <div className="text-center py-16">
             <span className="material-symbols-outlined text-[48px] text-outline-variant block mb-3">search_off</span>
-            <p className="text-on-surface-variant font-medium">Aucune épreuve pour ces filtres.</p>
+            <p className="text-on-surface-variant font-medium">{t("prep.bibliotheque.emptyState")}</p>
           </div>
         )}
 
@@ -221,7 +222,7 @@ export default function BibliothequePage() {
         <a href="https://www.officedubac.sn" target="_blank" rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border-2 border-outline-variant/30 text-sm font-bold text-on-surface-variant hover:border-primary hover:text-primary transition-colors">
           <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-          Toutes les épreuves sur officedubac.sn
+          {t("prep.bibliotheque.allExamsLink")}
         </a>
 
       </div>

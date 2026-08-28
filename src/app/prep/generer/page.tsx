@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres, getInfoMatiere } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
+import { t } from "@/lib/i18n";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
 type GenType   = "flashcards" | "quiz" | "resume";
 type QuizMode  = "qcm" | "redaction";
 type Phase =
-  | "setup_b"
+  | "home"
+  | "setup_a" | "setup_b"
   | "generating"
   | "flashcards_result"
   | "quiz_qcm"
@@ -46,7 +48,11 @@ function GenererPageInner() {
   const [serie, setSerie]       = useState("");
   const [prenom, setPrenom]     = useState("");
   const [userId, setUserId]     = useState<string | null>(null);
-  const [authToken, setAuthToken] = useState("");
+
+  // Mode A
+  const [fileA, setFileA]         = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState("");
+  const [matiereA, setMatiereA]   = useState("");
 
   // Mode B
   const [matiereB, setMatiereB]   = useState("");
@@ -74,11 +80,12 @@ function GenererPageInner() {
   const [videos, setVideos]             = useState<YoutubeVideo[]>([]);
   const [videoPlaying, setVideoPlaying] = useState<string | null>(null);
 
-  const [phase, setPhase]     = useState<Phase>("setup_b");
+  const [phase, setPhase]     = useState<Phase>("home");
   const [error, setError]     = useState("");
+  const [mode, setMode]       = useState<"A" | "B" | null>(null);
   const [flashSaved, setFlashSaved]   = useState(false);
   const [resumeSaved, setResumeSaved] = useState(false);
-  const [retrySeconds, setRetrySeconds] = useState(0);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // Sections sauvegardées
   const [savedFlashcards, setSavedFlashcards] = useState<SavedFlashcard[]>([]);
@@ -109,24 +116,14 @@ function GenererPageInner() {
   }
 
   async function toggleFlashMaitrisee(id: string, current: boolean) {
-    if (!userId) return;
-    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id).eq("user_id", userId);
+    await supabase.from("flashcards").update({ maitrisee: !current }).eq("id", id);
     setSavedFlashcards(prev => prev.map(f => f.id === id ? { ...f, maitrisee: !current } : f));
   }
-
-  useEffect(() => {
-    if (retrySeconds <= 0) return;
-    const t = setTimeout(() => setRetrySeconds(s => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [retrySeconds]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { router.push("/login"); return; }
       setUserId(user.id);
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setAuthToken(session?.access_token ?? "");
-      });
       supabase.from("prep_students")
         .select("exam_type, serie, prenom")
         .eq("user_id", user.id)
@@ -144,6 +141,8 @@ function GenererPageInner() {
           if (pMat) {
             setMatiereB(pMat);
             if (pChap) setChapitreB(pChap);
+            setMode("B");
+            setPhase("setup_b");
           }
         });
     });
@@ -153,9 +152,22 @@ function GenererPageInner() {
   function matieres(): string[] { return getMatieres(examType, serie); }
   function chapitres(m: string): string[] { return getChapitres(examType, serie, m); }
 
-  function activeMat(): string { return matiereB; }
+  function activeMat(): string { return mode === "A" ? matiereA : matiereB; }
   function activeChapitre(): string {
+    if (mode === "A") return "";
     return chapitreB === "Autre" || chapitreB === "" ? themeLibre : chapitreB;
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    setFileA(f);
+    if (f.type.startsWith("image/")) {
+      const url = URL.createObjectURL(f);
+      setFilePreview(url);
+    } else {
+      setFilePreview("");
+    }
   }
 
   async function fetchVideos(matiere: string, chapitre: string) {
@@ -180,33 +192,43 @@ function GenererPageInner() {
     const chap = activeChapitre();
 
     try {
-      const body: Record<string, unknown> = {
-        mode: "knowledge",
-        type: genType,
-        quizMode,
-        matiere: mat,
-        chapitre: chap,
-        examType,
-        serie,
-      };
+      let body: Record<string, unknown>;
+
+      if (mode === "A" && fileA) {
+        // Convert file to base64
+        const ab = await fileA.arrayBuffer();
+        const b64 = Buffer.from(ab).toString("base64");
+        body = {
+          mode: "document",
+          type: genType,
+          quizMode,
+          matiere: mat,
+          fileBase64: b64,
+          fileType: fileA.type,
+          examType,
+          serie,
+        };
+      } else {
+        body = {
+          mode: "knowledge",
+          type: genType,
+          quizMode,
+          matiere: mat,
+          chapitre: chap,
+          examType,
+          serie,
+        };
+      }
 
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      if (res.status === 503) {
-        const e = await res.json();
-        setError(e.error ?? "Beaucoup de demandes en ce moment. Réessaie dans quelques secondes.");
-        setRetrySeconds(5);
-        setPhase("setup_b");
-        return;
-      }
-
       if (!res.ok) {
         const e = await res.json();
-        throw new Error(e.error ?? "Erreur serveur");
+        throw new Error(e.error ?? t("prep.generer.error.server"));
       }
 
       const data = await res.json();
@@ -243,8 +265,8 @@ function GenererPageInner() {
         setPhase("resume_result");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Erreur inconnue");
-      setPhase("setup_b");
+      setError(err instanceof Error ? err.message : t("prep.generer.error.unknown"));
+      setPhase(mode === "A" ? "setup_a" : "setup_b");
     }
   }
 
@@ -272,13 +294,13 @@ function GenererPageInner() {
 
   async function saveResume(texte: string, mat: string, chap: string) {
     if (!texte || !userId) {
-      setError(`saveResume bloqué: texte=${!!texte} userId=${!!userId}`);
+      setError(t("prep.generer.error.saveResumeBlocked", { texte: String(!!texte), userId: String(!!userId) }));
       return;
     }
     const { error } = await supabase.from("prep_resumes").insert({
       user_id: userId, matiere: mat, chapitre: chap, contenu: texte,
     });
-    if (error) setError(`Erreur sauvegarde résumé: ${error.message} (code: ${error.code})`);
+    if (error) setError(t("prep.generer.error.saveResumeError", { message: error.message, code: error.code }));
     else setResumeSaved(true);
   }
 
@@ -307,7 +329,7 @@ function GenererPageInner() {
     try {
       const res = await fetch("/api/prep-generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mode: "evaluate",
           questions: redactionQs,
@@ -325,7 +347,7 @@ function GenererPageInner() {
       await saveQuizResult(score, total);
       setPhase("quiz_result");
     } catch {
-      setError("Erreur lors de l'évaluation");
+      setError(t("prep.generer.error.evaluation"));
     } finally {
       setRedactionEvaluating(false);
     }
@@ -343,7 +365,116 @@ function GenererPageInner() {
   }
 
   /* ── Render ── */
-  const genLabel = genType === "flashcards" ? "Flashcards" : genType === "quiz" ? "Quiz" : "Résumé";
+  const genLabel = genType === "flashcards" ? t("prep.generer.genLabel.flashcards") : genType === "quiz" ? t("prep.generer.genLabel.quiz") : t("prep.generer.genLabel.resume");
+
+  // ── HOME ──
+  if (phase === "home") return (
+    <main className="min-h-screen bg-surface text-on-surface">
+      <header className="px-6 pt-8 pb-4">
+        <h1 className="text-2xl font-extrabold">{t("prep.generer.home.title")}</h1>
+        <p className="text-on-surface-variant text-sm mt-1">{t("prep.generer.home.subtitle")}</p>
+      </header>
+      <div className="px-6 space-y-4 pb-8">
+        <p className="font-bold text-on-surface">{t("prep.generer.home.howToWork")}</p>
+        <button
+          onClick={() => { setMode("A"); setPhase("setup_a"); }}
+          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
+          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+          <div>
+            <p className="font-extrabold text-on-surface text-lg">{t("prep.generer.home.optionA.title")}</p>
+            <p className="text-sm text-on-surface-variant mt-0.5">{t("prep.generer.home.optionA.desc")}</p>
+          </div>
+        </button>
+        <button
+          onClick={() => { setMode("B"); setPhase("setup_b"); }}
+          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
+          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+          <div>
+            <p className="font-extrabold text-on-surface text-lg">{t("prep.generer.home.optionB.title")}</p>
+            <p className="text-sm text-on-surface-variant mt-0.5">{t("prep.generer.home.optionB.desc")}</p>
+          </div>
+        </button>
+
+        {/* Bibliothèque */}
+        <div className="pt-2">
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("prep.generer.home.savedContent")}</p>
+          <div className="grid grid-cols-3 gap-3">
+            {([
+              { key: "mes_flashcards", icon: "style",        label: t("prep.generer.home.myFlashcards"), color: "#6366f1" },
+              { key: "mes_quiz",       icon: "quiz",          label: t("prep.generer.home.myQuiz"),       color: "#10b981" },
+              { key: "mes_resumes",    icon: "auto_stories",  label: t("prep.generer.home.myResumes"),    color: "#f59e0b" },
+            ] as const).map(s => (
+              <button key={s.key}
+                onClick={() => loadLibrary(s.key)}
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
+                <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+
+  // ── SETUP A ──
+  if (phase === "setup_a") return (
+    <main className="min-h-screen bg-surface text-on-surface">
+      <PageHeader title={t("prep.generer.setupA.headerTitle")} onBack={() => setPhase("home")} />
+      <div className="px-6 py-4 space-y-5">
+
+        {/* Upload */}
+        <div>
+          <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.step1")}</p>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="w-full h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+            {filePreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={filePreview} alt="preview" className="h-28 object-contain rounded-xl" />
+            ) : fileA ? (
+              <>
+                <span className="material-symbols-outlined text-[36px] text-primary">description</span>
+                <p className="text-sm font-semibold text-primary">{fileA.name}</p>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[36px] text-primary">add_photo_alternate</span>
+                <p className="text-sm text-on-surface-variant">{t("prep.generer.setupA.uploadHint")}</p>
+              </>
+            )}
+          </button>
+          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
+        </div>
+
+        {/* Matière */}
+        <div>
+          <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.matiereLabel")}</p>
+          <div className="flex flex-wrap gap-2">
+            {(matieres().length > 0 ? matieres() : ["Mathématiques", "Français", "SVT", "Anglais", "Histoire", "Philosophie"]).map(m => (
+              <button key={m}
+                onClick={() => setMatiereA(m)}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereA === m ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                {m}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <button
+          disabled={!fileA || !matiereA}
+          onClick={generate}
+          className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
+          style={{ backgroundColor: "#FF6B00" }}>
+          {t("prep.generer.generateButton", { genLabel })}
+        </button>
+      </div>
+    </main>
+  );
 
   // ── SETUP B ──
   if (phase === "setup_b") {
@@ -351,12 +482,12 @@ function GenererPageInner() {
     const showFree = chapitreB === "Autre" || chaps.length <= 1;
     return (
       <main className="min-h-screen bg-surface text-on-surface">
-        <PageHeader title="Générer avec l'IA" onBack={() => router.push("/prep/dashboard")} />
+        <PageHeader title={t("prep.generer.setupB.headerTitle")} onBack={() => setPhase("home")} />
         <div className="px-6 py-4 space-y-5">
 
           {/* Matière */}
           <div>
-            <p className="font-bold text-sm mb-2">1. Matière</p>
+            <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.matiereLabel")}</p>
             <div className="flex flex-wrap gap-2">
               {matieres().map(m => (
                 <button key={m}
@@ -376,17 +507,17 @@ function GenererPageInner() {
             return (
               <div className="flex gap-3 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20 text-sm">
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">Coefficient</p>
+                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.coefficient")}</p>
                   <p className="font-black text-primary text-lg">{info.coefficient}</p>
                 </div>
                 <div className="w-px bg-primary/20" />
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">Durée officielle</p>
+                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.duration")}</p>
                   <p className="font-black text-primary text-lg">{info.duree_epreuve}</p>
                 </div>
                 <div className="w-px bg-primary/20" />
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">Chapitres</p>
+                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.chapters")}</p>
                   <p className="font-black text-primary text-lg">{nbChapitres}</p>
                 </div>
               </div>
@@ -396,12 +527,12 @@ function GenererPageInner() {
           {/* Chapitre */}
           {matiereB && chaps.length > 1 && (
             <div>
-              <p className="font-bold text-sm mb-2">2. Chapitre <span className="font-normal text-on-surface-variant">(optionnel)</span></p>
+              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.chapterLabel")} <span className="font-normal text-on-surface-variant">{t("prep.generer.optionalSuffix")}</span></p>
               <select
                 value={chapitreB}
                 onChange={e => setChapitreB(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary">
-                <option value="">— Tous les chapitres —</option>
+                <option value="">{t("prep.generer.setupB.allChapters")}</option>
                 {chaps.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -415,7 +546,7 @@ function GenererPageInner() {
               <div className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10">
                   <span className="text-base">📋</span>
-                  <p className="font-bold text-primary text-xs">Ce qui sera évalué au {examType}</p>
+                  <p className="font-bold text-primary text-xs">{t("prep.generer.setupB.evaluatedAt", { examType })}</p>
                 </div>
                 <ul className="px-4 py-3 space-y-1.5">
                   {comps.map((c, i) => (
@@ -432,11 +563,11 @@ function GenererPageInner() {
           {/* Thème libre */}
           {(showFree || chaps.length <= 1) && (
             <div>
-              <p className="font-bold text-sm mb-2">Thème <span className="font-normal text-on-surface-variant">(optionnel)</span></p>
+              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.themeLabel")} <span className="font-normal text-on-surface-variant">{t("prep.generer.optionalSuffix")}</span></p>
               <input
                 value={themeLibre}
                 onChange={e => setThemeLibre(e.target.value)}
-                placeholder="Ex: Les limites, La photosynthèse, La guerre froide..."
+                placeholder={t("prep.generer.setupB.themePlaceholder")}
                 className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary"
               />
             </div>
@@ -447,31 +578,12 @@ function GenererPageInner() {
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
-            disabled={!matiereB || retrySeconds > 0}
+            disabled={!matiereB}
             onClick={generate}
             className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
             style={{ backgroundColor: "#FF6B00" }}>
-            {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : `Générer ${genLabel}`}
+            {t("prep.generer.generateButton", { genLabel })}
           </button>
-
-          {/* Bibliothèque */}
-          <div className="pt-2">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Mes contenus sauvegardés</p>
-            <div className="grid grid-cols-3 gap-3">
-              {([
-                { key: "mes_flashcards", icon: "style",       label: "Mes Flashcards", color: "#6366f1" },
-                { key: "mes_quiz",       icon: "quiz",         label: "Mes Quiz",       color: "#10b981" },
-                { key: "mes_resumes",    icon: "auto_stories", label: "Mes Résumés",    color: "#f59e0b" },
-              ] as const).map(s => (
-                <button key={s.key}
-                  onClick={() => loadLibrary(s.key)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
-                  <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
-                  <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </main>
     );
@@ -482,8 +594,8 @@ function GenererPageInner() {
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6 p-6">
       <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       <div className="text-center">
-        <p className="font-black text-xl text-on-surface">Génération en cours…</p>
-        <p className="text-on-surface-variant text-sm mt-1">L'IA prépare ton {genLabel.toLowerCase()}</p>
+        <p className="font-black text-xl text-on-surface">{t("prep.generer.generating.title")}</p>
+        <p className="text-on-surface-variant text-sm mt-1">{t("prep.generer.generating.subtitle", { genLabel: genLabel.toLowerCase() })}</p>
       </div>
     </div>
   );
@@ -494,21 +606,21 @@ function GenererPageInner() {
     const mastered = flashcards.filter(c => c.maitrisee).length;
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Flashcards · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.flashcardsResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           {/* Confirmation sauvegarde */}
           {flashSaved && (
             <div className="flex items-center gap-2 bg-green-50 border-2 border-green-200 rounded-xl px-4 py-2.5">
               <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-green-700 font-semibold text-sm">Flashcards sauvegardées</p>
+              <p className="text-green-700 font-semibold text-sm">{t("prep.generer.flashcardsResult.saved")}</p>
             </div>
           )}
 
           {/* Progress */}
           <div className="flex items-center justify-between text-sm text-on-surface-variant">
             <span>{currentCard + 1} / {flashcards.length}</span>
-            <span className="text-green-600 font-semibold">{mastered} maîtrisées</span>
+            <span className="text-green-600 font-semibold">{t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}</span>
           </div>
           <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
             <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / flashcards.length) * 100}%` }} />
@@ -519,11 +631,11 @@ function GenererPageInner() {
             onClick={() => setFlipped(f => !f)}
             className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
             style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
-            <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{flipped ? "Réponse" : "Question"}</p>
+            <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{flipped ? t("prep.generer.card.answer") : t("prep.generer.card.question")}</p>
             {flipped ? <VersoContent verso={card.verso} /> : (
               <p className="text-white font-bold text-lg text-center leading-relaxed">{card.recto}</p>
             )}
-            <p className="text-xs text-white/50 mt-2">Toucher pour retourner</p>
+            <p className="text-xs text-white/50 mt-2">{t("prep.generer.card.tapToFlip")}</p>
           </div>
 
           {/* Actions */}
@@ -531,12 +643,12 @@ function GenererPageInner() {
             <button
               onClick={() => toggleMaitrised(currentCard)}
               className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
-              {card.maitrisee ? "✓ Maîtrisée" : "Je maîtrise"}
+              {card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}
             </button>
             <button
               onClick={() => { setCurrentCard(i => (i + 1) % flashcards.length); setFlipped(false); }}
               className="flex-1 py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface border-2 border-outline-variant active:scale-[0.97] transition-all">
-              ↻ Suivante
+              {t("prep.generer.card.next")}
             </button>
           </div>
 
@@ -544,7 +656,7 @@ function GenererPageInner() {
             onClick={() => setCurrentCard(i => Math.max(0, i - 1))}
             disabled={currentCard === 0}
             className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
-            ← Précédente
+            {t("prep.generer.card.previous")}
           </button>
 
           {/* Générer d'autres flashcards */}
@@ -552,14 +664,14 @@ function GenererPageInner() {
             onClick={generate}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold border-2 border-primary text-primary bg-primary/5 active:scale-[0.97] transition-transform">
             <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>refresh</span>
-            Générer d'autres flashcards
+            {t("prep.generer.flashcardsResult.generateMore")}
           </button>
 
           {/* WhatsApp */}
           <button
-            onClick={() => shareWhatsApp(`J'ai révisé ${activeMat()} avec ${flashcards.length} flashcards sur GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
+            onClick={() => shareWhatsApp(t("prep.generer.share.flashcards", { matiere: activeMat(), count: flashcards.length, examType }))}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> Partager sur WhatsApp
+            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
           </button>
         </div>
 
@@ -575,11 +687,11 @@ function GenererPageInner() {
     const selected = qcmAnswers[qcmCurrent];
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Quiz QCM · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.quizQcm.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-on-surface-variant">{qcmCurrent + 1} / {qcmQuestions.length}</span>
-            <span className="text-sm font-bold text-green-600">Score : {qcmScore}</span>
+            <span className="text-sm font-bold text-green-600">{t("prep.generer.quizQcm.score", { score: qcmScore })}</span>
           </div>
           <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
             <div className="h-full transition-all" style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#FF6B00" }} />
@@ -611,7 +723,7 @@ function GenererPageInner() {
 
           {qcmShowAnswer && (
             <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-              <p className="text-blue-800 text-sm font-semibold">Explication</p>
+              <p className="text-blue-800 text-sm font-semibold">{t("prep.generer.quizQcm.explanationLabel")}</p>
               <p className="text-blue-700 text-sm mt-1">{q.explanation}</p>
             </div>
           )}
@@ -621,7 +733,7 @@ function GenererPageInner() {
               onClick={qcmNext}
               className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
               style={{ backgroundColor: "#FF6B00" }}>
-              {qcmCurrent + 1 >= qcmQuestions.length ? "Voir le résultat" : "Question suivante →"}
+              {qcmCurrent + 1 >= qcmQuestions.length ? t("prep.generer.quizQcm.seeResult") : t("prep.generer.quizQcm.nextQuestion")}
             </button>
           )}
         </div>
@@ -632,16 +744,16 @@ function GenererPageInner() {
   // ── QUIZ RÉDACTION ──
   if (phase === "quiz_redaction") return (
     <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-      <PageHeader title={`Quiz Rédaction · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
+      <PageHeader title={t("prep.generer.quizRedaction.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
       <div className="flex-1 px-6 py-4 space-y-5">
-        <p className="text-on-surface-variant text-sm">Réponds à chaque question, puis soumets pour être évalué par l'IA.</p>
+        <p className="text-on-surface-variant text-sm">{t("prep.generer.quizRedaction.instructions")}</p>
         {redactionQs.map((q, i) => (
           <div key={q.id} className="space-y-2">
             <p className="font-bold text-on-surface">Q{i + 1}. {q.question}</p>
             <textarea
               value={redactionAnswers[i] ?? ""}
               onChange={e => setRedactionAnswers(prev => ({ ...prev, [i]: e.target.value }))}
-              placeholder="Écris ta réponse ici..."
+              placeholder={t("prep.generer.quizRedaction.answerPlaceholder")}
               className="w-full min-h-[150px] px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary resize-y"
             />
           </div>
@@ -654,7 +766,7 @@ function GenererPageInner() {
           disabled={redactionEvaluating || redactionQs.some((_, i) => !redactionAnswers[i]?.trim())}
           className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 active:scale-[0.98] transition-transform"
           style={{ backgroundColor: "#FF6B00" }}>
-          {redactionEvaluating ? "Évaluation en cours…" : "Soumettre et évaluer"}
+          {redactionEvaluating ? t("prep.generer.quizRedaction.evaluating") : t("prep.generer.quizRedaction.submit")}
         </button>
       </div>
     </main>
@@ -671,7 +783,7 @@ function GenererPageInner() {
 
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Résultat · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.quizResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           <div className="rounded-2xl p-6 text-center text-white" style={{ backgroundColor: pct >= 60 ? "#22c55e" : pct >= 40 ? "#f97316" : "#ef4444" }}>
@@ -691,16 +803,16 @@ function GenererPageInner() {
           )}
 
           <button
-            onClick={() => shareWhatsApp(`J'ai obtenu ${finalScore}/${total} en ${activeMat()} sur GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
+            onClick={() => shareWhatsApp(t("prep.generer.share.quiz", { score: finalScore, total, matiere: activeMat(), examType }))}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> Partager sur WhatsApp
+            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
           </button>
 
           <button
-            onClick={() => setPhase("setup_b")}
+            onClick={() => setPhase("home")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "#FF6B00" }}>
-            Nouvelle génération
+            {t("prep.generer.newGeneration")}
           </button>
         </div>
 
@@ -714,13 +826,13 @@ function GenererPageInner() {
     const texte = (resume as { texte?: string }).texte ?? "";
     return (
       <main className="min-h-screen bg-surface text-on-surface flex flex-col">
-        <PageHeader title={`Résumé · ${activeMat()}`} onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.resumeResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
           {resumeSaved && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 border border-green-200">
               <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-sm font-semibold text-green-700">Résumé sauvegardé ✓</p>
+              <p className="text-sm font-semibold text-green-700">{t("prep.generer.resumeResult.saved")}</p>
             </div>
           )}
 
@@ -733,16 +845,16 @@ function GenererPageInner() {
           <ResumeDisplay texte={texte} matiere={activeMat()} />
 
           <button
-            onClick={() => shareWhatsApp(`Je viens de créer un résumé de ${activeMat()} avec GSN Prep 🔥 Prépare ton ${examType} avec moi !\n\n👉 gsn-app.vercel.app\n🔑 Code d'invitation : BFEM2026`)}
+            onClick={() => shareWhatsApp(t("prep.generer.share.resume", { matiere: activeMat(), examType }))}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> Partager sur WhatsApp
+            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
           </button>
 
           <button
-            onClick={() => setPhase("setup_b")}
+            onClick={() => setPhase("home")}
             className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
             style={{ backgroundColor: "#FF6B00" }}>
-            Nouvelle génération
+            {t("prep.generer.newGeneration")}
           </button>
         </div>
 
@@ -764,7 +876,7 @@ function GenererPageInner() {
 
             <div className="flex items-center justify-between text-sm text-on-surface-variant">
               <span>{libCardIdx + 1} / {libDeck.length}</span>
-              <span className="text-green-600 font-semibold">{mastered} maîtrisées</span>
+              <span className="text-green-600 font-semibold">{t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}</span>
             </div>
             <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
               <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / libDeck.length) * 100}%` }} />
@@ -775,23 +887,23 @@ function GenererPageInner() {
               onClick={() => setLibCardFlipped(f => !f)}
               className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
               style={{ backgroundColor: libCardFlipped ? "#1e293b" : "#FF6B00" }}>
-              <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{libCardFlipped ? "Réponse" : "Question"}</p>
+              <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{libCardFlipped ? t("prep.generer.card.answer") : t("prep.generer.card.question")}</p>
               {libCardFlipped ? <VersoContent verso={card.verso} /> : (
                 <p className="text-white font-bold text-lg text-center leading-relaxed">{card.recto}</p>
               )}
-              <p className="text-xs text-white/50 mt-2">Toucher pour retourner</p>
+              <p className="text-xs text-white/50 mt-2">{t("prep.generer.card.tapToFlip")}</p>
             </div>
 
             <div className="flex gap-3">
               <button
                 onClick={() => { toggleFlashMaitrisee(card.id, card.maitrisee); }}
                 className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
-                {card.maitrisee ? "✓ Maîtrisée" : "Je maîtrise"}
+                {card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}
               </button>
               <button
                 onClick={() => { setLibCardIdx(i => (i + 1) % libDeck.length); setLibCardFlipped(false); }}
                 className="flex-1 py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface border-2 border-outline-variant active:scale-[0.97] transition-all">
-                ↻ Suivante
+                {t("prep.generer.card.next")}
               </button>
             </div>
 
@@ -799,7 +911,7 @@ function GenererPageInner() {
               onClick={() => { setLibCardIdx(i => Math.max(0, i - 1)); setLibCardFlipped(false); }}
               disabled={libCardIdx === 0}
               className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
-              ← Précédente
+              {t("prep.generer.card.previous")}
             </button>
           </div>
         </main>
@@ -815,11 +927,11 @@ function GenererPageInner() {
     }
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Flashcards" onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.home.myFlashcards")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {Object.keys(grouped).length === 0 ? (
-              <EmptyLib icon="style" msg="Aucune flashcard sauvegardée" sub="Génère des flashcards pour les retrouver ici." />
+              <EmptyLib icon="style" msg={t("prep.generer.library.emptyFlashcards.msg")} sub={t("prep.generer.library.emptyFlashcards.sub")} />
             ) : Object.entries(grouped).map(([group, cards]) => {
               const done = cards.filter(c => c.maitrisee).length;
               return (
@@ -832,7 +944,7 @@ function GenererPageInner() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-on-surface text-sm truncate">{group}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{cards.length} cartes · {done} maîtrisées</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t("prep.generer.library.deckStats", { count: cards.length, done })}</p>
                     <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1.5">
                       <div className="h-full bg-green-500" style={{ width: `${cards.length > 0 ? (done / cards.length) * 100 : 0}%` }} />
                     </div>
@@ -851,11 +963,11 @@ function GenererPageInner() {
   if (phase === "mes_quiz") {
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Quiz" onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.home.myQuiz")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {savedQuiz.length === 0 ? (
-              <EmptyLib icon="quiz" msg="Aucun quiz passé" sub="Génère un quiz pour voir tes résultats ici." />
+              <EmptyLib icon="quiz" msg={t("prep.generer.library.emptyQuiz.msg")} sub={t("prep.generer.library.emptyQuiz.sub")} />
             ) : savedQuiz.map(q => {
               const pct = Math.round((q.score / q.total) * 100);
               return (
@@ -866,7 +978,7 @@ function GenererPageInner() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-on-surface text-sm truncate">{q.matiere}{q.chapitre ? " · " + q.chapitre : ""}</p>
                     <p className="text-xs text-on-surface-variant mt-0.5">
-                      {q.score}/{q.total} · {q.mode === "redaction" ? "Rédaction" : "QCM"} · {new Date(q.created_at).toLocaleDateString("fr-FR")}
+                      {q.score}/{q.total} · {q.mode === "redaction" ? t("prep.generer.mode.redaction") : t("prep.generer.mode.qcm")} · {new Date(q.created_at).toLocaleDateString("fr-FR")}
                     </p>
                   </div>
                 </div>
@@ -882,11 +994,11 @@ function GenererPageInner() {
   if (phase === "mes_resumes") {
     return (
       <main className="min-h-screen bg-surface text-on-surface pb-8">
-        <PageHeader title="Mes Résumés" onBack={() => setPhase("setup_b")} />
+        <PageHeader title={t("prep.generer.home.myResumes")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
             {savedResumes.length === 0 ? (
-              <EmptyLib icon="auto_stories" msg="Aucun résumé sauvegardé" sub="Génère un résumé pour le retrouver ici." />
+              <EmptyLib icon="auto_stories" msg={t("prep.generer.library.emptyResumes.msg")} sub={t("prep.generer.library.emptyResumes.sub")} />
             ) : savedResumes.map(r => {
               const isOpen = expandedResume === r.id;
               return (
@@ -898,7 +1010,7 @@ function GenererPageInner() {
                       <span className="material-symbols-outlined text-amber-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-on-surface text-sm truncate">{r.matiere ?? "Résumé"}</p>
+                      <p className="font-bold text-on-surface text-sm truncate">{r.matiere ?? t("prep.generer.library.resumeFallback")}</p>
                       <p className="text-xs text-on-surface-variant">
                         {r.matiere}{r.chapitre ? " · " + r.chapitre : ""} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
                       </p>
@@ -1189,28 +1301,28 @@ function GenTypeSelector({
 }) {
   return (
     <div className="space-y-3">
-      <p className="font-bold text-sm">Que veux-tu générer ?</p>
+      <p className="font-bold text-sm">{t("prep.generer.typeSelector.title")}</p>
       <div className="grid grid-cols-3 gap-2">
         {([
-          { key: "flashcards", icon: "style",       label: "Flashcards" },
-          { key: "quiz",       icon: "quiz",         label: "Quiz"       },
-          { key: "resume",     icon: "auto_stories", label: "Résumé"     },
-        ] as const).map(t => (
-          <button key={t.key}
-            onClick={() => setGenType(t.key)}
-            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all ${genType === t.key ? "border-primary bg-primary/5" : "border-outline-variant"}`}>
-            <span className="material-symbols-outlined text-[22px]" style={{ color: genType === t.key ? "#FF6B00" : undefined, fontVariationSettings: genType === t.key ? "'FILL' 1" : "'FILL' 0" }}>
-              {t.icon}
+          { key: "flashcards", icon: "style",       label: t("prep.generer.genLabel.flashcards") },
+          { key: "quiz",       icon: "quiz",         label: t("prep.generer.genLabel.quiz")       },
+          { key: "resume",     icon: "auto_stories", label: t("prep.generer.genLabel.resume")     },
+        ] as const).map(opt => (
+          <button key={opt.key}
+            onClick={() => setGenType(opt.key)}
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all ${genType === opt.key ? "border-primary bg-primary/5" : "border-outline-variant"}`}>
+            <span className="material-symbols-outlined text-[22px]" style={{ color: genType === opt.key ? "#FF6B00" : undefined, fontVariationSettings: genType === opt.key ? "'FILL' 1" : "'FILL' 0" }}>
+              {opt.icon}
             </span>
-            <span className={`text-xs font-bold ${genType === t.key ? "text-primary" : "text-on-surface-variant"}`}>{t.label}</span>
+            <span className={`text-xs font-bold ${genType === opt.key ? "text-primary" : "text-on-surface-variant"}`}>{opt.label}</span>
           </button>
         ))}
       </div>
       {genType === "quiz" && (
         <div className="flex gap-2">
           {([
-            { key: "qcm",        label: "QCM" },
-            { key: "redaction",  label: "Rédaction" },
+            { key: "qcm",        label: t("prep.generer.mode.qcm") },
+            { key: "redaction",  label: t("prep.generer.mode.redaction") },
           ] as const).map(m => (
             <button key={m.key}
               onClick={() => setQuizMode(m.key)}
@@ -1246,7 +1358,7 @@ function VideoSection({
   if (videos.length === 0) return null;
   return (
     <div className="px-6 pb-6 space-y-3">
-      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Vidéos recommandées</p>
+      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{t("prep.generer.videos.title")}</p>
       {videos.map(v => (
         <div key={v.videoId} className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm">
           {videoPlaying === v.videoId ? (
@@ -1272,7 +1384,7 @@ function VideoSection({
                 <button
                   onClick={() => setVideoPlaying(v.videoId)}
                   className="mt-1 text-xs font-bold text-primary underline">
-                  Regarder
+                  {t("prep.generer.videos.watch")}
                 </button>
               </div>
             </div>

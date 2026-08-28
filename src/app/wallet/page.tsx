@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Transaction = {
   id: string | number;
   amount: number;
+  type: string | null;
   created_at: string;
 };
 
@@ -15,9 +17,17 @@ function formatDate(d: string) {
   const date = new Date(d);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-  if (diffDays === 0) return `Aujourd'hui, ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
-  if (diffDays === 1) return `Hier, ${date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
-  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  if (diffDays === 0) return t("pay.wallet.today", { time });
+  if (diffDays === 1) return t("pay.wallet.yesterday", { time });
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+}
+
+function txLabel(tx: Transaction, isCredit: boolean) {
+  if (tx.type === "mission_payment") return t("pay.wallet.tx.missionPayment");
+  if (tx.type === "contribution") return t("pay.wallet.tx.contribution");
+  if (tx.type === "withdrawal") return t("pay.wallet.tx.withdrawal");
+  return isCredit ? t("pay.wallet.tx.creditFallback") : t("pay.wallet.tx.debitFallback");
 }
 
 export default function WalletPage() {
@@ -38,7 +48,7 @@ export default function WalletPage() {
 
     // Load transactions + score in parallel
     const [txRes, profileRes] = await Promise.all([
-      supabase.from("transactions").select("id, amount, created_at")
+      supabase.from("transactions").select("id, amount, type, created_at")
         .eq("user_id", uid).order("created_at", { ascending: false }),
       supabase.from("users").select("score").eq("id", uid).single(),
     ]);
@@ -75,18 +85,18 @@ export default function WalletPage() {
           <div className="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute -left-12 -bottom-12 w-48 h-48 bg-primary-fixed/20 rounded-full blur-3xl" />
           <div className="relative z-10 flex flex-col items-center text-center">
-            <span className="text-on-primary/80 text-sm font-medium tracking-wider uppercase mb-2">Solde Total</span>
+            <span className="text-on-primary/80 text-sm font-medium tracking-wider uppercase mb-2">{t("pay.wallet.totalBalance")}</span>
             <h1 className="text-4xl font-extrabold text-on-primary tracking-tight mb-8">
-              {balance.toLocaleString("fr-FR")} pts
+              {balance.toLocaleString("en-US")} pts
             </h1>
             <div className="flex gap-4 w-full">
               <button className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95">
                 <span className="material-symbols-outlined">add_circle</span>
-                Ajouter
+                {t("pay.wallet.addFunds")}
               </button>
               <button className="flex-1 bg-surface-container-lowest text-primary py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all active:scale-95">
                 <span className="material-symbols-outlined">payments</span>
-                Retirer
+                {t("pay.wallet.withdraw")}
               </button>
             </div>
           </div>
@@ -100,41 +110,41 @@ export default function WalletPage() {
                 <span className="material-symbols-outlined text-[20px]">account_balance</span>
               </div>
               <div>
-                <h3 className="font-bold text-on-surface">Micro-crédit</h3>
+                <h3 className="font-bold text-on-surface">{t("pay.wallet.microCredit.title")}</h3>
                 {score >= 50 ? (
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full" />
-                    <span className="text-xs font-bold text-emerald-600">Éligible</span>
+                    <span className="text-xs font-bold text-emerald-600">{t("pay.wallet.microCredit.eligible")}</span>
                   </div>
                 ) : (
-                  <span className="text-xs text-on-surface-variant">{score}/50 pts requis</span>
+                  <span className="text-xs text-on-surface-variant">{t("pay.wallet.microCredit.pointsRequired", { score })}</span>
                 )}
               </div>
             </div>
             <button className={`px-4 py-2 rounded-xl text-sm font-bold shadow-sm active:scale-95 transition-all ${score >= 50 ? "bg-primary text-on-primary" : "bg-surface-container-high text-on-surface-variant"}`}>
-              {score >= 50 ? "Demander" : "Verrouillé"}
+              {score >= 50 ? t("pay.wallet.microCredit.request") : t("pay.wallet.microCredit.locked")}
             </button>
           </div>
           <p className="text-on-surface-variant text-sm leading-relaxed">
-            Boostez votre activité avec nos solutions de financement basées sur votre score GSN.
+            {t("pay.wallet.microCredit.description")}
           </p>
         </section>
 
         {/* Stats bento */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm border-l-4 border-primary space-y-1.5">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Revenus mensuel</p>
-            <p className="text-xl font-extrabold text-on-surface">{monthlyTotal.toLocaleString("fr-FR")} pts</p>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{t("pay.wallet.stats.monthlyIncome")}</p>
+            <p className="text-xl font-extrabold text-on-surface">{monthlyTotal.toLocaleString("en-US")} pts</p>
             <div className="flex items-center text-emerald-600 text-xs font-bold gap-0.5">
               <span className="material-symbols-outlined text-[16px]">trending_up</span>
-              Ce mois
+              {t("pay.wallet.stats.thisMonth")}
             </div>
           </div>
           <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm border-l-4 border-tertiary space-y-1.5">
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Score GSN</p>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{t("pay.wallet.stats.gsnScore")}</p>
             <p className="text-xl font-extrabold text-on-surface">{score} pts</p>
             <div className="flex items-center text-tertiary text-xs font-bold">
-              {score >= 50 ? "Niveau Expert" : "En progression"}
+              {score >= 50 ? t("pay.wallet.stats.expertLevel") : t("pay.wallet.stats.inProgress")}
             </div>
           </div>
         </div>
@@ -142,7 +152,7 @@ export default function WalletPage() {
         {/* Transactions */}
         <section className="space-y-4">
           <div className="flex justify-between items-end">
-            <h2 className="text-xl font-bold tracking-tight text-on-surface">Historique</h2>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">{t("pay.wallet.history.title")}</h2>
           </div>
           {loading ? (
             <div className="flex justify-center py-10">
@@ -151,7 +161,7 @@ export default function WalletPage() {
           ) : transactions.length === 0 ? (
             <div className="text-center py-10 text-on-surface-variant">
               <span className="material-symbols-outlined text-4xl mb-3 block">receipt_long</span>
-              Aucune transaction pour le moment.
+              {t("pay.wallet.history.empty")}
             </div>
           ) : (
             <div className="space-y-3">
@@ -164,16 +174,16 @@ export default function WalletPage() {
                         <span className="material-symbols-outlined">{isCredit ? "call_received" : "call_made"}</span>
                       </div>
                       <div>
-                        <p className="font-bold text-on-surface">{isCredit ? "Mission terminée" : "Dépense"}</p>
+                        <p className="font-bold text-on-surface">{txLabel(tx, isCredit)}</p>
                         <p className="text-xs text-on-surface-variant font-medium">{formatDate(tx.created_at)}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className={`font-bold ${isCredit ? "text-emerald-600" : "text-on-surface"}`}>
-                        {isCredit ? "+" : ""}{tx.amount.toLocaleString("fr-FR")} pts
+                        {isCredit ? "+" : ""}{tx.amount.toLocaleString("en-US")} pts
                       </p>
                       <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">
-                        {isCredit ? "Crédit" : "Débit"}
+                        {isCredit ? t("pay.wallet.tx.creditTag") : t("pay.wallet.tx.debitTag")}
                       </p>
                     </div>
                   </div>
@@ -189,23 +199,23 @@ export default function WalletPage() {
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
         <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
         </Link>
         <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">school</span>
-          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
         </Link>
         <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">assignment</span>
-          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
         </Link>
         <Link href="/wallet" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>account_balance_wallet</span>
-          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
         </Link>
         <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">stars</span>
-          <span className="text-[10px] font-medium mt-0.5">Score</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
         </Link>
       </nav>
     </main>

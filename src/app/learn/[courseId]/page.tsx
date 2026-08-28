@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -223,7 +224,7 @@ export default function CourseDetailPage() {
     const hasText = (exText[id] ?? "").trim().length > 0;
     const hasFile = !!exFile[id];
     if (!hasText && !hasFile) {
-      alert("Écris ta réponse ou joins un fichier avant de valider.");
+      alert(t("learn.courseDetail.exercise.validationAlert"));
       return;
     }
     const next = new Set([...exDone, id]);
@@ -257,7 +258,7 @@ export default function CourseDetailPage() {
   async function submitModQuiz(id: string, quiz: QuizQ[]) {
     const ans = mAnswers[id] ?? {};
     if (Object.keys(ans).length < quiz.length) {
-      alert(`Réponds à toutes les ${quiz.length} questions avant de valider.`);
+      alert(t("learn.courseDetail.quiz.validationAlert", { count: quiz.length }));
       return;
     }
     setMSubmitted(prev => ({ ...prev, [id]: true }));
@@ -340,7 +341,7 @@ export default function CourseDetailPage() {
           <h1 className="text-xl font-extrabold text-on-surface leading-snug">{course.title}</h1>
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-semibold">
-              <span className="text-on-surface-variant">{passedCount} / {totalMods} modules validés</span>
+              <span className="text-on-surface-variant">{t("learn.courseDetail.progress", { passed: passedCount, total: totalMods })}</span>
               <span className="text-primary">{pct}%</span>
             </div>
             <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
@@ -351,7 +352,7 @@ export default function CourseDetailPage() {
             <Link href={`/learn/${courseId}/certificate`}
               className="inline-flex items-center gap-2 bg-tertiary-fixed text-on-tertiary-fixed rounded-full px-4 py-1.5 text-xs font-bold">
               <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>workspace_premium</span>
-              Certifié · {course.test_score}% · Voir le certificat
+              {t("learn.courseDetail.certifiedBanner", { score: course.test_score ?? 0 })}
             </Link>
           )}
         </div>
@@ -367,7 +368,7 @@ export default function CourseDetailPage() {
                 className="w-full p-5 flex items-start justify-between text-left hover:bg-surface-container-low transition-colors gap-4"
               >
                 <div>
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Semaine {w.week}</span>
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{t("learn.courseDetail.week", { week: w.week })}</span>
                   <p className="font-bold text-on-surface leading-snug mt-0.5">{w.title}</p>
                   <p className="text-xs text-on-surface-variant mt-1">{w.objective}</p>
                 </div>
@@ -412,8 +413,8 @@ export default function CourseDetailPage() {
                           </div>
                           <div className="flex-1">
                             <p className="font-semibold text-sm text-on-surface">{m.title}</p>
-                            {!accessible && <p className="text-xs text-on-surface-variant mt-0.5">Valide le module précédent pour débloquer</p>}
-                            {isPassed && <p className="text-xs text-emerald-600 mt-0.5 font-medium">Quiz validé ✓</p>}
+                            {!accessible && <p className="text-xs text-on-surface-variant mt-0.5">{t("learn.courseDetail.module.locked")}</p>}
+                            {isPassed && <p className="text-xs text-emerald-600 mt-0.5 font-medium">{t("learn.courseDetail.module.passed")}</p>}
                           </div>
                           {accessible && (
                             <span className="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">
@@ -429,7 +430,12 @@ export default function CourseDetailPage() {
                             {/* Phase tabs */}
                             <div className="flex gap-1 bg-surface-container p-1 rounded-xl">
                               {(["content", "exercise", "quiz", "result"] as ModPhase[]).map((p) => {
-                                const labels: Record<ModPhase, string> = { content: "Cours", exercise: "Exercice", quiz: "Quiz", result: "Résultat" };
+                                const labels: Record<ModPhase, string> = {
+                                  content: t("learn.courseDetail.tab.content"),
+                                  exercise: t("learn.courseDetail.tab.exercise"),
+                                  quiz: t("learn.courseDetail.tab.quiz"),
+                                  result: t("learn.courseDetail.tab.result"),
+                                };
                                 const isActive = phase === p;
                                 const isDisabled =
                                   (p === "exercise" && phase === "content") ||
@@ -454,7 +460,7 @@ export default function CourseDetailPage() {
                                 {isLoadingContent ? (
                                   <div className="flex items-center gap-3 text-primary">
                                     <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin shrink-0" />
-                                    <span className="text-sm">Chargement du contenu détaillé…</span>
+                                    <span className="text-sm">{t("learn.courseDetail.content.loading")}</span>
                                   </div>
                                 ) : content?.sections ? (
                                   <div className="space-y-5">
@@ -472,9 +478,9 @@ export default function CourseDetailPage() {
                                 {/* YouTube */}
                                 {m.keywords?.length > 0 && (
                                   <div>
-                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">Ressources vidéo</p>
+                                    <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("learn.courseDetail.content.videoResources")}</p>
                                     {ytLoading.has(id) ? (
-                                      <p className="text-sm text-on-surface-variant">Chargement des vidéos…</p>
+                                      <p className="text-sm text-on-surface-variant">{t("learn.courseDetail.content.loadingVideos")}</p>
                                     ) : yt[id]?.length > 0 && !ytFallback ? (
                                       <div className="space-y-3">
                                         {yt[id].map((v, vi) => (
@@ -511,7 +517,7 @@ export default function CourseDetailPage() {
                                   onClick={() => goToPhase(id, "exercise")}
                                   className="w-full py-3.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
                                 >
-                                  J&apos;ai lu ce module — Passer à l&apos;exercice
+                                  {t("learn.courseDetail.content.continueButton")}
                                 </button>
                               </>
                             )}
@@ -520,18 +526,18 @@ export default function CourseDetailPage() {
                             {phase === "exercise" && (
                               <div className="space-y-4">
                                 <div className="bg-tertiary-fixed/30 rounded-xl p-4">
-                                  <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2">Exercice pratique</p>
+                                  <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2">{t("learn.courseDetail.exercise.label")}</p>
                                   <p className="text-sm text-on-surface font-medium leading-relaxed">
-                                    {m.exercises || "Applique les concepts du module dans un exercice pratique. Décris ta démarche, les étapes que tu as suivies et ce que tu as appris."}
+                                    {m.exercises || t("learn.courseDetail.exercise.defaultPrompt")}
                                   </p>
                                 </div>
                                 <div>
-                                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">Ta réponse</label>
+                                  <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2 block">{t("learn.courseDetail.exercise.answerLabel")}</label>
                                   <textarea
                                     value={exText[id] ?? ""}
                                     onChange={e => setExText(prev => ({ ...prev, [id]: e.target.value }))}
                                     rows={5}
-                                    placeholder="Décris ta démarche, ce que tu as fait, ce que tu as appris…"
+                                    placeholder={t("learn.courseDetail.exercise.answerPlaceholder")}
                                     className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl p-3 text-sm text-on-surface focus:border-primary outline-none resize-none transition-colors"
                                   />
                                 </div>
@@ -553,7 +559,7 @@ export default function CourseDetailPage() {
                                     className="inline-flex items-center gap-2 px-3 py-2 border-2 border-dashed border-outline-variant rounded-xl text-sm text-primary cursor-pointer hover:bg-primary/5 transition-colors"
                                   >
                                     <span className="material-symbols-outlined text-[18px]">attach_file</span>
-                                    Joindre un fichier (PDF, image, Word)
+                                    {t("learn.courseDetail.exercise.attachFile")}
                                   </label>
                                   {exFile[id] && (
                                     <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1.5">
@@ -572,14 +578,14 @@ export default function CourseDetailPage() {
                                 <div className="flex gap-3">
                                   <button onClick={() => goToPhase(id, "content")}
                                     className="flex-1 py-3 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container transition-colors">
-                                    ← Relire le cours
+                                    {t("learn.courseDetail.exercise.backToContent")}
                                   </button>
                                   <button
                                     onClick={() => submitExercise(id)}
                                     disabled={!(exText[id] ?? "").trim() && !exFile[id]}
                                     className="flex-1 py-3 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all"
                                   >
-                                    Valider l&apos;exercice →
+                                    {t("learn.courseDetail.exercise.submit")}
                                   </button>
                                 </div>
                               </div>
@@ -599,7 +605,7 @@ export default function CourseDetailPage() {
                                 <div className="space-y-4">
                                   {/* Progress dots */}
                                   <div className="flex items-center justify-between">
-                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Quiz · 60% requis</p>
+                                    <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{t("learn.courseDetail.quiz.requirement")}</p>
                                     <div className="flex gap-1">
                                       {quiz.map((_, i) => (
                                         <button
@@ -615,7 +621,7 @@ export default function CourseDetailPage() {
                                   {/* Current question */}
                                   <div className="bg-surface-container-low rounded-xl p-4">
                                     <p className="font-semibold text-sm mb-3 leading-relaxed text-on-surface">
-                                      <span className="text-primary font-bold">Q{curQIdx + 1}. </span>{q.question}
+                                      <span className="text-primary font-bold">{t("learn.courseDetail.quiz.questionPrefix", { number: curQIdx + 1 })} </span>{q.question}
                                     </p>
                                     <div className="space-y-2">
                                       {q.options.map((opt, oi) => {
@@ -656,14 +662,14 @@ export default function CourseDetailPage() {
                                         disabled={curQIdx === 0}
                                         className="flex-1 py-2.5 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container disabled:opacity-30 transition-colors"
                                       >
-                                        ← Précédente
+                                        {t("learn.courseDetail.quiz.previous")}
                                       </button>
                                       {curQIdx < totalQ - 1 ? (
                                         <button
                                           onClick={() => setQIdx(prev => ({ ...prev, [id]: curQIdx + 1 }))}
                                           className="flex-1 py-2.5 bg-surface-container text-primary rounded-xl text-sm font-bold hover:bg-surface-container-high transition-colors"
                                         >
-                                          Suivante →
+                                          {t("learn.courseDetail.quiz.next")}
                                         </button>
                                       ) : (
                                         <button
@@ -671,7 +677,7 @@ export default function CourseDetailPage() {
                                           disabled={answeredCount < totalQ}
                                           className="flex-1 py-2.5 bg-primary text-on-primary rounded-xl font-bold text-sm shadow-md shadow-primary/20 hover:opacity-90 disabled:opacity-40 active:scale-[0.98] transition-all"
                                         >
-                                          Valider {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
+                                          {t("learn.courseDetail.quiz.submit")} {answeredCount < totalQ ? `(${answeredCount}/${totalQ})` : ""}
                                         </button>
                                       )}
                                     </div>
@@ -682,15 +688,19 @@ export default function CourseDetailPage() {
                                     <div className={`rounded-xl p-4 text-center ${quizPassed ? "bg-emerald-50 border border-emerald-200" : "bg-red-50 border border-red-200"}`}>
                                       <p className={`text-2xl font-black mb-1 ${quizPassed ? "text-emerald-600" : "text-red-500"}`}>{scorePct}%</p>
                                       <p className="font-semibold text-sm mb-1">
-                                        {quizPassed ? "Quiz réussi ✓" : "Quiz échoué ✗"}
+                                        {quizPassed ? t("learn.courseDetail.quiz.passed") : t("learn.courseDetail.quiz.failed")}
                                       </p>
                                       <p className="text-xs text-on-surface-variant mb-3">
-                                        {correct}/{totalQ} bonnes réponses · {quizPassed ? "Module suivant débloqué" : "60% minimum requis"}
+                                        {t("learn.courseDetail.quiz.resultSummary", {
+                                          correct,
+                                          total: totalQ,
+                                          status: quizPassed ? t("learn.courseDetail.quiz.unlockedNext") : t("learn.courseDetail.quiz.minRequired"),
+                                        })}
                                       </p>
                                       {!quizPassed && (
                                         <button onClick={() => retryModQuiz(id)}
                                           className="rounded-xl bg-primary text-on-primary px-5 py-2.5 text-sm font-bold shadow-md shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
-                                          Réessayer
+                                          {t("learn.courseDetail.quiz.retry")}
                                         </button>
                                       )}
                                     </div>
@@ -706,15 +716,15 @@ export default function CourseDetailPage() {
                                   <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
                                     <span className="material-symbols-outlined text-emerald-600" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                                   </div>
-                                  <p className="font-bold text-emerald-700">Module validé</p>
-                                  <p className="text-xs text-on-surface-variant mt-1">Quiz réussi · Module suivant débloqué</p>
+                                  <p className="font-bold text-emerald-700">{t("learn.courseDetail.result.moduleValidated")}</p>
+                                  <p className="text-xs text-on-surface-variant mt-1">{t("learn.courseDetail.result.summary")}</p>
                                   <button onClick={() => retryModQuiz(id)} className="mt-3 text-xs text-on-surface-variant hover:text-on-surface underline">
-                                    Repasser le quiz
+                                    {t("learn.courseDetail.result.retakeQuiz")}
                                   </button>
                                 </div>
                                 <button onClick={() => goToPhase(id, "content")}
                                   className="w-full py-3 border-2 border-outline-variant text-on-surface-variant rounded-xl text-sm font-bold hover:bg-surface-container transition-colors">
-                                  Relire le cours
+                                  {t("learn.courseDetail.result.reviewCourse")}
                                 </button>
                               </div>
                             )}
@@ -731,19 +741,19 @@ export default function CourseDetailPage() {
 
         {/* ── Final test CTA ── */}
         <div className="bg-surface-container-lowest rounded-2xl p-6 shadow-sm text-center space-y-3">
-          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Certification</p>
-          <h3 className="font-extrabold text-lg text-on-surface">Test final certifié</h3>
-          <p className="text-sm text-on-surface-variant">20 questions · Score minimum 70% · Certificat GSN</p>
+          <p className="text-[10px] font-bold text-primary uppercase tracking-widest">{t("learn.courseDetail.finalTest.eyebrow")}</p>
+          <h3 className="font-extrabold text-lg text-on-surface">{t("learn.courseDetail.finalTest.title")}</h3>
+          <p className="text-sm text-on-surface-variant">{t("learn.courseDetail.finalTest.description")}</p>
           {passedCount < totalMods && totalMods > 0 && (
             <div className="inline-flex items-center gap-2 bg-tertiary-fixed/40 text-tertiary rounded-xl px-4 py-2 text-xs font-bold">
               <span className="material-symbols-outlined text-[16px]">info</span>
-              {passedCount}/{totalMods} modules validés — complète tous les modules d&apos;abord
+              {t("learn.courseDetail.finalTest.notReady", { passed: passedCount, total: totalMods })}
             </div>
           )}
           <div className="pt-1">
             <Link href={`/learn/${courseId}/test`}
               className="inline-block bg-primary text-on-primary px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
-              Passer le test →
+              {t("learn.courseDetail.finalTest.takeTest")}
             </Link>
           </div>
         </div>
@@ -753,23 +763,23 @@ export default function CourseDetailPage() {
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
         <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
         </Link>
         <Link href="/learn" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
         </Link>
         <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">assignment</span>
-          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
         </Link>
         <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">account_balance_wallet</span>
-          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
         </Link>
         <Link href="/score" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">stars</span>
-          <span className="text-[10px] font-medium mt-0.5">Score</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
         </Link>
       </nav>
     </main>

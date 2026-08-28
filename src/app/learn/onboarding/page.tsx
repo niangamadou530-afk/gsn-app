@@ -2,22 +2,23 @@
 import { useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { t } from "@/lib/i18n";
 
 const DOMAINS = [
-  { label: "Marketing Digital", sub: "SEO, Social Media, Ads", icon: "trending_up" },
-  { label: "Développement Web", sub: "React, HTML, Backend", icon: "terminal" },
-  { label: "Design GFX", sub: "UI/UX, Graphic Design", icon: "palette" },
-  { label: "Maintenance Info", sub: "Réseaux, Support IT", icon: "build" },
-  { label: "Agriculture", sub: "Agri-tech, Production", icon: "eco" },
-  { label: "Finance", sub: "Bourse, Fintech", icon: "account_balance" },
-  { label: "Autre", sub: "Ton domaine personnalisé", icon: "more_horiz" },
+  { label: "Marketing Digital", sub: t("learn.onboarding.domain.marketing.sub"), icon: "trending_up" },
+  { label: "Développement Web", sub: t("learn.onboarding.domain.webdev.sub"), icon: "terminal" },
+  { label: "Design GFX", sub: t("learn.onboarding.domain.design.sub"), icon: "palette" },
+  { label: "Maintenance Info", sub: t("learn.onboarding.domain.maintenance.sub"), icon: "build" },
+  { label: "Agriculture", sub: t("learn.onboarding.domain.agriculture.sub"), icon: "eco" },
+  { label: "Finance", sub: t("learn.onboarding.domain.finance.sub"), icon: "account_balance" },
+  { label: "Autre", sub: t("learn.onboarding.domain.other.sub"), icon: "more_horiz" },
 ];
 
 const STEPS = [
-  { id: "domain",  question: "Quel domaine\nveux-tu apprendre ?", sub: "Notre IA personnalisera ton parcours." },
-  { id: "level",   question: "Quel est ton\nniveau actuel ?", sub: "Adapte le contenu à ton expérience.", options: ["Débutant", "Intermédiaire", "Avancé"] },
-  { id: "goal",    question: "Quel est ton\nobjectif principal ?", sub: "Oriente ton apprentissage vers ton avenir.", options: ["Premier emploi", "Freelance", "Reconversion"] },
-  { id: "weeks",   question: "Sur combien de\nsemaines ?", sub: "Planifie ton engagement.", options: ["2 semaines", "4 semaines", "8 semaines", "12 semaines", "16 semaines"] },
+  { id: "domain",  question: t("learn.onboarding.step.domain.question"), sub: t("learn.onboarding.step.domain.sub") },
+  { id: "level",   question: t("learn.onboarding.step.level.question"), sub: t("learn.onboarding.step.level.sub"), options: ["Débutant", "Intermédiaire", "Avancé"] },
+  { id: "goal",    question: t("learn.onboarding.step.goal.question"), sub: t("learn.onboarding.step.goal.sub"), options: ["Premier emploi", "Freelance", "Reconversion"] },
+  { id: "weeks",   question: t("learn.onboarding.step.weeks.question"), sub: t("learn.onboarding.step.weeks.sub"), options: ["2 semaines", "4 semaines", "8 semaines", "12 semaines", "16 semaines"] },
 ];
 
 export default function OnboardingPage() {
@@ -72,13 +73,13 @@ export default function OnboardingPage() {
           body: JSON.stringify({ message: prompt }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Erreur API");
+        if (!res.ok) throw new Error(data.error || t("learn.onboarding.error.api"));
 
         const cleaned = data.reply.replace(/```json|```/g, "").trim();
         const arrMatch = cleaned.match(/\[[\s\S]*\]/);
-        if (!arrMatch) throw new Error("Pas de tableau JSON");
+        if (!arrMatch) throw new Error(t("learn.onboarding.error.noJsonArray"));
         const batch = JSON.parse(arrMatch[0]);
-        if (!Array.isArray(batch) || !batch[0]?.modules) throw new Error("Structure invalide");
+        if (!Array.isArray(batch) || !batch[0]?.modules) throw new Error(t("learn.onboarding.error.invalidStructure"));
         return batch;
       }
 
@@ -107,7 +108,7 @@ export default function OnboardingPage() {
 
     } catch (err: any) {
       console.error(err);
-      alert("Erreur : " + (err.message || "Impossible de générer le parcours"));
+      alert(t("learn.onboarding.error.prefix", { message: err.message || t("learn.onboarding.error.fallback") }));
     } finally {
       setLoading(false);
     }
@@ -118,8 +119,8 @@ export default function OnboardingPage() {
       <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
         <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
         <div className="text-center">
-          <p className="text-primary font-bold text-lg">L&apos;IA prépare ton parcours…</p>
-          <p className="text-on-surface-variant text-sm mt-1">Cela peut prendre 30 à 60 secondes</p>
+          <p className="text-primary font-bold text-lg">{t("learn.onboarding.loading.title")}</p>
+          <p className="text-on-surface-variant text-sm mt-1">{t("learn.onboarding.loading.sub")}</p>
         </div>
         {/* decorative glows */}
         <div className="fixed -bottom-24 -right-24 w-64 h-64 bg-primary-container/10 rounded-full blur-[100px] pointer-events-none" />
@@ -149,9 +150,9 @@ export default function OnboardingPage() {
         <div className="mt-4 mb-10">
           <div className="flex justify-between items-end mb-3">
             <span className="text-xs font-bold uppercase tracking-widest text-primary">
-              Étape {step + 1} sur {STEPS.length}
+              {t("learn.onboarding.stepIndicator", { current: step + 1, total: STEPS.length })}
             </span>
-            <span className="text-xs font-medium text-on-surface-variant">{Math.round(progress)}% Complété</span>
+            <span className="text-xs font-medium text-on-surface-variant">{t("learn.onboarding.progressComplete", { percent: Math.round(progress) })}</span>
           </div>
           <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
@@ -203,7 +204,7 @@ export default function OnboardingPage() {
                       value={customDomain}
                       onChange={(e) => setCustomDomain(e.target.value)}
                       onClick={(e) => e.stopPropagation()}
-                      placeholder="Précise ton domaine..."
+                      placeholder={t("learn.onboarding.customDomainPlaceholder")}
                       autoFocus
                       onKeyDown={(e) => e.key === "Enter" && handleNext()}
                       className="mt-2 w-full bg-transparent border-0 border-b-2 border-outline-variant focus:border-primary focus:ring-0 p-0 py-1 text-sm placeholder:text-on-surface-variant/50 outline-none"
@@ -248,11 +249,11 @@ export default function OnboardingPage() {
           disabled={!selected && !customDomain.trim()}
           className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] active:scale-[0.98] transition-all disabled:opacity-40"
         >
-          {step < STEPS.length - 1 ? "Suivant" : "Générer mon parcours avec l'IA"}
+          {step < STEPS.length - 1 ? t("learn.onboarding.nextButton") : t("learn.onboarding.generateButton")}
           <span className="material-symbols-outlined">{step < STEPS.length - 1 ? "arrow_forward" : "auto_awesome"}</span>
         </button>
         <p className="text-center text-xs text-on-surface-variant mt-5">
-          Tu pourras modifier tes préférences plus tard dans les paramètres.
+          {t("learn.onboarding.footerNote")}
         </p>
       </div>
 

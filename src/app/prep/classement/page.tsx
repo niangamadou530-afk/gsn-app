@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Tab = "general" | "serie" | "ecole";
 
@@ -47,11 +48,7 @@ export default function ClassementPage() {
       setMyEcole(ecole);
       setMyExamType(examType);
 
-      const res = await fetch("/api/prep-classement");
-      const { results, students } = await res.json() as {
-        results: Array<{ user_id: string; score: number; total: number }>;
-        students: Array<{ user_id: string; prenom: string | null; ecole: string | null; serie: string | null; exam_type: string }>;
-      };
+      const { data: results } = await supabase.from("quiz_results").select("user_id, score, total");
       if (!results || results.length === 0) { setLoading(false); return; }
 
       const byUser: Record<string, number[]> = {};
@@ -61,6 +58,8 @@ export default function ClassementPage() {
       }
 
       const uids = Object.keys(byUser);
+      const { data: students } = await supabase
+        .from("prep_students").select("user_id, prenom, ecole, serie, exam_type").in("user_id", uids);
 
       const stuMap: Record<string, { prenom: string | null; ecole: string | null; serie: string | null; exam_type: string }> = {};
       for (const s of students ?? []) stuMap[s.user_id] = { prenom: s.prenom, ecole: s.ecole, serie: s.serie, exam_type: s.exam_type ?? "BAC" };
@@ -69,7 +68,7 @@ export default function ClassementPage() {
         .filter(uid => (stuMap[uid]?.exam_type ?? "BAC") === examType)
         .map(uid => ({
           user_id: uid,
-          prenom: stuMap[uid]?.prenom ?? "Élève",
+          prenom: stuMap[uid]?.prenom ?? t("prep.classement.defaultName"),
           ecole: stuMap[uid]?.ecole ?? null,
           serie: stuMap[uid]?.serie ?? null,
           avg_score: Math.round(byUser[uid].reduce((a, b) => a + b, 0) / byUser[uid].length),
@@ -109,20 +108,20 @@ export default function ClassementPage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-8">
       <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">Classement {myExamType}</h1>
-        <p className="text-on-surface-variant text-sm">Inter-écoles · Sénégal</p>
+        <h1 className="text-2xl font-extrabold">{t("prep.classement.title", { examType: myExamType })}</h1>
+        <p className="text-on-surface-variant text-sm">{t("prep.classement.subtitle")}</p>
       </header>
 
       <div className="px-6 mb-4">
         <div className="flex gap-1 bg-surface-container rounded-xl p-1">
           {([
-            { key: "general", label: "Général" },
-            ...(myExamType !== "BFEM" ? [{ key: "serie", label: `Série ${mySerie || ""}` }] : []),
-            { key: "ecole",   label: "Écoles" },
-          ] as { key: Tab; label: string }[]).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${tab === t.key ? "bg-surface text-primary shadow-sm" : "text-on-surface-variant"}`}>
-              {t.label}
+            { key: "general", label: t("prep.classement.tabGeneral") },
+            ...(myExamType !== "BFEM" ? [{ key: "serie", label: t("prep.classement.tabSerie", { serie: mySerie || "" }) }] : []),
+            { key: "ecole",   label: t("prep.classement.tabSchools") },
+          ] as { key: Tab; label: string }[]).map(tabItem => (
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${tab === tabItem.key ? "bg-surface text-primary shadow-sm" : "text-on-surface-variant"}`}>
+              {tabItem.label}
             </button>
           ))}
         </div>
@@ -133,8 +132,8 @@ export default function ClassementPage() {
         {tab !== "ecole" && (
           list.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm">
-              <p className="font-bold text-on-surface">Aucun résultat disponible</p>
-              <p className="text-sm text-on-surface-variant mt-1">Sois le premier à passer un quiz !</p>
+              <p className="font-bold text-on-surface">{t("prep.classement.emptyResultsTitle")}</p>
+              <p className="text-sm text-on-surface-variant mt-1">{t("prep.classement.emptyResultsSubtitle")}</p>
             </div>
           ) : (
             <>
@@ -163,7 +162,7 @@ export default function ClassementPage() {
                   className={`flex items-center gap-3 p-3.5 rounded-xl shadow-sm ${p.user_id === myId ? "bg-primary/5 border-2 border-primary/20" : "bg-surface-container-lowest"}`}>
                   <span className="w-7 text-center font-black text-on-surface-variant text-sm">#{i + 4}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-on-surface text-sm truncate">{p.prenom}{p.user_id === myId ? " (toi)" : ""}</p>
+                    <p className="font-bold text-on-surface text-sm truncate">{p.prenom}{p.user_id === myId ? ` ${t("prep.classement.youLabel")}` : ""}</p>
                     {p.ecole && <p className="text-xs text-on-surface-variant truncate">{p.ecole}</p>}
                   </div>
                   <span className={`font-black text-sm px-3 py-1 rounded-full ${p.avg_score >= 60 ? "bg-green-100 text-green-700" : p.avg_score >= 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
@@ -174,7 +173,7 @@ export default function ClassementPage() {
 
               {myRank !== null && myRank > 10 && tab === "general" && (
                 <div className="bg-primary/5 border-2 border-primary/20 rounded-xl p-3 flex items-center justify-between">
-                  <p className="text-sm font-bold text-primary">Ton rang national</p>
+                  <p className="text-sm font-bold text-primary">{t("prep.classement.nationalRankLabel")}</p>
                   <p className="text-sm font-black text-primary">#{myRank}</p>
                 </div>
               )}
@@ -185,8 +184,8 @@ export default function ClassementPage() {
         {tab === "ecole" && (
           byEcole.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm">
-              <p className="font-bold text-on-surface">Aucune école classée</p>
-              <p className="text-sm text-on-surface-variant mt-1">Renseigne ton école dans le profil.</p>
+              <p className="font-bold text-on-surface">{t("prep.classement.emptySchoolsTitle")}</p>
+              <p className="text-sm text-on-surface-variant mt-1">{t("prep.classement.emptySchoolsSubtitle")}</p>
             </div>
           ) : byEcole.map((s, i) => (
             <div key={s.ecole}
@@ -194,7 +193,7 @@ export default function ClassementPage() {
               <span className="text-xl w-8 text-center">{i < 3 ? MEDAL[i] : `#${i + 1}`}</span>
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-on-surface truncate">{s.ecole}</p>
-                <p className="text-xs text-on-surface-variant">{s.count} élève{s.count > 1 ? "s" : ""}</p>
+                <p className="text-xs text-on-surface-variant">{t(s.count > 1 ? "prep.classement.studentCountPlural" : "prep.classement.studentCountSingular", { count: s.count })}</p>
               </div>
               <span className={`font-black text-sm px-3 py-1 rounded-full ${s.avg_score >= 60 ? "bg-green-100 text-green-700" : s.avg_score >= 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
                 {s.avg_score}%

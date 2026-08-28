@@ -3,12 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type QuizResult = { matiere: string; score: number; total: number; created_at: string };
 type FlashStat  = { matiere: string; total: number; maitrisee: number };
 
 const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-14";
+const BFEM_DATE = "2026-07-15";
 
 function daysUntil(d: string) { return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000)); }
 function countdownColor(d: number) { return d > 60 ? "#22c55e" : d > 30 ? "#f97316" : "#ef4444"; }
@@ -88,8 +89,8 @@ export default function ProgressionPage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-8">
       <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">Mes Progrès</h1>
-        <p className="text-on-surface-variant text-sm mt-0.5">Basé sur tes quiz et flashcards</p>
+        <h1 className="text-2xl font-extrabold">{t("prep.progression.title")}</h1>
+        <p className="text-on-surface-variant text-sm mt-0.5">{t("prep.progression.subtitle")}</p>
       </header>
 
       <div className="px-6 space-y-4">
@@ -97,7 +98,7 @@ export default function ProgressionPage() {
         {/* Countdown */}
         <div className="rounded-2xl p-4 text-white flex items-center justify-between" style={{ backgroundColor: cdColor }}>
           <div>
-            <p className="text-xs opacity-80 font-semibold">Compte à rebours {examType}</p>
+            <p className="text-xs opacity-80 font-semibold">{t("prep.progression.countdown", { examType })}</p>
             <p className="text-3xl font-black">J-{days}</p>
           </div>
           <span className="material-symbols-outlined text-[40px] opacity-80" style={{ fontVariationSettings: "'FILL' 1" }}>timer</span>
@@ -105,7 +106,7 @@ export default function ProgressionPage() {
 
         {/* Score global */}
         <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm text-center">
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">Score Global</p>
+          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-2">{t("prep.progression.globalScoreLabel")}</p>
           <div className="relative w-28 h-28 mx-auto">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
               <circle cx="50" cy="50" r="42" fill="none" stroke="var(--color-surface-container)" strokeWidth="10" />
@@ -119,14 +120,14 @@ export default function ProgressionPage() {
             </div>
           </div>
           <p className="text-xs text-on-surface-variant mt-2">
-            {quiz.length} quiz · {flashTotal} flashcards ({flashMastered} maîtrisées)
+            {t("prep.progression.summaryStats", { quizCount: quiz.length, flashTotal, flashMastered })}
           </p>
         </div>
 
         {/* Par matière */}
         {matieres.length > 0 ? (
           <div>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Par matière</p>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("prep.progression.byMatiere")}</p>
             <div className="space-y-2.5">
               {matieres.map(m => {
                 const scores = quizByMat[m] ?? [];
@@ -141,12 +142,12 @@ export default function ProgressionPage() {
                       <div className="flex gap-2">
                         {avg !== null && (
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${avg >= 60 ? "bg-green-100 text-green-700" : avg >= 40 ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}>
-                            Quiz {avg}%
+                            {t("prep.progression.quizPct", { avg })}
                           </span>
                         )}
                         {fPct !== null && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                            Flash {fPct}%
+                            {t("prep.progression.flashPct", { pct: fPct })}
                           </span>
                         )}
                       </div>
@@ -164,15 +165,15 @@ export default function ProgressionPage() {
         ) : (
           <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm">
             <span className="material-symbols-outlined text-[40px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-            <p className="font-bold text-on-surface mt-2">Aucune activité encore</p>
-            <p className="text-sm text-on-surface-variant mt-1">Génère un quiz ou des flashcards pour voir tes progrès.</p>
+            <p className="font-bold text-on-surface mt-2">{t("prep.progression.empty.title")}</p>
+            <p className="text-sm text-on-surface-variant mt-1">{t("prep.progression.empty.desc")}</p>
           </div>
         )}
 
         {/* Historique quiz */}
         {quiz.length > 0 && (
           <div>
-            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">Derniers quiz</p>
+            <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("prep.progression.recentQuiz")}</p>
             <div className="space-y-2">
               {quiz.slice(0, 5).map((q, i) => {
                 const pct = Math.round((q.score / q.total) * 100);

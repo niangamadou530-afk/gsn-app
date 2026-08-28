@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 const DOMAINS = [
   "Marketing Digital",
@@ -15,6 +16,20 @@ const DOMAINS = [
   "Data & IA",
   "Autre",
 ];
+
+function domainLabel(d: string) {
+  const map: Record<string, string> = {
+    "Marketing Digital": t("work.employerMissionNew.domains.marketing"),
+    "Développement Web": t("work.employerMissionNew.domains.webDev"),
+    "Design Graphique": t("work.employerMissionNew.domains.design"),
+    "Comptabilité & Finance": t("work.employerMissionNew.domains.finance"),
+    "Gestion de Projet": t("work.employerMissionNew.domains.projectMgmt"),
+    "Cybersécurité": t("work.employerMissionNew.domains.cybersecurity"),
+    "Data & IA": t("work.employerMissionNew.domains.dataAI"),
+    "Autre": t("work.employerMissionNew.domains.other"),
+  };
+  return map[d] ?? d;
+}
 
 export default function NewMissionPage() {
   const router = useRouter();
@@ -59,7 +74,7 @@ export default function NewMissionPage() {
       if (insertErr) { setError(insertErr.message); return; }
       router.push("/employer/dashboard");
     } catch {
-      setError("Une erreur est survenue.");
+      setError(t("work.employerMissionNew.errorGeneric"));
     } finally {
       setLoading(false);
     }
@@ -76,7 +91,7 @@ export default function NewMissionPage() {
         <Link href="/employer/dashboard" className="text-outline hover:text-on-surface transition-colors">
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </Link>
-        <h1 className="font-bold text-on-surface text-lg">Publier une mission</h1>
+        <h1 className="font-bold text-on-surface text-lg">{t("work.employerMissionNew.headerTitle")}</h1>
       </header>
 
       <div className="max-w-2xl mx-auto px-6 py-8">
@@ -84,11 +99,11 @@ export default function NewMissionPage() {
 
           {/* Title */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Titre de la mission *</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.titleLabel")}</label>
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">work</span>
               <input
-                type="text" placeholder="Ex : Développeur web React junior" required
+                type="text" placeholder={t("work.employerMissionNew.titlePlaceholder")} required
                 value={title} onChange={e => setTitle(e.target.value)}
                 className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
               />
@@ -97,14 +112,14 @@ export default function NewMissionPage() {
 
           {/* Domain */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Domaine *</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.domainLabel")}</label>
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">category</span>
               <select
                 value={domain} onChange={e => setDomain(e.target.value)}
                 className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface outline-none appearance-none"
               >
-                {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                {DOMAINS.map(d => <option key={d} value={d}>{domainLabel(d)}</option>)}
               </select>
               <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline text-[18px] pointer-events-none">expand_more</span>
             </div>
@@ -112,12 +127,12 @@ export default function NewMissionPage() {
 
           {/* Duration type */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Type de mission</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.durationTypeLabel")}</label>
             <div className="grid grid-cols-3 gap-3">
               {([
-                { value: "short", label: "Court terme", icon: "schedule" },
-                { value: "long", label: "Long terme", icon: "calendar_month" },
-                { value: "freelance", label: "Freelance", icon: "laptop_mac" },
+                { value: "short", label: t("work.employerMissionNew.duration.short"), icon: "schedule" },
+                { value: "long", label: t("work.employerMissionNew.duration.long"), icon: "calendar_month" },
+                { value: "freelance", label: t("work.employerMissionNew.duration.freelance"), icon: "laptop_mac" },
               ] as const).map(opt => (
                 <button key={opt.value} type="button"
                   onClick={() => setDurationType(opt.value)}
@@ -131,9 +146,9 @@ export default function NewMissionPage() {
 
           {/* Description */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Description</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.descriptionLabel")}</label>
             <textarea
-              placeholder="Décrivez les tâches, les compétences attendues, les conditions de travail…"
+              placeholder={t("work.employerMissionNew.descriptionPlaceholder")}
               value={description} onChange={e => setDescription(e.target.value)}
               rows={5}
               className="w-full px-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none resize-none"
@@ -142,11 +157,11 @@ export default function NewMissionPage() {
 
           {/* Budget */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Budget (FCFA)</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.budgetLabel")}</label>
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">payments</span>
               <input
-                type="number" placeholder="Ex : 150000" min={0}
+                type="number" placeholder={t("work.employerMissionNew.budgetPlaceholder")} min={0}
                 value={budgetFcfa} onChange={e => setBudgetFcfa(e.target.value)}
                 className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
               />
@@ -155,7 +170,7 @@ export default function NewMissionPage() {
 
           {/* Min GSN score */}
           <div className="space-y-2">
-            <label className="block text-sm font-semibold text-on-surface ml-1">Score GSN minimum requis : {minScore}%</label>
+            <label className="block text-sm font-semibold text-on-surface ml-1">{t("work.employerMissionNew.minScoreLabel", { score: minScore })}</label>
             <div className="flex items-center gap-4 px-1">
               <span className="material-symbols-outlined text-outline text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
               <input
@@ -165,7 +180,7 @@ export default function NewMissionPage() {
               />
               <span className="text-primary font-bold text-sm w-10 text-right">{minScore}%</span>
             </div>
-            <p className="text-xs text-on-surface-variant ml-1">Seuls les talents ayant ce score ou plus verront cette mission.</p>
+            <p className="text-xs text-on-surface-variant ml-1">{t("work.employerMissionNew.minScoreHelp")}</p>
           </div>
 
           {error && (
@@ -178,9 +193,9 @@ export default function NewMissionPage() {
           <button type="submit" disabled={loading}
             className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2">
             {loading ? (
-              <><div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" /> Publication…</>
+              <><div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" /> {t("work.employerMissionNew.submitting")}</>
             ) : (
-              <><span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>publish</span> Publier la mission</>
+              <><span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>publish</span> {t("work.employerMissionNew.submit")}</>
             )}
           </button>
         </form>

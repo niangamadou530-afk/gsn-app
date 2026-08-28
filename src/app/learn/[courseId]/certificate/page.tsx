@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t, locale } from "@/lib/i18n";
 
 export default function CertificatePage() {
   const { courseId } = useParams<{ courseId: string }>();
   const router = useRouter();
 
   const [course, setCourse] = useState<any>(null);
-  const [userName, setUserName] = useState("Apprenant");
+  const [userName, setUserName] = useState(t("learn.certificate.defaultName"));
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -29,7 +30,7 @@ export default function CertificatePage() {
     if (!courseRes.data.certificate_id) { router.replace(`/learn/${courseId}/test`); return; }
 
     setCourse(courseRes.data);
-    setUserName(profileRes.data?.name ?? "Apprenant");
+    setUserName(profileRes.data?.name ?? t("learn.certificate.defaultName"));
     setLoading(false);
   }
 
@@ -40,9 +41,10 @@ export default function CertificatePage() {
   );
   if (!course) return null;
 
+  const dateLocale = locale === "fr" ? "fr-FR" : "en-US";
   const completedDate = course.completed_at
-    ? new Date(course.completed_at).toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" })
-    : new Date().toLocaleDateString("fr-FR", { year: "numeric", month: "long", day: "numeric" });
+    ? new Date(course.completed_at).toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" })
+    : new Date().toLocaleDateString(dateLocale, { year: "numeric", month: "long", day: "numeric" });
 
   const domain = (course.title ?? "Formation").split("—")[0].trim();
 
@@ -66,7 +68,7 @@ export default function CertificatePage() {
           <Link href={`/learn/${courseId}`} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
             <span className="material-symbols-outlined text-on-surface">arrow_back</span>
           </Link>
-          <span className="text-base font-bold text-primary">Certificat GSN</span>
+          <span className="text-base font-bold text-primary">{t("learn.certificate.headerTitle")}</span>
           <div className="w-10" />
         </header>
 
@@ -75,9 +77,9 @@ export default function CertificatePage() {
           {/* Page title */}
           <div className="no-print mb-8 text-center">
             <h1 className="text-[2.2rem] font-extrabold tracking-tight text-on-surface leading-tight mb-2">
-              Félicitations, {userName.split(" ")[0]} !
+              {t("learn.certificate.congrats", { name: userName.split(" ")[0] })}
             </h1>
-            <p className="text-on-surface-variant">Votre excellence a été reconnue et certifiée.</p>
+            <p className="text-on-surface-variant">{t("learn.certificate.subtitle")}</p>
           </div>
 
           {/* Certificate */}
@@ -101,12 +103,12 @@ export default function CertificatePage() {
 
               {/* Title */}
               <h2 className="text-2xl md:text-4xl font-bold text-primary mb-10 tracking-tight">
-                CERTIFICAT DE COMPLÉTION
+                {t("learn.certificate.title")}
               </h2>
 
               {/* Recipient */}
               <div className="mb-10">
-                <p className="text-on-surface-variant italic mb-3 text-sm">Décerné à</p>
+                <p className="text-on-surface-variant italic mb-3 text-sm">{t("learn.certificate.awardedTo")}</p>
                 <h3 className="text-3xl md:text-4xl font-black text-on-surface leading-none border-b-2 border-primary/20 pb-4 inline-block px-6">
                   {userName}
                 </h3>
@@ -114,7 +116,7 @@ export default function CertificatePage() {
 
               {/* Course */}
               <div className="max-w-lg mb-10">
-                <p className="text-on-surface-variant mb-3 text-sm leading-relaxed">Pour avoir complété avec succès le parcours :</p>
+                <p className="text-on-surface-variant mb-3 text-sm leading-relaxed">{t("learn.certificate.completedPath")}</p>
                 <p className="text-xl font-bold text-secondary">{domain}</p>
                 <p className="text-sm text-on-surface-variant mt-1">{course.title}</p>
               </div>
@@ -122,15 +124,15 @@ export default function CertificatePage() {
               {/* Stats */}
               <div className="grid grid-cols-3 gap-6 w-full max-w-lg mb-12 pt-6 border-t border-outline-variant/30">
                 <div className="flex flex-col">
-                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">Score obtenu</span>
+                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">{t("learn.certificate.scoreAchieved")}</span>
                   <span className="text-2xl font-bold text-tertiary">{course.test_score}/100</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">Date</span>
+                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">{t("learn.certificate.dateLabel")}</span>
                   <span className="text-sm font-bold text-on-surface">{completedDate}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">ID Certificat</span>
+                  <span className="text-on-surface-variant text-[10px] font-bold tracking-widest uppercase mb-1">{t("learn.certificate.certificateId")}</span>
                   <span className="font-mono text-[10px] font-semibold text-on-surface break-all">{course.certificate_id}</span>
                 </div>
               </div>
@@ -157,20 +159,20 @@ export default function CertificatePage() {
               className="w-full sm:w-auto px-8 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-xl flex items-center justify-center gap-3 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined">download</span>
-              Télécharger en PDF
+              {t("learn.certificate.downloadPdf")}
             </button>
             <Link
               href="/score"
               className="w-full sm:w-auto px-8 py-4 bg-surface-container-lowest text-primary border-2 border-primary/20 font-bold rounded-xl flex items-center justify-center gap-3 hover:bg-primary/5 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined">account_circle</span>
-              Mon Skill Passport
+              {t("learn.certificate.mySkillPassport")}
             </Link>
           </div>
 
           {/* Share section — hidden on print */}
           <div className="no-print mt-6">
-            <p className="text-center text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">Partager ma certification</p>
+            <p className="text-center text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">{t("learn.certificate.shareTitle")}</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {/* LinkedIn */}
               <a
@@ -184,7 +186,7 @@ export default function CertificatePage() {
 
               {/* WhatsApp */}
               <a
-                href={`https://wa.me/?text=${encodeURIComponent(`Je viens d'obtenir ma certification ${domain} sur GSN Global Skills Network ! Score : ${course.test_score}% 🎓 #GSN #Formation #Afrique\n${typeof window !== "undefined" ? window.location.href : ""}`)}`}
+                href={`https://wa.me/?text=${encodeURIComponent(`${t("learn.certificate.shareMessage", { domain, score: course.test_score })}\n${typeof window !== "undefined" ? window.location.href : ""}`)}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex flex-col items-center gap-2 p-4 bg-[#25D366] text-white rounded-2xl hover:opacity-90 active:scale-95 transition-all shadow-sm"
               >
@@ -194,7 +196,7 @@ export default function CertificatePage() {
 
               {/* X / Twitter */}
               <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Je viens d'obtenir ma certification ${domain} sur GSN Global Skills Network ! Score : ${course.test_score}% 🎓 #GSN #Formation #Afrique`)}&url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(t("learn.certificate.shareMessage", { domain, score: course.test_score }))}&url=${encodeURIComponent(typeof window !== "undefined" ? window.location.href : "")}`}
                 target="_blank" rel="noopener noreferrer"
                 className="flex flex-col items-center gap-2 p-4 bg-on-surface text-surface rounded-2xl hover:opacity-90 active:scale-95 transition-all shadow-sm"
               >
@@ -212,7 +214,7 @@ export default function CertificatePage() {
                 className="flex flex-col items-center gap-2 p-4 bg-surface-container-low text-on-surface rounded-2xl hover:bg-surface-container active:scale-95 transition-all border border-outline-variant/30 shadow-sm"
               >
                 <span className="material-symbols-outlined text-[20px]">{copied ? "check_circle" : "link"}</span>
-                <span className="text-[11px] font-bold">{copied ? "Copié !" : "Copier lien"}</span>
+                <span className="text-[11px] font-bold">{copied ? t("learn.certificate.copied") : t("learn.certificate.copyLink")}</span>
               </button>
             </div>
           </div>
@@ -222,23 +224,23 @@ export default function CertificatePage() {
         <nav className="no-print fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
           <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">home</span>
-            <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
           </Link>
           <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">school</span>
-            <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
           </Link>
           <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">assignment</span>
-            <span className="text-[10px] font-medium mt-0.5">Missions</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
           </Link>
           <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
             <span className="material-symbols-outlined">account_balance_wallet</span>
-            <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
           </Link>
           <Link href="/score" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-            <span className="text-[10px] font-medium mt-0.5">Score</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
           </Link>
         </nav>
       </main>

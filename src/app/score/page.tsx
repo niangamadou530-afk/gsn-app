@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Skill = { domain: string; title?: string; score: number | string; date?: string; cert_id: string; weeks?: number; level?: string };
 
@@ -20,7 +21,7 @@ function skillDate(s: Skill): string {
 }
 // Strip trailing "— X semaines" or similar from domain
 function cleanDomain(domain: string): string {
-  if (!domain) return "Formation";
+  if (!domain) return t("pay.score.defaultDomain");
   return domain.split(/\s*[—–-]\s*/)[0].trim() || domain;
 }
 
@@ -29,11 +30,20 @@ function formatDate(dateStr: string): string {
   const parts = dateStr.split("T")[0].split("-");
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts.map(Number);
-  const months = ["jan","fév","mars","avr","mai","juin","juil","août","sep","oct","nov","déc"];
-  return `${d} ${months[m - 1]} ${y}`;
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${months[m - 1]} ${d}, ${y}`;
 }
 
 const CREDIT_THRESHOLD = 50;
+
+const CREDIT_TIERS = [
+  { min: 80, amount: 500000, ratePct: 6 },
+  { min: 65, amount: 350000, ratePct: 8 },
+  { min: 50, amount: 250000, ratePct: 10 },
+];
+function creditOffer(score: number) {
+  return CREDIT_TIERS.find(tier => score >= tier.min) ?? null;
+}
 
 const DOMAIN_ICONS: Record<string, string> = {
   "Marketing": "campaign",
@@ -83,6 +93,7 @@ export default function ScorePage() {
   }
 
   const eligible = score >= CREDIT_THRESHOLD;
+  const offer = creditOffer(score);
   const progressPct = Math.min(100, Math.round((score / CREDIT_THRESHOLD) * 100));
   // SVG ring: r=88, circumference = 2πr ≈ 552.9
   const circumference = 2 * Math.PI * 88;
@@ -122,13 +133,13 @@ export default function ScorePage() {
                   <span className="text-5xl font-extrabold tracking-tighter text-on-surface">
                     {score}<span className="text-xl text-on-surface-variant font-medium">/100</span>
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-widest text-primary mt-1">Score Global</span>
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary mt-1">{t("pay.score.globalScore")}</span>
                 </div>
               </div>
               <div className="inline-flex items-center px-4 py-2 bg-tertiary-fixed rounded-full gap-2">
                 <span className="material-symbols-outlined text-sm text-on-tertiary-fixed" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
                 <span className="text-xs font-bold text-on-tertiary-fixed">
-                  {score >= 80 ? "Expert Digital" : score >= 50 ? "Professionnel Confirmé" : score >= 20 ? "Apprenant Actif" : "Débutant Motivé"}
+                  {score >= 80 ? t("pay.score.tier.expert") : score >= 50 ? t("pay.score.tier.confirmed") : score >= 20 ? t("pay.score.tier.active") : t("pay.score.tier.beginner")}
                 </span>
               </div>
             </>
@@ -139,43 +150,49 @@ export default function ScorePage() {
         <section className="bg-surface-container-low rounded-2xl p-6 space-y-4">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-lg font-bold text-on-surface">Éligibilité Micro-crédit</h2>
-              <p className="text-sm text-on-surface-variant">Basé sur vos performances</p>
+              <h2 className="text-lg font-bold text-on-surface">{t("pay.score.microCredit.title")}</h2>
+              <p className="text-sm text-on-surface-variant">{t("pay.score.microCredit.subtitle")}</p>
             </div>
             {eligible ? (
               <div className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                <span className="text-[11px] font-bold">Éligible</span>
+                <span className="text-[11px] font-bold">{t("pay.score.microCredit.eligible")}</span>
               </div>
             ) : (
               <div className="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full">
-                <span className="text-[11px] font-bold">En cours</span>
+                <span className="text-[11px] font-bold">{t("pay.score.microCredit.inProgress")}</span>
               </div>
             )}
           </div>
           <div className="space-y-2">
             <div className="flex justify-between text-xs font-bold">
-              <span className="text-on-surface-variant">Seuil d&apos;activation</span>
+              <span className="text-on-surface-variant">{t("pay.score.microCredit.activationThreshold")}</span>
               <span className="text-primary">{Math.min(score, CREDIT_THRESHOLD)} / {CREDIT_THRESHOLD} pts</span>
             </div>
             <div className="h-3 w-full bg-surface-container-highest rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
-          {eligible ? (
-            <div className="bg-surface-container-lowest p-4 rounded-xl border border-primary/5 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">Crédit disponible</p>
-                <p className="text-xl font-extrabold text-primary">250 000 FCFA</p>
+          {eligible && offer ? (
+            <div className="bg-surface-container-lowest p-4 rounded-xl border border-primary/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">{t("pay.score.microCredit.availableCredit")}</p>
+                  <p className="text-xl font-extrabold text-primary">{offer.amount.toLocaleString("en-US")} FCFA</p>
+                </div>
+                <Link href="/wallet" className="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-primary/20 active:scale-95 transition-all">
+                  {t("pay.score.microCredit.request")}
+                </Link>
               </div>
-              <Link href="/wallet" className="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-primary/20 active:scale-95 transition-all">
-                Demander
-              </Link>
+              <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10">
+                <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">{t("pay.score.microCredit.indicativeRate")}</p>
+                <p className="text-sm font-bold text-on-surface">{offer.ratePct}% {t("pay.score.microCredit.perYear")}</p>
+              </div>
             </div>
           ) : (
             <p className="text-xs text-on-surface-variant">
-              Encore <strong className="text-on-surface">{CREDIT_THRESHOLD - score} points</strong> à obtenir ·{" "}
-              <Link href="/learn/onboarding" className="text-primary font-bold hover:underline">Obtenir une certification</Link>
+              {t("pay.score.microCredit.pointsToGo", { points: CREDIT_THRESHOLD - score })}{" "}
+              <Link href="/learn/onboarding" className="text-primary font-bold hover:underline">{t("pay.score.microCredit.getCertified")}</Link>
             </p>
           )}
         </section>
@@ -183,16 +200,16 @@ export default function ScorePage() {
         {/* Skill Passport */}
         <section className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold tracking-tight text-on-surface">Skill Passport</h2>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface">{t("pay.score.skillPassport.title")}</h2>
           </div>
 
           {loading ? null : skills.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-10 text-center">
               <span className="material-symbols-outlined text-4xl text-outline-variant mb-3 block">workspace_premium</span>
-              <p className="text-on-surface-variant text-sm mb-4">Aucune compétence certifiée pour le moment.</p>
+              <p className="text-on-surface-variant text-sm mb-4">{t("pay.score.skillPassport.empty")}</p>
               <Link href="/learn/onboarding"
                 className="inline-block bg-primary text-on-primary font-bold px-5 py-2.5 rounded-xl text-sm shadow-md shadow-primary/20 active:scale-95 transition-all">
-                Commencer un parcours
+                {t("pay.score.skillPassport.startPath")}
               </Link>
             </div>
           ) : (
@@ -224,7 +241,7 @@ export default function ScorePage() {
                     {skill.weeks && (
                       <span className="text-xs text-on-surface-variant flex items-center gap-1">
                         <span className="material-symbols-outlined text-[14px]">schedule</span>
-                        {skill.weeks} sem.
+                        {skill.weeks} {t("pay.score.skillPassport.weeksShort")}
                       </span>
                     )}
                   </div>
@@ -237,11 +254,11 @@ export default function ScorePage() {
 
         {/* Scoring criteria */}
         <section className="bg-surface-container-low rounded-2xl p-6 space-y-5">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Critères de Scoring</h2>
+          <h2 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">{t("pay.score.criteria.title")}</h2>
           {[
-            { label: "Formations académiques", pct: Math.min(100, skills.length * 20), color: "#005bbf" },
-            { label: "Certifications obtenues", pct: Math.min(100, skills.length * 15), color: "#2b5bb5" },
-            { label: "Score total", pct: Math.min(100, score), color: "#005bbf" },
+            { label: t("pay.score.criteria.academicTraining"), pct: Math.min(100, skills.length * 20), color: "#005bbf" },
+            { label: t("pay.score.criteria.certifications"), pct: Math.min(100, skills.length * 15), color: "#2b5bb5" },
+            { label: t("pay.score.criteria.totalScore"), pct: Math.min(100, score), color: "#005bbf" },
           ].map((item) => (
             <div key={item.label} className="space-y-1.5">
               <div className="flex justify-between text-xs font-medium">
@@ -260,23 +277,23 @@ export default function ScorePage() {
       <nav className="fixed bottom-0 left-0 w-full z-50 glass-nav rounded-t-3xl shadow-[0_-4px_24px_rgba(25,28,35,0.06)] flex justify-around items-center px-4 pb-6 pt-3">
         <Link href="/dashboard" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">home</span>
-          <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
         </Link>
         <Link href="/learn" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">school</span>
-          <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
         </Link>
         <Link href="/missions" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">assignment</span>
-          <span className="text-[10px] font-medium mt-0.5">Missions</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
         </Link>
         <Link href="/wallet" className="flex flex-col items-center text-outline active:scale-90 transition-transform">
           <span className="material-symbols-outlined">account_balance_wallet</span>
-          <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
         </Link>
         <Link href="/score" className="flex flex-col items-center text-primary relative after:content-[''] after:absolute after:-bottom-1 after:w-1 after:h-1 after:bg-primary after:rounded-full active:scale-90 transition-transform">
           <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-          <span className="text-[10px] font-medium mt-0.5">Score</span>
+          <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
         </Link>
       </nav>
     </main>

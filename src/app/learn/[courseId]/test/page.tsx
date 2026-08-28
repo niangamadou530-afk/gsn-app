@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Question = { id: number; question: string; options: string[]; answer: number; explanation: string };
 
@@ -71,7 +72,7 @@ export default function TestPage() {
 
     if (effectiveDone < totalMods && totalMods > 0) {
       setBlocked(true);
-      setBlockedMsg(`Complète tous les modules du cours avant de passer le test. (${effectiveDone}/${totalMods} modules terminés)`);
+      setBlockedMsg(t("learn.test.blockedMessage", { done: effectiveDone, total: totalMods }));
       setLoading(false);
       return;
     }
@@ -94,7 +95,7 @@ export default function TestPage() {
         .update({ quiz_questions: qs })
         .eq("id", courseId);
     } catch (e: any) {
-      setError("Impossible de générer le test : " + e.message);
+      setError(t("learn.test.generateError", { message: e.message }));
     } finally {
       setGenerating(false);
     }
@@ -107,7 +108,7 @@ export default function TestPage() {
 
   async function submit() {
     if (Object.keys(answers).length < questions.length) {
-      alert(`Réponds à toutes les ${questions.length} questions avant de soumettre.`);
+      alert(t("learn.test.answerAllAlert", { count: questions.length }));
       return;
     }
 
@@ -164,6 +165,14 @@ export default function TestPage() {
           if (skillErr) console.error('[submit] users.update error:', skillErr.message, skillErr.code);
           else console.log('[submit] skill saved OK');
 
+          // Skill Passport PFIMN auto-delivery
+          if ((course?.title ?? "").startsWith("PFIMN")) {
+            await supabase
+              .from("pfimn_enrollments")
+              .update({ skill_passport_issued: true })
+              .eq("user_id", authData.user.id);
+          }
+
           setCourse((prev: any) => ({ ...prev, completed: true, certificate_id: certId }));
         }
       }
@@ -195,10 +204,10 @@ export default function TestPage() {
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-5">
           <span className="material-symbols-outlined text-4xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
         </div>
-        <h2 className="text-xl font-bold text-on-surface mb-2">Test verrouillé</h2>
+        <h2 className="text-xl font-bold text-on-surface mb-2">{t("learn.test.locked.title")}</h2>
         <p className="text-on-surface-variant text-sm mb-6 leading-relaxed">{blockedMsg}</p>
         <Link href={`/learn/${courseId}`} className="block w-full py-3.5 bg-primary text-on-primary font-bold rounded-xl text-center shadow-lg shadow-primary/20 active:scale-95 transition-all">
-          Retourner au cours
+          {t("learn.test.locked.backButton")}
         </Link>
       </div>
     </div>
@@ -208,8 +217,8 @@ export default function TestPage() {
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center space-y-6 p-6">
       <div className="w-16 h-16 rounded-full border-4 border-primary border-t-transparent animate-spin" />
       <div className="text-center">
-        <p className="text-primary font-bold text-lg">L&apos;IA génère ton test…</p>
-        <p className="text-on-surface-variant text-sm mt-1">Une seule génération — le test sera sauvegardé</p>
+        <p className="text-primary font-bold text-lg">{t("learn.test.generating.title")}</p>
+        <p className="text-on-surface-variant text-sm mt-1">{t("learn.test.generating.sub")}</p>
       </div>
       <div className="fixed -bottom-24 -right-24 w-64 h-64 bg-primary-container/10 rounded-full blur-[100px] pointer-events-none" />
     </div>
@@ -220,7 +229,7 @@ export default function TestPage() {
       <div className="text-center space-y-4">
         <span className="material-symbols-outlined text-4xl text-error block">error</span>
         <p className="text-on-surface-variant text-sm">{error}</p>
-        <Link href={`/learn/${courseId}`} className="text-primary font-bold hover:underline">← Retour au parcours</Link>
+        <Link href={`/learn/${courseId}`} className="text-primary font-bold hover:underline">{t("learn.test.errorBack")}</Link>
       </div>
     </div>
   );
@@ -238,7 +247,7 @@ export default function TestPage() {
         <Link href={`/learn/${courseId}`} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container active:scale-95 transition-all">
           <span className="material-symbols-outlined text-on-surface">arrow_back</span>
         </Link>
-        <span className="text-base font-bold text-primary">Test Final</span>
+        <span className="text-base font-bold text-primary">{t("learn.test.headerTitle")}</span>
         <span className="text-sm font-bold text-on-surface-variant">{answeredCount}/{questions.length}</span>
       </header>
 
@@ -248,17 +257,17 @@ export default function TestPage() {
         <div className="mb-8">
           <div className="flex justify-between items-end mb-3">
             <div>
-              <p className="text-on-surface-variant font-medium text-xs tracking-wide uppercase mb-1">Certification</p>
+              <p className="text-on-surface-variant font-medium text-xs tracking-wide uppercase mb-1">{t("learn.test.certificationLabel")}</p>
               <p className="text-xl font-extrabold text-on-surface">{course?.title?.split("—")[0]?.trim()}</p>
             </div>
             {!submitted && (
-              <span className="text-primary font-bold text-sm">Q{currentQ + 1} / {questions.length}</span>
+              <span className="text-primary font-bold text-sm">{t("learn.test.questionCounter", { current: currentQ + 1, total: questions.length })}</span>
             )}
           </div>
           <div className="h-3 w-full bg-surface-container-highest rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${submitted ? 100 : progressPct}%` }} />
           </div>
-          <p className="text-xs text-on-surface-variant mt-1.5">Score minimum 70% · Certificat GSN</p>
+          <p className="text-xs text-on-surface-variant mt-1.5">{t("learn.test.minScoreNote")}</p>
         </div>
 
         {/* Results — shown after submission */}
@@ -269,13 +278,17 @@ export default function TestPage() {
             <div className="bg-gradient-to-br from-primary to-primary-container rounded-3xl p-8 text-center text-on-primary shadow-xl shadow-primary/20">
               <div className="w-28 h-28 rounded-full bg-white/15 border-4 border-white/25 flex flex-col items-center justify-center mx-auto mb-5">
                 <span className="text-5xl font-extrabold">{score}%</span>
-                <span className="text-[10px] font-bold tracking-widest uppercase opacity-70 mt-1">Score</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase opacity-70 mt-1">{t("learn.test.scoreLabel")}</span>
               </div>
-              <h3 className="text-2xl font-extrabold mb-1">{score >= 70 ? "Félicitations !" : "Pas encore…"}</h3>
+              <h3 className="text-2xl font-extrabold mb-1">{score >= 70 ? t("learn.test.congrats") : t("learn.test.notYet")}</h3>
               <p className="text-sm opacity-80">
-                {correctCount}/{questions.length} bonnes réponses · {score >= 70 ? "Vous êtes certifié !" : "Minimum requis : 70%"}
+                {t("learn.test.result.summary", {
+                  correct: correctCount,
+                  total: questions.length,
+                  status: score >= 70 ? t("learn.test.result.certified") : t("learn.test.result.minRequired"),
+                })}
               </p>
-              {saving && <p className="text-xs opacity-60 mt-2 animate-pulse">Enregistrement en cours…</p>}
+              {saving && <p className="text-xs opacity-60 mt-2 animate-pulse">{t("learn.test.saving")}</p>}
             </div>
 
             {/* Action buttons */}
@@ -284,20 +297,20 @@ export default function TestPage() {
                 <Link href={`/learn/${courseId}/certificate`}
                   className="flex w-full py-4 bg-primary text-on-primary font-bold rounded-xl items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">
                   <span className="material-symbols-outlined">workspace_premium</span>
-                  Voir mon certificat
+                  {t("learn.test.viewCertificate")}
                 </Link>
               )}
               {(score >= 70 || course?.certificate_id) && (
                 <Link href="/score"
                   className="flex w-full py-4 bg-surface-container-low text-primary border-2 border-primary/20 font-bold rounded-xl items-center justify-center gap-2 hover:bg-primary/5 active:scale-95 transition-all">
                   <span className="material-symbols-outlined">stars</span>
-                  Voir mon Skill Passport
+                  {t("learn.test.viewSkillPassport")}
                 </Link>
               )}
               {!course?.certificate_id && (
                 <button onClick={retry}
                   className="w-full py-4 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container-highest transition-all active:scale-95">
-                  Refaire le test
+                  {t("learn.test.retakeTest")}
                 </button>
               )}
             </div>
@@ -305,7 +318,7 @@ export default function TestPage() {
             {/* Questions review — always shown when answers available */}
             {Object.keys(answers).length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-base font-bold text-on-surface pt-2">Révision des réponses</h3>
+                <h3 className="text-base font-bold text-on-surface pt-2">{t("learn.test.review.title")}</h3>
                 {questions.map((q, qi) => {
                   const userAns = answers[q.id];
                   const isCorrect = userAns === q.answer;
@@ -414,14 +427,14 @@ export default function TestPage() {
                 disabled={currentQ === 0}
                 className="px-6 py-3 text-on-surface-variant font-semibold hover:bg-surface-container rounded-xl transition-colors disabled:opacity-30"
               >
-                Précédent
+                {t("learn.test.previous")}
               </button>
               {currentQ < questions.length - 1 ? (
                 <button
                   onClick={() => setCurrentQ(q => Math.min(questions.length - 1, q + 1))}
                   className="px-8 py-3.5 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all"
                 >
-                  Suivant
+                  {t("learn.test.next")}
                 </button>
               ) : (
                 <button
@@ -429,7 +442,7 @@ export default function TestPage() {
                   disabled={saving || answeredCount < questions.length}
                   className="px-8 py-3.5 bg-primary text-on-primary font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
                 >
-                  {saving ? "Enregistrement…" : `Valider (${answeredCount}/${questions.length})`}
+                  {saving ? t("learn.test.savingShort") : t("learn.test.submit", { answered: answeredCount, total: questions.length })}
                 </button>
               )}
             </div>

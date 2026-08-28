@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Mission = {
   id: string;
@@ -108,16 +109,16 @@ export default function MissionCandidatesPage() {
   }
 
   function durationLabel(type: string) {
-    if (type === "short") return "Court terme";
-    if (type === "long") return "Long terme";
-    return "Freelance";
+    if (type === "short") return t("work.employerMissionDetail.duration.short");
+    if (type === "long") return t("work.employerMissionDetail.duration.long");
+    return t("work.employerMissionDetail.duration.freelance");
   }
 
   function gsnLevel(score: number) {
     if (score >= 75) return { label: "Premium", color: "text-yellow-600", bg: "bg-yellow-50" };
     if (score >= 50) return { label: "Medium", color: "text-blue-600", bg: "bg-blue-50" };
     if (score >= 20) return { label: "Small", color: "text-green-600", bg: "bg-green-50" };
-    return { label: "Débutant", color: "text-outline", bg: "bg-surface-container-low" };
+    return { label: t("work.employerMissionDetail.levelBeginner"), color: "text-outline", bg: "bg-surface-container-low" };
   }
 
   function formatDateFr(dateStr: string) {
@@ -133,9 +134,9 @@ export default function MissionCandidatesPage() {
   }
 
   function statusLabel(s: string) {
-    if (s === "accepted") return "Accepté";
-    if (s === "rejected") return "Refusé";
-    return "En attente";
+    if (s === "accepted") return t("work.employerMissionDetail.appStatus.accepted");
+    if (s === "rejected") return t("work.employerMissionDetail.appStatus.rejected");
+    return t("work.employerMissionDetail.appStatus.pending");
   }
 
   if (loading) {
@@ -153,14 +154,14 @@ export default function MissionCandidatesPage() {
           <span className="material-symbols-outlined text-[22px]">arrow_back</span>
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-on-surface-variant font-medium">Mission</p>
+          <p className="text-xs text-on-surface-variant font-medium">{t("work.employerMissionDetail.eyebrow")}</p>
           <p className="font-bold text-on-surface truncate">{mission?.title}</p>
         </div>
         <button
           onClick={toggleMissionStatus}
           disabled={closingMission}
           className={`text-xs font-bold px-3 py-1.5 rounded-full transition-colors ${mission?.status === "active" ? "bg-error/10 text-error hover:bg-error/20" : "bg-primary/10 text-primary hover:bg-primary/20"}`}>
-          {mission?.status === "active" ? "Fermer" : "Réactiver"}
+          {mission?.status === "active" ? t("work.employerMissionDetail.close") : t("work.employerMissionDetail.reactivate")}
         </button>
       </header>
 
@@ -170,7 +171,7 @@ export default function MissionCandidatesPage() {
         <section className="bg-surface-container-lowest rounded-2xl p-6 shadow-[0_4px_16px_rgba(25,28,35,0.06)] space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${mission?.status === "active" ? "bg-primary/10 text-primary" : "bg-outline-variant/20 text-outline"}`}>
-              {mission?.status === "active" ? "Actif" : "Fermé"}
+              {mission?.status === "active" ? t("work.employerMissionDetail.status.active") : t("work.employerMissionDetail.status.closed")}
             </span>
             <span className="text-[11px] text-on-surface-variant font-medium">{durationLabel(mission?.duration_type ?? "")}</span>
             {mission?.domain && <span className="text-[11px] text-on-surface-variant font-medium">· {mission.domain}</span>}
@@ -185,7 +186,7 @@ export default function MissionCandidatesPage() {
               <div className="bg-surface-container-low rounded-xl p-3 flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>payments</span>
                 <div>
-                  <p className="text-xs text-on-surface-variant">Budget</p>
+                  <p className="text-xs text-on-surface-variant">{t("work.employerMissionDetail.budgetLabel")}</p>
                   <p className="text-sm font-bold text-on-surface">{mission.budget_fcfa.toLocaleString()} FCFA</p>
                 </div>
               </div>
@@ -194,7 +195,7 @@ export default function MissionCandidatesPage() {
               <div className="bg-surface-container-low rounded-xl p-3 flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
                 <div>
-                  <p className="text-xs text-on-surface-variant">Score min. requis</p>
+                  <p className="text-xs text-on-surface-variant">{t("work.employerMissionDetail.minScoreLabel")}</p>
                   <p className="text-sm font-bold text-on-surface">{mission.min_gsn_score}%</p>
                 </div>
               </div>
@@ -205,14 +206,14 @@ export default function MissionCandidatesPage() {
         {/* Candidates */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-on-surface">Candidatures</h2>
-            <span className="text-sm text-on-surface-variant font-medium">{candidates.length} candidat{candidates.length !== 1 ? "s" : ""}</span>
+            <h2 className="text-lg font-bold text-on-surface">{t("work.employerMissionDetail.candidatesTitle")}</h2>
+            <span className="text-sm text-on-surface-variant font-medium">{candidates.length} {candidates.length !== 1 ? t("work.employerMissionDetail.candidatesPlural") : t("work.employerMissionDetail.candidateSingular")}</span>
           </div>
 
           {candidates.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-2xl p-10 text-center shadow-[0_4px_16px_rgba(25,28,35,0.06)]">
               <span className="material-symbols-outlined text-[48px] text-outline-variant block mb-3" style={{ fontVariationSettings: "'FILL' 1" }}>group_off</span>
-              <p className="text-on-surface-variant text-sm font-medium">Aucune candidature pour le moment.</p>
+              <p className="text-on-surface-variant text-sm font-medium">{t("work.employerMissionDetail.emptyCandidates")}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -229,7 +230,7 @@ export default function MissionCandidatesPage() {
                         <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>person</span>
                       </div>
                       <div>
-                        <p className="font-bold text-on-surface">{c.user?.name ?? "Talent GSN"}</p>
+                        <p className="font-bold text-on-surface">{c.user?.name ?? t("work.employerMissionDetail.defaultCandidateName")}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <div className="flex items-center gap-1">
                             <span className="material-symbols-outlined text-primary text-[13px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
@@ -239,7 +240,7 @@ export default function MissionCandidatesPage() {
                             {level.label}
                           </span>
                           <span className="text-[11px] text-on-surface-variant font-medium">
-                            {skills.length} certification{skills.length !== 1 ? "s" : ""}
+                            {skills.length} {skills.length !== 1 ? t("work.employerMissionDetail.certificationsPlural") : t("work.employerMissionDetail.certificationSingular")}
                           </span>
                         </div>
                       </div>
@@ -266,7 +267,7 @@ export default function MissionCandidatesPage() {
                                   <span className="text-[11px] text-on-surface-variant">{sk.level}</span>
                                 )}
                                 {sk.weeks && (
-                                  <span className="text-[11px] text-on-surface-variant">{sk.weeks} sem.</span>
+                                  <span className="text-[11px] text-on-surface-variant">{t("work.employerMissionDetail.weeksValue", { weeks: sk.weeks })}</span>
                                 )}
                                 {sk.date && (
                                   <span className="text-[11px] text-on-surface-variant">{formatDateFr(sk.date)}</span>
@@ -291,12 +292,12 @@ export default function MissionCandidatesPage() {
                       <button onClick={() => updateApplicationStatus(c.id, "accepted")}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary/10 text-primary font-bold text-sm rounded-xl hover:bg-primary/20 transition-colors">
                         <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                        Accepter
+                        {t("work.employerMissionDetail.accept")}
                       </button>
                       <button onClick={() => updateApplicationStatus(c.id, "rejected")}
                         className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-error/10 text-error font-bold text-sm rounded-xl hover:bg-error/20 transition-colors">
                         <span className="material-symbols-outlined text-[16px]">cancel</span>
-                        Refuser
+                        {t("work.employerMissionDetail.reject")}
                       </button>
                     </div>
                   )}

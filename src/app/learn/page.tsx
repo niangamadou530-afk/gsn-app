@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type Course = {
   id: string | number;
@@ -33,11 +34,6 @@ export default function LearnPage() {
   async function load() {
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { router.replace("/login"); return; }
-
-    // Les élèves GSN PREP n'ont pas accès à GSN Learn
-    const { data: userRow } = await supabase.from("users").select("profile_type").eq("id", auth.user.id).single();
-    if (userRow?.profile_type === "eleve") { router.replace("/prep/dashboard"); return; }
-
     const { data, error } = await supabase
       .from("user_courses")
       .select("id, title, modules, completed, test_score")
@@ -77,7 +73,7 @@ export default function LearnPage() {
             className="flex items-center gap-1.5 bg-primary text-on-primary text-sm font-bold px-4 py-2 rounded-full shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-95 transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">add_circle</span>
-            Nouveau
+            {t("learn.page.newButton")}
           </Link>
         </div>
       </header>
@@ -89,7 +85,7 @@ export default function LearnPage() {
           <h2 className="text-[2.75rem] font-extrabold tracking-tight leading-tight text-on-background mb-1">
             GSN Learn
           </h2>
-          <p className="text-on-surface-variant font-medium">Tes parcours de formation</p>
+          <p className="text-on-surface-variant font-medium">{t("learn.page.subtitle")}</p>
         </section>
 
         {loading ? (
@@ -100,14 +96,14 @@ export default function LearnPage() {
           <div className="bg-surface-container-low rounded-xl p-10 text-center">
             <span className="material-symbols-outlined text-5xl text-outline-variant mb-4 block">school</span>
             <p className="text-on-surface-variant font-medium mb-6">
-              Tu n&apos;as pas encore de parcours de formation.
+              {t("learn.page.emptyState.text")}
             </p>
             <Link
               href="/learn/onboarding"
               className="inline-flex items-center gap-2 bg-primary text-on-primary font-bold px-6 py-3.5 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
-              Créer mon parcours avec l&apos;IA
+              {t("learn.page.emptyState.cta")}
             </Link>
           </div>
         ) : (
@@ -133,7 +129,7 @@ export default function LearnPage() {
                       {duration && (
                         course.completed ? (
                           <span className="px-3 py-1 bg-tertiary-fixed text-on-tertiary-fixed rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                            Certifié <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                            {t("learn.page.certifiedBadge")} <span className="material-symbols-outlined text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                           </span>
                         ) : (
                           <span className="px-3 py-1 bg-surface-container-high rounded-full text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
@@ -146,8 +142,8 @@ export default function LearnPage() {
                     {weeks > 0 && (
                       <div className="space-y-1.5">
                         <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-on-surface-variant">Modules</span>
-                          <span style={{ color }}>{weeks * 3} modules</span>
+                          <span className="text-on-surface-variant">{t("learn.page.modulesLabel")}</span>
+                          <span style={{ color }}>{t("learn.page.modulesCount", { count: weeks * 3 })}</span>
                         </div>
                         <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: course.completed ? "100%" : "12%", backgroundColor: color }} />
@@ -160,10 +156,16 @@ export default function LearnPage() {
                       <span className="material-symbols-outlined text-[16px]">
                         {course.completed ? "workspace_premium" : "schedule"}
                       </span>
-                      {course.completed ? `Score : ${course.test_score}%` : `${weeks} semaine${weeks > 1 ? "s" : ""} · ${weeks * 3} modules`}
+                      {course.completed
+                        ? t("learn.page.scoreLabel", { score: course.test_score ?? 0 })
+                        : t("learn.page.duration", {
+                            weeks,
+                            weekLabel: weeks > 1 ? t("learn.page.weekPlural") : t("learn.page.weekSingular"),
+                            modules: weeks * 3,
+                          })}
                     </span>
                     <button className="text-sm font-bold text-primary flex items-center gap-1 active:scale-95 transition-transform">
-                      {course.completed ? "Voir le diplôme" : "Continuer"}
+                      {course.completed ? t("learn.page.viewDiploma") : t("learn.page.continueButton")}
                       <span className="material-symbols-outlined text-[16px]">
                         {course.completed ? "open_in_new" : "arrow_forward"}
                       </span>
@@ -180,7 +182,7 @@ export default function LearnPage() {
                 className="w-full py-4 flex items-center justify-center gap-3 bg-surface-container-lowest border-2 border-dashed border-outline-variant text-primary font-bold rounded-xl hover:bg-primary/5 transition-colors active:scale-[0.98] duration-200"
               >
                 <span className="material-symbols-outlined">add_circle</span>
-                + Créer un nouveau parcours
+                {t("learn.page.createNewPath")}
               </Link>
             </div>
           </div>
@@ -192,23 +194,23 @@ export default function LearnPage() {
         <div className="flex justify-around items-center pt-3 pb-6 px-4 max-w-2xl mx-auto">
           <Link href="/dashboard" className="flex flex-col items-center text-outline hover:opacity-80 active:scale-90 transition-all">
             <span className="material-symbols-outlined">home</span>
-            <span className="text-[10px] font-medium mt-0.5">Accueil</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.home")}</span>
           </Link>
           <Link href="/learn" className="flex flex-col items-center text-primary relative after:content-[''] after:w-1 after:h-1 after:bg-primary after:rounded-full after:mt-0.5 after:block hover:opacity-80 active:scale-90 transition-all">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-            <span className="text-[10px] font-medium mt-0.5">Apprendre</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.learn")}</span>
           </Link>
           <Link href="/missions" className="flex flex-col items-center text-outline hover:opacity-80 active:scale-90 transition-all">
             <span className="material-symbols-outlined">assignment</span>
-            <span className="text-[10px] font-medium mt-0.5">Missions</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.missions")}</span>
           </Link>
           <Link href="/wallet" className="flex flex-col items-center text-outline hover:opacity-80 active:scale-90 transition-all">
             <span className="material-symbols-outlined">account_balance_wallet</span>
-            <span className="text-[10px] font-medium mt-0.5">Wallet</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.wallet")}</span>
           </Link>
           <Link href="/score" className="flex flex-col items-center text-outline hover:opacity-80 active:scale-90 transition-all">
             <span className="material-symbols-outlined">stars</span>
-            <span className="text-[10px] font-medium mt-0.5">Score</span>
+            <span className="text-[10px] font-medium mt-0.5">{t("common.nav.score")}</span>
           </Link>
         </div>
       </nav>

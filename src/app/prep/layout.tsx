@@ -2,13 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { t } from "@/lib/i18n";
 
 const NAV_ITEMS = [
-  { href: "/prep/dashboard",   icon: "home",         label: "Accueil"     },
-  { href: "/prep/generer",     icon: "auto_awesome",  label: "Générer"     },
-  { href: "/prep/progression", icon: "trending_up",   label: "Progrès"     },
-  { href: "/prep/classement",  icon: "leaderboard",   label: "Classement"  },
-  { href: "/prep/orientation", icon: "explore",       label: "Orientation" },
+  { href: "/prep/dashboard",   icon: "home",         labelKey: "prep.layout.navHome"        },
+  { href: "/prep/generer",     icon: "auto_awesome",  labelKey: "prep.layout.navGenerate"    },
+  { href: "/prep/progression", icon: "trending_up",   labelKey: "prep.layout.navProgress"    },
+  { href: "/prep/classement",  icon: "leaderboard",   labelKey: "prep.layout.navRanking"     },
+  { href: "/prep/orientation", icon: "explore",       labelKey: "prep.layout.navOrientation" },
 ];
 
 export default function PrepLayout({ children }: { children: React.ReactNode }) {
@@ -38,7 +39,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
                     {item.icon}
                   </span>
                   <span className={`text-[10px] font-semibold ${active ? "text-primary" : "text-on-surface-variant"}`}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </span>
                 </Link>
               );

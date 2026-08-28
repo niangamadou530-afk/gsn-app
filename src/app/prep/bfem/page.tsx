@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { t } from "@/lib/i18n";
 
 type DocType = "tous" | "epreuve" | "corrige";
 
@@ -10,10 +11,9 @@ interface BfemDoc {
   id: string;
   annee: number;
   matiere: string;
-  type: "epreuve" | "corrige" | "annale_preparation";
+  type: "epreuve" | "corrige";
+  contenu_html: string | null;
   url_originale: string;
-  url_storage: string | null;
-  nom_fichier: string | null;
 }
 
 declare global {
@@ -29,6 +29,7 @@ function useMathJax() {
   const ready = useRef(false);
 
   useEffect(() => {
+    // Configure before the script loads
     window.MathJax = {
       typesetPromise: window.MathJax?.typesetPromise ?? (() => Promise.resolve()),
     } as typeof window.MathJax;
@@ -73,24 +74,17 @@ function useMathJax() {
 }
 
 export default function BfemPage() {
-  const router     = useRouter();
-  const typeset    = useMathJax();
+  const router    = useRouter();
+  const typeset   = useMathJax();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [all, setAll]                   = useState<BfemDoc[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [annee, setAnnee]               = useState<number | null>(null);
-  const [annees, setAnnees]             = useState<number[]>([]);
-  const [docType, setDocType]           = useState<DocType>("tous");
-  const [matiere, setMatiere]           = useState("Toutes");
-  const [selected, setSelected]         = useState<BfemDoc | null>(null);
-  const [contentHtml, setContentHtml]   = useState<string | null>(null);
-  const [contentLoading, setContentLoading] = useState(false);
-  const [isMobile, setIsMobile]         = useState(false);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-  }, []);
+  const [all, setAll]           = useState<BfemDoc[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [annee, setAnnee]       = useState<number | null>(null);
+  const [annees, setAnnees]     = useState<number[]>([]);
+  const [docType, setDocType]   = useState<DocType>("tous");
+  const [matiere, setMatiere]   = useState("Toutes");
+  const [selected, setSelected] = useState<BfemDoc | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -110,7 +104,7 @@ export default function BfemPage() {
 
       const { data, error } = await supabase
         .from("epreuves_bac")
-        .select("id, annee, matiere, type, url_originale, url_storage, nom_fichier")
+        .select("id, annee, matiere, type, contenu_html, url_originale")
         .eq("examen", "BFEM")
         .order("annee", { ascending: false });
 
@@ -119,6 +113,7 @@ export default function BfemPage() {
         setAll(docs);
         const years = [...new Set(docs.map(d => d.annee))].sort((a, b) => b - a);
         setAnnees(years);
+        if (years.length > 0) setAnnee(years[0]);
       }
       setLoading(false);
     }
@@ -127,65 +122,34 @@ export default function BfemPage() {
 
   // Trigger MathJax after content renders
   useEffect(() => {
-    if (contentHtml && contentRef.current) {
+    if (selected?.contenu_html && contentRef.current) {
       typeset(contentRef.current);
     }
-  }, [contentHtml, typeset]);
-
-  async function handleSelect(doc: BfemDoc) {
-    setSelected(doc);
-    setContentHtml(null);
-    setContentLoading(true);
-    // PDF docs already have url_storage from the list — no extra fetch needed
-    if (!doc.url_storage) {
-      const { data } = await supabase
-        .from("epreuves_bac")
-        .select("contenu_html")
-        .eq("id", doc.id)
-        .single();
-      setContentHtml((data as any)?.contenu_html ?? null);
-    }
-    setContentLoading(false);
-  }
-
-  function handleBack() {
-    if (selected) {
-      setSelected(null);
-      setContentHtml(null);
-    } else {
-      router.push("/prep/dashboard");
-    }
-  }
+  }, [selected, typeset]);
 
   const matieres = useMemo(() => {
     const s = new Set(all.filter(d => annee === null || d.annee === annee).map(d => d.matiere));
     return ["Toutes", ...Array.from(s).sort()];
   }, [all, annee]);
 
-  const filtered = useMemo(() => {
-    const result = all.filter(d => {
-      if (annee !== null && d.annee !== annee) return false;
-      if (docType !== "tous" && d.type !== docType) return false;
-      if (matiere !== "Toutes" && d.matiere !== matiere) return false;
-      return true;
-    });
-    if (annee === null && result.length > 50) {
-      result.sort((a, b) => b.annee - a.annee);
-    }
-    return result;
-  }, [all, annee, docType, matiere]);
+  const filtered = useMemo(() => all.filter(d => {
+    if (annee !== null && d.annee !== annee) return false;
+    if (docType !== "tous" && d.type !== docType) return false;
+    if (matiere !== "Toutes" && d.matiere !== matiere) return false;
+    return true;
+  }), [all, annee, docType, matiere]);
 
   return (
     <main className="min-h-screen bg-surface text-on-surface flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-4 py-3 flex items-center gap-3">
         <button
-          onClick={handleBack}
+          onClick={() => selected ? setSelected(null) : router.push("/prep/dashboard")}
           className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
           <span className="material-symbols-outlined">arrow_back</span>
         </button>
         <h1 className="font-bold text-on-surface">
-          {selected ? selected.matiere : "Épreuves & Corrigés BFEM"}
+          {selected ? selected.matiere : t("prep.bfem.title")}
         </h1>
       </header>
 
@@ -194,63 +158,32 @@ export default function BfemPage() {
         <div className="flex flex-col flex-1">
           <div className="px-4 py-2 flex items-center gap-2 bg-surface-container-lowest border-b border-outline-variant/20">
             <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
-              selected.type === "corrige"
-                ? "bg-green-100 text-green-700"
-                : selected.type === "annale_preparation"
-                ? "bg-orange-100 text-orange-700"
-                : "bg-blue-100 text-blue-700"
+              selected.type === "corrige" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
             }`}>
-              {selected.type === "corrige"
-                ? "Corrigé"
-                : selected.type === "annale_preparation"
-                ? "Annale de préparation"
-                : "Épreuve"}
+              {selected.type === "corrige" ? t("prep.bfem.badgeCorrige") : t("prep.bfem.badgeEpreuve")}
             </span>
             <span className="text-sm text-on-surface-variant">{selected.annee}</span>
+            <a href={selected.url_originale} target="_blank" rel="noopener noreferrer"
+              className="ml-auto flex items-center gap-1 text-xs text-primary font-semibold">
+              <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+              {t("prep.bfem.sourceLink")}
+            </a>
           </div>
 
-          {contentLoading ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin"
-                style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-            </div>
-          ) : contentHtml ? (
+          {selected.contenu_html ? (
             <div
               ref={contentRef}
               className="flex-1 px-4 py-6 overflow-auto bfem-content"
-              dangerouslySetInnerHTML={{ __html: contentHtml }}
+              dangerouslySetInnerHTML={{ __html: selected.contenu_html }}
             />
-          ) : selected.url_storage ? (
-            isMobile ? (
-              <div className="flex-1 flex items-center justify-center p-8 text-center">
-                <div>
-                  <span className="material-symbols-outlined text-[48px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>picture_as_pdf</span>
-                  <p className="font-bold text-on-surface mt-2">{selected.matiere} {selected.annee}</p>
-                  <p className="text-sm text-on-surface-variant mt-1">Document PDF</p>
-                  <button
-                    onClick={() => window.open(`/api/prep-pdf-proxy?id=${selected.id}`, "_blank")}
-                    className="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-white active:scale-[0.97] transition-transform"
-                    style={{ backgroundColor: "#FF6B00" }}>
-                    <span className="material-symbols-outlined text-[20px]">open_in_new</span>
-                    Ouvrir le PDF
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <iframe
-                src={`/api/prep-pdf-proxy?id=${selected.id}`}
-                className="flex-1 w-full min-h-[600px] border-0"
-                title={selected.nom_fichier ?? `${selected.matiere} ${selected.annee}`}
-              />
-            )
           ) : (
             <div className="flex-1 flex items-center justify-center p-8 text-center">
               <div>
                 <span className="material-symbols-outlined text-[48px] text-on-surface-variant">description</span>
-                <p className="font-bold text-on-surface mt-2">Contenu non disponible</p>
+                <p className="font-bold text-on-surface mt-2">{t("prep.bfem.contentUnavailable")}</p>
                 <a href={selected.url_originale} target="_blank" rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-1 text-sm text-primary font-semibold">
-                  Voir la source
+                  {t("prep.bfem.viewOnSunudaara")}
                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               </div>
@@ -265,12 +198,6 @@ export default function BfemPage() {
 
           {/* Filtres année */}
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            <button onClick={() => { setAnnee(null); setMatiere("Toutes"); }}
-              className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-                annee === null ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
-              }`}>
-              Toutes
-            </button>
             {annees.map(a => (
               <button key={a} onClick={() => { setAnnee(a); setMatiere("Toutes"); }}
                 className={`flex-shrink-0 px-4 py-2 rounded-xl font-bold text-sm transition-all ${
@@ -283,12 +210,12 @@ export default function BfemPage() {
 
           {/* Filtres type */}
           <div className="flex gap-2">
-            {(["tous", "epreuve", "corrige"] as DocType[]).map(t => (
-              <button key={t} onClick={() => setDocType(t)}
+            {(["tous", "epreuve", "corrige"] as DocType[]).map(dt => (
+              <button key={dt} onClick={() => setDocType(dt)}
                 className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
-                  docType === t ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
+                  docType === dt ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"
                 }`}>
-                {t === "tous" ? "Tout" : t === "epreuve" ? "Épreuves" : "Corrigés"}
+                {dt === "tous" ? t("prep.bfem.filterAll") : dt === "epreuve" ? t("prep.bfem.filterEpreuves") : t("prep.bfem.filterCorriges")}
               </button>
             ))}
           </div>
@@ -315,40 +242,28 @@ export default function BfemPage() {
             <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm">
               <span className="material-symbols-outlined text-[40px] text-on-surface-variant"
                 style={{ fontVariationSettings: "'FILL' 1" }}>description</span>
-              <p className="font-bold text-on-surface mt-2">Aucun document trouvé</p>
-              <p className="text-sm text-on-surface-variant mt-1">Essaie d'autres filtres.</p>
+              <p className="font-bold text-on-surface mt-2">{t("prep.bfem.emptyTitle")}</p>
+              <p className="text-sm text-on-surface-variant mt-1">{t("prep.bfem.emptySubtitle")}</p>
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-xs text-on-surface-variant">{filtered.length} document{filtered.length > 1 ? "s" : ""}</p>
+              <p className="text-xs text-on-surface-variant">{t(filtered.length > 1 ? "prep.bfem.documentCountPlural" : "prep.bfem.documentCountSingular", { count: filtered.length })}</p>
               {filtered.map(d => (
-                <button key={d.id} onClick={() => handleSelect(d)}
+                <button key={d.id} onClick={() => setSelected(d)}
                   className="w-full flex items-center gap-3 p-4 rounded-2xl bg-surface-container-lowest shadow-sm text-left active:scale-[0.98] transition-transform">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    d.type === "corrige"
-                      ? "bg-green-100"
-                      : d.type === "annale_preparation"
-                      ? "bg-orange-100"
-                      : "bg-blue-100"
+                    d.type === "corrige" ? "bg-green-100" : "bg-blue-100"
                   }`}>
                     <span className={`material-symbols-outlined text-[20px] ${
-                      d.type === "corrige"
-                        ? "text-green-600"
-                        : d.type === "annale_preparation"
-                        ? "text-orange-600"
-                        : "text-blue-600"
+                      d.type === "corrige" ? "text-green-600" : "text-blue-600"
                     }`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                      {d.type === "corrige" ? "check_circle" : d.type === "annale_preparation" ? "auto_stories" : "description"}
+                      {d.type === "corrige" ? "check_circle" : "description"}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-on-surface text-sm truncate">{d.matiere}</p>
                     <p className="text-xs text-on-surface-variant">
-                      {d.type === "corrige"
-                        ? "Corrigé"
-                        : d.type === "annale_preparation"
-                        ? "Annale de préparation"
-                        : "Épreuve"} · {d.annee}
+                      {d.type === "corrige" ? t("prep.bfem.badgeCorrige") : t("prep.bfem.badgeEpreuve")} · {d.annee}
                     </p>
                   </div>
                   <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>

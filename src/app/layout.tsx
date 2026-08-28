@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
+import { t } from "@/lib/i18n";
 import "./globals.css";
 
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
+  preload: false,
+  adjustFontFallback: false,
+});
+
 export const metadata: Metadata = {
-  title: "GSN — Apprends, travaille, gagne",
-  description: "Global Skills Network — La plateforme Learn-Work-Earn pour l'Afrique",
+  title: t("common.appTitle"),
+  description: t("common.appDescription"),
 };
 
 export default function RootLayout({
@@ -12,20 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full">
+    <html lang="en" className="h-full">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full flex flex-col antialiased">
+      <body className={`${jakarta.className} min-h-full flex flex-col antialiased`}>
         {children}
       </body>
     </html>

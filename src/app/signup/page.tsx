@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { phoneToFakeEmail, normalizePhone, isValidPhone } from "@/lib/phoneUtils";
+import { t } from "@/lib/i18n";
 
 type ProfileType = "eleve" | "professionnel" | "";
 type AuthMethod  = "email" | "phone";
@@ -27,7 +28,7 @@ export default function SignupPage() {
     setErrorMessage("");
 
     if (authMethod === "phone" && !isValidPhone(phone)) {
-      setErrorMessage("Numéro invalide — format attendu : +221 7X XXX XX XX");
+      setErrorMessage(t("auth.signup.invalidPhone"));
       return;
     }
 
@@ -41,8 +42,8 @@ export default function SignupPage() {
       setErrorMessage(
         error.message === "User already registered"
           ? authMethod === "phone"
-            ? "Ce numéro est déjà associé à un compte."
-            : "Cet email est déjà associé à un compte."
+            ? t("auth.signup.phoneTaken")
+            : t("auth.signup.emailTaken")
           : error.message
       );
       return;
@@ -52,8 +53,8 @@ export default function SignupPage() {
       setLoading(false);
       setErrorMessage(
         authMethod === "phone"
-          ? "Ce numéro est déjà associé à un compte. Connecte-toi ou réinitialise ton mot de passe."
-          : "Cet email est déjà associé à un compte. Connecte-toi ou réinitialise ton mot de passe."
+          ? t("auth.signup.phoneTakenLogin")
+          : t("auth.signup.emailTakenLogin")
       );
       return;
     }
@@ -91,7 +92,7 @@ export default function SignupPage() {
       <header className="w-full flex justify-between items-center px-6 py-5">
         <span className="text-xl font-bold tracking-tight text-primary">GSN</span>
         <Link href="/login" className="text-primary text-sm font-bold hover:underline">
-          Se connecter
+          {t("auth.signup.login")}
         </Link>
       </header>
 
@@ -100,10 +101,10 @@ export default function SignupPage() {
         {/* Branding */}
         <div className="mb-10">
           <h1 className="text-[2.2rem] font-extrabold tracking-tight text-on-background leading-tight mb-2">
-            Crée ton<br /><span className="text-primary">compte GSN</span>
+            {t("auth.signup.title.line1")}<br /><span className="text-primary">{t("auth.signup.title.line2")}</span>
           </h1>
           <p className="text-on-surface-variant leading-relaxed">
-            Rejoins le réseau et développe tes compétences numériques.
+            {t("auth.signup.subtitle")}
           </p>
         </div>
 
@@ -117,8 +118,8 @@ export default function SignupPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-extrabold text-on-surface mb-1">Tu es…</h2>
-              <p className="text-on-surface-variant text-sm">Choisis ton profil pour une expérience personnalisée.</p>
+              <h2 className="text-xl font-extrabold text-on-surface mb-1">{t("auth.signup.step1.title")}</h2>
+              <p className="text-on-surface-variant text-sm">{t("auth.signup.step1.subtitle")}</p>
             </div>
 
             <div className="space-y-3">
@@ -128,8 +129,8 @@ export default function SignupPage() {
                 <div className="flex items-center gap-4">
                   <span className="text-3xl">🎓</span>
                   <div>
-                    <p className="font-bold text-on-surface">Élève</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Je prépare mon BFEM ou BAC — accès à GSN PREP</p>
+                    <p className="font-bold text-on-surface">{t("auth.signup.step1.student")}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t("auth.signup.step1.studentDesc")}</p>
                   </div>
                   {profileType === "eleve" && (
                     <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -143,8 +144,8 @@ export default function SignupPage() {
                 <div className="flex items-center gap-4">
                   <span className="text-3xl">👨‍💼</span>
                   <div>
-                    <p className="font-bold text-on-surface">Professionnel</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">Je cherche des missions, formations ou emplois</p>
+                    <p className="font-bold text-on-surface">{t("auth.signup.step1.professional")}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t("auth.signup.step1.professionalDesc")}</p>
                   </div>
                   {profileType === "professionnel" && (
                     <span className="ml-auto material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
@@ -157,7 +158,7 @@ export default function SignupPage() {
               disabled={!profileType}
               onClick={() => setStep(2)}
               className="w-full py-4 bg-primary text-on-primary font-bold rounded-xl flex items-center justify-center gap-2 shadow-[0_8px_24px_rgba(0,91,191,0.2)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 mt-2">
-              Continuer
+              {t("auth.signup.step1.continue")}
               <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </button>
           </div>
@@ -173,7 +174,7 @@ export default function SignupPage() {
               <div className="flex items-center gap-2">
                 <span className="text-lg">{profileType === "eleve" ? "🎓" : "👨‍💼"}</span>
                 <span className="text-sm font-semibold text-on-surface-variant">
-                  {profileType === "eleve" ? "Élève" : "Professionnel"}
+                  {profileType === "eleve" ? t("auth.signup.step1.student") : t("auth.signup.step1.professional")}
                 </span>
               </div>
             </div>
@@ -185,7 +186,7 @@ export default function SignupPage() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">person</span>
                 <input
                   type="text"
-                  placeholder="Nom complet"
+                  placeholder={t("auth.signup.step2.fullNamePlaceholder")}
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
@@ -200,14 +201,14 @@ export default function SignupPage() {
                   onClick={() => setAuthMethod("email")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "email" ? "bg-primary text-on-primary" : "bg-surface-container-lowest text-on-surface-variant"}`}>
                   <span className="material-symbols-outlined text-[16px]">mail</span>
-                  Email
+                  {t("auth.signup.step2.emailTab")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuthMethod("phone")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "phone" ? "bg-primary text-on-primary" : "bg-surface-container-lowest text-on-surface-variant"}`}>
                   <span className="material-symbols-outlined text-[16px]">phone</span>
-                  Téléphone
+                  {t("auth.signup.step2.phoneTab")}
                 </button>
               </div>
 
@@ -217,7 +218,7 @@ export default function SignupPage() {
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">mail</span>
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder={t("auth.signup.step2.emailPlaceholder")}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
@@ -243,7 +244,7 @@ export default function SignupPage() {
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-[20px]">lock</span>
                 <input
                   type="password"
-                  placeholder="Mot de passe"
+                  placeholder={t("auth.signup.step2.passwordPlaceholder")}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   className="w-full bg-surface-container-lowest border-2 border-outline-variant rounded-xl pl-11 pr-4 py-4 text-on-surface placeholder:text-outline outline-none focus:border-primary transition-colors"
@@ -266,15 +267,15 @@ export default function SignupPage() {
               {loading ? (
                 <div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" />
               ) : (
-                <>Créer mon compte <span className="material-symbols-outlined text-[20px]">arrow_forward</span></>
+                <>{t("auth.signup.step2.submit")} <span className="material-symbols-outlined text-[20px]">arrow_forward</span></>
               )}
             </button>
           </form>
         )}
 
         <p className="text-center text-sm text-on-surface-variant mt-8">
-          Déjà inscrit ?{" "}
-          <Link href="/login" className="text-primary font-bold hover:underline">Se connecter</Link>
+          {t("auth.signup.alreadyRegistered")}{" "}
+          <Link href="/login" className="text-primary font-bold hover:underline">{t("auth.signup.login")}</Link>
         </p>
       </div>
 

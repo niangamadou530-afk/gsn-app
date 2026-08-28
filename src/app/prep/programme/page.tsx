@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres } from "@/data/programmes";
+import { t } from "@/lib/i18n";
 
 type Profile = { prenom: string | null; exam_type: string; serie: string | null };
 
@@ -75,9 +76,9 @@ export default function ProgrammePage() {
   return (
     <main className="min-h-screen bg-surface text-on-surface pb-8">
       <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">Programme officiel</h1>
+        <h1 className="text-2xl font-extrabold">{t("prep.programme.title")}</h1>
         <p className="text-on-surface-variant text-sm mt-0.5">
-          {exam}{serie ? ` · Série ${serie}` : ""} · Office du BAC Sénégal
+          {exam}{serie ? t("prep.programme.serieSuffix", { serie }) : ""}{t("prep.programme.officialBoard")}
         </p>
       </header>
 
@@ -87,8 +88,8 @@ export default function ProgrammePage() {
         {totalChaps > 0 && (
           <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-bold text-on-surface">Avancement global</p>
-              <p className="text-sm font-black text-primary">{totalDone}/{totalChaps} chapitres</p>
+              <p className="text-sm font-bold text-on-surface">{t("prep.programme.globalProgress")}</p>
+              <p className="text-sm font-black text-primary">{t("prep.programme.chaptersCount", { done: totalDone, total: totalChaps })}</p>
             </div>
             <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
               <div
@@ -123,7 +124,7 @@ export default function ProgrammePage() {
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-on-surface text-sm">{m}</p>
                   {total > 0 && (
-                    <p className="text-xs text-on-surface-variant mt-0.5">{done}/{total} chapitres · {pct}%</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t("prep.programme.matiereProgress", { done, total, pct: pct ?? 0 })}</p>
                   )}
                   {total > 0 && (
                     <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1">
@@ -139,7 +140,7 @@ export default function ProgrammePage() {
                     onClick={e => { e.stopPropagation(); goGenerer(m); }}
                     className="px-3 py-1.5 rounded-lg text-xs font-bold text-white active:scale-95 transition-transform"
                     style={{ backgroundColor: "#FF6B00" }}>
-                    Générer
+                    {t("prep.programme.generateButton")}
                   </button>
                   <span
                     className="material-symbols-outlined text-on-surface-variant text-[20px] transition-transform"
@@ -165,7 +166,7 @@ export default function ProgrammePage() {
                         <button
                           onClick={() => goGenerer(m, c)}
                           className="text-xs font-semibold text-primary underline active:opacity-70">
-                          Réviser
+                          {t("prep.programme.reviewButton")}
                         </button>
                       </div>
                     );
@@ -179,7 +180,7 @@ export default function ProgrammePage() {
                     onClick={() => goGenerer(m)}
                     className="w-full py-3 rounded-xl font-bold text-white text-sm active:scale-[0.98] transition-transform"
                     style={{ backgroundColor: "#FF6B00" }}>
-                    Générer du contenu pour {m}
+                    {t("prep.programme.generateContentFor", { matiere: m })}
                   </button>
                 </div>
               )}
@@ -189,13 +190,13 @@ export default function ProgrammePage() {
 
         {matieres.length === 0 && (
           <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm">
-            <p className="font-bold text-on-surface">Profil incomplet</p>
-            <p className="text-sm text-on-surface-variant mt-1">Complète ton profil pour voir ton programme.</p>
+            <p className="font-bold text-on-surface">{t("prep.programme.incompleteProfile.title")}</p>
+            <p className="text-sm text-on-surface-variant mt-1">{t("prep.programme.incompleteProfile.desc")}</p>
             <button
               onClick={() => router.push("/prep/onboarding")}
               className="mt-4 px-6 py-2.5 rounded-xl font-bold text-white text-sm"
               style={{ backgroundColor: "#FF6B00" }}>
-              Compléter mon profil
+              {t("prep.programme.incompleteProfile.button")}
             </button>
           </div>
         )}

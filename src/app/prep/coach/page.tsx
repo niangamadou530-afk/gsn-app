@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getMatiereData } from "@/data/programmes";
+import { t } from "@/lib/i18n";
 
 const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-14";
+const BFEM_DATE = "2026-07-15";
 
 function daysUntil(d: string) {
   return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000));
@@ -23,9 +24,6 @@ export default function CoachPage() {
   const [input, setInput]         = useState("");
   const [sending, setSending]     = useState(false);
   const [loading, setLoading]     = useState(true);
-  const [authToken, setAuthToken] = useState("");
-  const [retrySeconds, setRetrySeconds] = useState(0);
-  const [lastUserMsg, setLastUserMsg]   = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,16 +49,19 @@ export default function CoachPage() {
         stats[m] = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
       }
       setQuizStats(stats);
-      const { data: { session } } = await supabase.auth.getSession();
-      setAuthToken(session?.access_token ?? "");
       setLoading(false);
 
-      const prenom = p?.prenom ?? "Élève";
+      const prenom = p?.prenom ?? t("prep.coach.defaultName");
       const exam   = p?.exam_type ?? "BAC";
       const days   = daysUntil(exam === "BFEM" ? BFEM_DATE : BAC_DATE);
+      const greeting = [
+        t("prep.coach.greetingLine1", { prenom }),
+        t("prep.coach.greetingLine2", { days, exam }),
+        t("prep.coach.greetingLine3"),
+      ].join("\n\n");
       setMessages([{
         role: "assistant",
-        content: `Salut ${prenom} ! Je suis ton Coach IA GSN PREP 🎯\n\nIl te reste J-${days} avant le ${exam}. Je connais tes résultats et je suis là pour t'aider à cibler tes révisions.\n\nComment puis-je t'aider aujourd'hui ?`,
+        content: greeting,
       }]);
     }
     load();
@@ -68,29 +69,13 @@ export default function CoachPage() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  useEffect(() => {
-    if (retrySeconds <= 0) return;
-    const t = setTimeout(() => setRetrySeconds(s => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [retrySeconds]);
-
-  async function retryMessage() {
-    if (!lastUserMsg || retrySeconds > 0 || sending) return;
-    setSending(true);
-    await doSend(lastUserMsg);
-  }
-
   async function sendMessage() {
     if (!input.trim() || sending) return;
     const userMsg = input.trim();
     setInput("");
-    setLastUserMsg(userMsg);
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
     setSending(true);
-    await doSend(userMsg);
-  }
 
-  async function doSend(userMsg: string) {
     try {
       const exam  = profile?.exam_type ?? "BAC";
       const serie = profile?.serie ?? "";
@@ -153,7 +138,7 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}) },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemPrompt,
           message: userMsg,
@@ -164,19 +149,11 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
           serie: serie || "",
         }),
       });
-      if (res.status === 503) {
-        const d = await res.json();
-        setMessages(prev => [...prev, { role: "assistant", content: d.error ?? "Beaucoup de demandes en ce moment. Réessaie dans quelques secondes." }]);
-        setRetrySeconds(5);
-        return;
-      }
-
       const data = await res.json();
-      const rawMsg = res.ok ? (data.message ?? "Désolé, je n'ai pas pu répondre.") : (data.error ?? "Limite atteinte. Reviens demain pour continuer à réviser.");
+      const rawMsg = data.message ?? t("prep.coach.noResponseFallback");
       setMessages(prev => [...prev, { role: "assistant", content: nettoyer(rawMsg) }]);
-      setLastUserMsg("");
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "Erreur de connexion, réessaie." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: t("prep.coach.connectionError") }]);
     } finally {
       setSending(false);
     }
@@ -198,8 +175,8 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
           🤖
         </div>
         <div>
-          <p className="font-bold text-on-surface text-sm">Coach IA</p>
-          <p className="text-xs text-on-surface-variant">Personnel · GSN PREP</p>
+          <p className="font-bold text-on-surface text-sm">{t("prep.coach.headerTitle")}</p>
+          <p className="text-xs text-on-surface-variant">{t("prep.coach.headerSubtitle")}</p>
         </div>
       </header>
 
@@ -231,23 +208,12 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
         <div ref={bottomRef} />
       </div>
 
-      {lastUserMsg && !sending && (
-        <div className="px-4 pb-2">
-          <button
-            onClick={retryMessage}
-            disabled={retrySeconds > 0}
-            className="w-full py-2.5 rounded-xl font-bold text-sm border-2 transition-all disabled:opacity-50"
-            style={{ borderColor: "#FF6B00", color: retrySeconds > 0 ? "#999" : "#FF6B00", backgroundColor: retrySeconds > 0 ? "transparent" : "#FF6B0010" }}>
-            {retrySeconds > 0 ? `Réessayer dans ${retrySeconds}s…` : "Réessayer"}
-          </button>
-        </div>
-      )}
       <div className="border-t border-outline-variant/20 px-4 py-3 pb-6 flex items-end gap-3">
         <textarea
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-          placeholder="Pose ta question au Coach..."
+          placeholder={t("prep.coach.inputPlaceholder")}
           rows={1}
           className="flex-1 px-4 py-3 rounded-2xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary resize-none text-sm"
         />
