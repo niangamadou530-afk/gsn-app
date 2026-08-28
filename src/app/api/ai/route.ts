@@ -30,7 +30,7 @@ export async function POST(req: Request) {
         { role: "user", content: message },
       ],
       model: "openai/gpt-oss-120b",
-      max_tokens: 8000,
+      max_tokens: 6000,
       temperature: 0.2,
     });
 

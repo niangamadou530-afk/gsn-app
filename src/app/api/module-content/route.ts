@@ -58,7 +58,7 @@ Règles strictes:
         { role: "user", content: prompt },
       ],
       model: "openai/gpt-oss-120b",
-      max_tokens: 8000,
+      max_tokens: 6000,
       temperature: 0.3,
     });
 
