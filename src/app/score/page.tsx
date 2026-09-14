@@ -30,8 +30,8 @@ function formatDate(dateStr: string): string {
   const parts = dateStr.split("T")[0].split("-");
   if (parts.length !== 3) return dateStr;
   const [y, m, d] = parts.map(Number);
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${months[m - 1]} ${d}, ${y}`;
+  const months = ["jan","fév","mars","avr","mai","juin","juil","août","sep","oct","nov","déc"];
+  return `${d} ${months[m - 1]} ${y}`;
 }
 
 const CREDIT_THRESHOLD = 50;
@@ -178,7 +178,7 @@ export default function ScorePage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">{t("pay.score.microCredit.availableCredit")}</p>
-                  <p className="text-xl font-extrabold text-primary">{offer.amount.toLocaleString("en-US")} FCFA</p>
+                  <p className="text-xl font-extrabold text-primary">{offer.amount.toLocaleString("fr-FR")} FCFA</p>
                 </div>
                 <Link href="/wallet" className="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-bold shadow-md shadow-primary/20 active:scale-95 transition-all">
                   {t("pay.score.microCredit.request")}

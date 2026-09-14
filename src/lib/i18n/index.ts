@@ -9,14 +9,14 @@ import { en as payEn, fr as payFr } from "./dict/pay";
 const en: Dict = { ...commonEn, ...learnEn, ...workEn, ...prepAEn, ...prepBEn, ...payEn };
 const fr: Dict = { ...commonFr, ...learnFr, ...workFr, ...prepAFr, ...prepBFr, ...payFr };
 
-export const locale: "en" | "fr" = "en";
+export const locale: "en" | "fr" = "fr";
 
 const dictionaries: Record<"en" | "fr", Dict> = { en, fr };
 const active = dictionaries[locale];
 
 /**
- * Translate a key to the active locale (English by default).
- * Falls back to French, then to the raw key, if a translation is missing.
+ * Translate a key to the active locale (French by default).
+ * Falls back to English, then to the raw key, if a translation is missing.
  * `vars` fills `{placeholder}` tokens in the translated string.
  */
 export function t(key: string, vars?: Record<string, string | number>): string {

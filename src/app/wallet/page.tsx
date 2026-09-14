@@ -17,10 +17,10 @@ function formatDate(d: string) {
   const date = new Date(d);
   const now = new Date();
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-  const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  const time = date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   if (diffDays === 0) return t("pay.wallet.today", { time });
   if (diffDays === 1) return t("pay.wallet.yesterday", { time });
-  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
 function txLabel(tx: Transaction, isCredit: boolean) {
@@ -87,7 +87,7 @@ export default function WalletPage() {
           <div className="relative z-10 flex flex-col items-center text-center">
             <span className="text-on-primary/80 text-sm font-medium tracking-wider uppercase mb-2">{t("pay.wallet.totalBalance")}</span>
             <h1 className="text-4xl font-extrabold text-on-primary tracking-tight mb-8">
-              {balance.toLocaleString("en-US")} pts
+              {balance.toLocaleString("fr-FR")} pts
             </h1>
             <div className="flex gap-4 w-full">
               <button className="flex-1 bg-white/10 backdrop-blur-md border border-white/20 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-white/20 transition-all active:scale-95">
@@ -134,7 +134,7 @@ export default function WalletPage() {
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm border-l-4 border-primary space-y-1.5">
             <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">{t("pay.wallet.stats.monthlyIncome")}</p>
-            <p className="text-xl font-extrabold text-on-surface">{monthlyTotal.toLocaleString("en-US")} pts</p>
+            <p className="text-xl font-extrabold text-on-surface">{monthlyTotal.toLocaleString("fr-FR")} pts</p>
             <div className="flex items-center text-emerald-600 text-xs font-bold gap-0.5">
               <span className="material-symbols-outlined text-[16px]">trending_up</span>
               {t("pay.wallet.stats.thisMonth")}
@@ -180,7 +180,7 @@ export default function WalletPage() {
                     </div>
                     <div className="text-right">
                       <p className={`font-bold ${isCredit ? "text-emerald-600" : "text-on-surface"}`}>
-                        {isCredit ? "+" : ""}{tx.amount.toLocaleString("en-US")} pts
+                        {isCredit ? "+" : ""}{tx.amount.toLocaleString("fr-FR")} pts
                       </p>
                       <p className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">
                         {isCredit ? t("pay.wallet.tx.creditTag") : t("pay.wallet.tx.debitTag")}
