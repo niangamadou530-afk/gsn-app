@@ -18,6 +18,7 @@ Variables d'environnement requises :
 """
 
 import os
+import re
 import time
 import argparse
 import unicodedata
@@ -395,6 +396,234 @@ MANIFEST = [
     (2023, "T1",         "Mécanique",           "corrige", "https://officedubac.sn/wp-content/uploads/2025/03/corrigee-meca-bac-T1-2023.pdf"),
     (2023, "STEG",       "Gestion Comptabilité","corrige", "https://officedubac.sn/wp-content/uploads/2025/03/CORRIGE-GESTION-COMTP-1-ER-GR-2023.pdf"),
     (2023, "L-AR",       "Études Islamiques 2eGr","corrige","https://officedubac.sn/wp-content/uploads/2025/02/ETUDES-ISLAMIQUES.pdf"),
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2026 — SESSION NORMALE — 1er GROUPE — ÉPREUVES
+    # ═══════════════════════════════════════════════════════════════
+
+    (2026, "L",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/PHILO-L-1ER-GR.pdf"),
+    (2026, "L-AR",       "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/PHILO-L-AR-1ER-GR-26.pdf"),
+    (2026, "S1",         "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-S1_26-1ER-GR-.pdf"),
+    (2026, "S2",         "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-S2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Allemand LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ALL-lv1-1er-gr-26.pdf"),
+    (2026, "toutes",     "Anglais LV1",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ANGLAIS-LV-1-1ER-GR-2026.pdf"),
+    (2026, "L-AR",       "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ANLAIS-L-AR-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Arabe LV1",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ARABE-LV1-1ER-GR-26.pdf"),
+    (2026, "LA",         "Civilisation",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/civilisation-LA-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ESPAGNOL-LV1-1ER-GR-.pdf"),
+    (2026, "toutes",     "Portugais LV1",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/P0RT-LV1-1ER-GR-.pdf"),
+    (2026, "S",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/PHILO-S-1ER-GR-26.pdf"),
+    (2026, "L",          "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FR-L-1er-gr-26.pdf"),
+    (2026, "LA",         "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/fr-LA-1er-GR.pdf"),
+    (2026, "L-AR",       "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FR-L-AR-1er-gr-26.pdf"),
+    (2026, "S1",         "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/MATHS-S1-1ER-GR-26.pdf"),
+    (2026, "L/S",        "Histoire-Géographie", "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/HG-LS-1er-gr-26.pdf"),
+    (2026, "L-AR",       "Histoire-Géographie", "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/HG-L-AR-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Allemand LV2",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ALL-LV2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Anglais LV2",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ANG-LV2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Arabe LV2",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ARA-LV2-1ER-GR-26.pdf"),
+    (2026, "L2",         "Économie",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ECONOMIE-L2-.pdf"),
+    (2026, "toutes",     "Espagnol LV2",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/esp-lv2-1er-gr-26.pdf"),
+    (2026, "toutes",     "Études Islamiques",   "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Etudes-Islamiques.pdf"),
+    (2026, "toutes",     "Grec",                "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/grec-1er-gr-26.pdf"),
+    (2026, "toutes",     "Italien LV2",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/italien-lv2-1er-gr-26.pdf"),
+    (2026, "toutes",     "Portugais LV2",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/PORT-LV2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Russe LV2",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/RUSSE-LV2-1ER-GR-26.pdf"),
+    (2026, "S1",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/svt-s1-1er-gr-26.pdf"),
+    (2026, "S2",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/SVT-S2-1ER-GR-26.pdf"),
+    (2026, "S",          "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FRANCAIS-S-1ER-GR-26.pdf"),
+    (2026, "S1A/S2A",    "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FR-S1A-S2A-1ER-GR-26.pdf"),
+    (2026, "L-AR",       "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/maths-l-ar-1er-gr-26.pdf"),
+    (2026, "L",          "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Maths-L-1ER-GR-26.pdf"),
+    (2026, "LA/S1A/S2A", "LLA",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/LLA-LA-SA1-et-S2A-1ER-GR-26.pdf"),
+    (2026, "L2",         "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Sciences-Physiques-L2.pdf"),
+    (2026, "L-AR",       "LLA",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/LLA-l-ar-1er-gr-26.pdf"),
+    (2026, "L2",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/SVT-L2-1ER-GR-26.pdf"),
+    (2026, "S",          "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ANGLAIS-S-1er-gr-26.pdf"),
+    (2026, "toutes",     "Latin",               "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Latin-1er-gr-26.pdf"),
+    (2026, "S1A/S2A",    "Civilisation n°2",    "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Civ-s1a-s2a-N°-2-1er-gr-26.pdf"),
+    (2026, "S1A/S2A",    "Civilisation n°1",    "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Civ-s1a-a2s-N°1-1er-gr-26.pdf"),
+    (2026, "S2",         "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Maths-S2.pdf"),
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2026 — SESSION NORMALE — 2e GROUPE — ÉPREUVES
+    # ═══════════════════════════════════════════════════════════════
+
+    (2026, "S1",         "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/maths-s1-2e-gr-26.pdf"),
+    (2026, "S2",         "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/maths-s2-2e-gr-26.pdf"),
+    (2026, "L",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/PHILO-L.pdf"),
+    (2026, "L-AR",       "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ANGLAIS-LAR-.pdf"),
+    (2026, "toutes",     "Anglais LV2",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ANGLAIS-LV2-.pdf"),
+    (2026, "L2",         "Économie",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ECONOMIE.pdf"),
+    (2026, "toutes",     "Espagnol LV2",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ESPAGNOL-LV2.pdf"),
+    (2026, "LA",         "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Francais-LA-.pdf"),
+    (2026, "L-AR",       "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Francais-LAR-.pdf"),
+    (2026, "toutes",     "Grec",                "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/grec-2e-tour.pdf"),
+    (2026, "toutes",     "Italien LV2",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Italien-LV2.pdf"),
+    (2026, "toutes",     "Portugais LV2",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Portugais-LV2-.pdf"),
+    (2026, "toutes",     "Russe LV2",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/RUSSE-LV2.pdf"),
+    (2026, "S1/S2",      "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/epreuve_2emegroupe_S1S2_2026.pdf"),
+    (2026, "S",          "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FR-S-2E-GE-26.pdf"),
+    (2026, "S1A/S2A",    "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/FR-S1A-S2A-2E-GR-26.pdf"),
+    (2026, "L-AR",       "Histoire-Géographie", "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/HG-L-AR-2E-GR-26.pdf"),
+    (2026, "S",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/PHILO-S-2E-GR-26.pdf"),
+    (2026, "L/S",        "Histoire-Géographie", "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/SUJET-H-G-GRP-2.pdf"),
+    (2026, "S1",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/SVT-S1.pdf"),
+    (2026, "L-AR",       "Études Islamiques",   "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Etudes-Islamiques-L-ar-2e-gr-26-.pdf"),
+    (2026, "L",          "Français n°1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/fr-L-N°1-2e-gr-26.pdf"),
+    (2026, "L",          "Français n°2",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Fr-LN°2-2e-gr-26.pdf"),
+    (2026, "S2",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/svt-s2-2e-gr-26.pdf"),
+    (2026, "L",          "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Maths-L-2e-gr-26.pdf"),
+    (2026, "L-AR",       "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Maths-L-AR-2e-gr-26.pdf"),
+    (2026, "L2",         "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Sc-Phys-L2-2e-gr-26.pdf"),
+    (2026, "L2",         "SVT",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/svt-L2-2E-GR-26.pdf"),
+    (2026, "toutes",     "Allemand LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/allemand-LV1.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/ESPAGNOL-LV1.pdf"),
+    (2026, "LA/S1A/S2A", "LLA",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/L.L-ARABE-LA-S1A-S2A.pdf"),
+    (2026, "S4",         "Pyrotechnie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Pyrotechnie.pdf"),
+    (2026, "S5",         "Technologies",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Tech.-Transf.-Cons_.pdf"),
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2026 — SESSION DE REMPLACEMENT — ÉPREUVES (1er groupe)
+    # ═══════════════════════════════════════════════════════════════
+
+    (2026, "L",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/Philo-L-1er-GR-Rempl.pdf"),
+    (2026, "L-AR",       "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/PHILO-L-AR-1ER-GR.pdf"),
+    (2026, "S2",         "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/Sc-Phy-_-Remplacement_2026_S2.pdf"),
+    (2026, "S1/S3",      "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/Sc-Phy1-S1S3_remplacement-1er-gr-.pdf"),
+    (2026, "LA",         "Civilisation",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/civilisation-LA-1ER-GR-.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/Esp-lv1-1er-gr-.pdf"),
+    (2026, "S",          "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/PHILO-S-1ER-GR.pdf"),
+    (2026, "STEG",       "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/PHILO-STEG-R-1er-groupe-2026.pdf"),
+    (2026, "toutes",     "Portugais LV1",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/PORT-LV1-R-.pdf"),
+    (2026, "toutes",     "Allemand LV1",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/ALL-lv1-1er-gr-.pdf"),
+    (2026, "toutes",     "Anglais LV1",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/ANG-LV1-R-1EE-GR-.pdf"),
+    (2026, "L-AR",       "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/ANGL-L-AR-1ER-GR-R-.pdf"),
+    (2026, "toutes",     "Arabe LV1",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/10/ARA-LV1-R-1ER-GR.pdf"),
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2026 — BAC TECHNIQUE — 1er GROUPE — ÉPREUVES
+    # ═══════════════════════════════════════════════════════════════
+
+    (2026, "STIDD/T1/T2","Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/MATHS-STIDD_T1-T2-1er-Groupe-2026-.pdf"),
+    (2026, "F6",         "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/MATHS_F6-1er-Groupe-2026.pdf"),
+    (2026, "STEG",       "Sciences Économiques et Sociales","epreuve","https://officedubac.sn/wp-content/uploads/2026/06/Sciences-economiques-et-sociales-STEG-1er-gr-2026.pdf"),
+    (2026, "T2",         "ASE",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SUJET-ASE-PREMIER-ASE-T2-GP1-2026.pdf"),
+    (2026, "F6",         "Chimie",              "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SUJET-1er-Gr_F6_CHIMIE_2026.pdf"),
+    (2026, "STEG",       "Philosophie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Philo-STEG-1er-GP1-2026.pdf"),
+    (2026, "T1",         "Mécanique",           "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Meca-T1-GP1-2026-VERSION-IGEF.pdf"),
+    (2026, "STIDD",      "Génie Mécanique",     "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/STIDD-Genie-Mecanique-GP1-2026-VERSION-IGEF.pdf"),
+    (2026, "STIDD",      "Génie Électrique",    "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/GE-STIDD-1-er-groupe-2026-Version-IGEFcorrige.pdf"),
+    (2026, "F6",         "Physique",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/physique_-F6-1er-gr-_2026.pdf"),
+    (2026, "STIDD",      "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-1er-gr-2026_STIDD.pdf"),
+    (2026, "T2",         "Électrotechnique",    "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SUJET-ELECTROTECH-PREMIER-GROUPE_2026-Copie.pdf"),
+    (2026, "toutes",     "Technique du Laboratoire de Chimie","epreuve","https://officedubac.sn/wp-content/uploads/2026/06/SUJET_G1_TECHNIQUE-DU-LABORATOIRE-DE-CHIMIE_2026.pdf"),
+    (2026, "STEG",       "Informatique de Gestion","epreuve","https://officedubac.sn/wp-content/uploads/2026/06/Informatique-de-Gestion-1er-gr-STEG.pdf"),
+    (2026, "STEG",       "CMC",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Sujet-CMC-STEG-1er-Gr-2026.pdf"),
+    (2026, "STEG",       "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Epreuve-Maths-STEG.pdf"),
+    (2026, "T1",         "Métallurgie",         "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/epreuve-mettlurgie-T.pdf"),
+    (2026, "STIDD",      "Énergie et Transport","epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/ETC-STIDD-GP1-2026-.pdf"),
+    (2026, "STIDD/T1/T2","Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Fancais-TEC-STIDD-T1T2-2026_VF.pdf"),
+    (2026, "STIDD",      "Français",            "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/FRANCAIS_2025-2026_Epreuve-Principale_Premier-Groupe.pdf"),
+    (2026, "STEG",       "Mathématiques",       "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/MATHS-STEG-1er-gr-2026.pdf"),
+    (2026, "STEG",       "CMC",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Sujet-CMC-STEG-1er-Gr-2026-1.pdf"),
+    (2026, "F6",         "Technologie et Maladies Professionnelles","epreuve","https://officedubac.sn/wp-content/uploads/2026/06/SUJET_G1_TECHNOLOGIE-ET-MALADIE-PROFESSIONNELLES_2026.pdf"),
+    (2026, "STIDD/T1/T2","Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Anglais_STIDD-T1T2_2026.pdf"),
+    (2026, "STEG",       "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/Anglais_STEG-2026.pdf"),
+    (2026, "T1/T2",      "Sciences Physiques",  "epreuve", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-1_T1-T2_2026.pdf"),
+    (2026, "S4",         "Phytotechnie",        "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Phytotechnie-S4-1er-gr-2026.pdf"),
+    (2026, "S5",         "Technologie de Transformation et Conservation","epreuve","https://officedubac.sn/wp-content/uploads/2026/07/TECHN-DE-TRANS-ET-DE-CONS-AGRO-1er-gr-S5-2026.pdf"),
+    (2026, "F6",         "Anglais",             "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/Anglais_F6_2026.pdf"),
+    (2026, "S3",         "Construction Mécanique","epreuve","https://officedubac.sn/wp-content/uploads/2026/07/CONS-MECA-1er-Groupe-S3-2026.pdf"),
+    (2026, "S4/S5",      "CMC",                 "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/CMC-1er-gr-S4-S5-2026.docx-1.pdf"),
+    (2026, "AFT",        "Automobile",          "epreuve", "https://officedubac.sn/wp-content/uploads/2026/07/AFTGAUTO-2026.pdf"),
+
+    # ═══════════════════════════════════════════════════════════════
+    # 2026 — CORRIGÉS
+    # ═══════════════════════════════════════════════════════════════
+
+    # Session normale - 1er groupe
+    (2026, "S1",         "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/corrige-bac-s1-1er-groupe-2026.pdf"),
+    (2026, "S2",         "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige_epreuve_S2_1-ergroupe_2026_stabilise.pdf"),
+    (2026, "S1",         "Mathématiques",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Esquisse_Corrige_S1_2026.pdf"),
+    (2026, "S2",         "Mathématiques",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/BAC-S2-2026-Esquisse-de-corrige.pdf"),
+    (2026, "L",          "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corriges-epreuve-premier-groupe-session-normale-L.pdf"),
+    (2026, "LA",         "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corriges-epreuve-premier-groupe-session-normale-LA.pdf"),
+    (2026, "L-AR",       "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corriges-epreuve-premier-groupe-session-normale-LAR.pdf"),
+    (2026, "toutes",     "Français (grilles)",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Grilles-Evaluation-FRANCAIS.pdf"),
+    (2026, "toutes",     "Allemand LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE-ALL-LV1-1ER-GR-.pdf"),
+    (2026, "L-AR",       "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/corrige-ANG-L-AR-1ER-GR.pdf"),
+    (2026, "toutes",     "Anglais LV1",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE-ANG-LV1-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Arabe LV1",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE-ARA-LV1-1ER-GR.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige-ESPGNOL-LV1-1ER-GR-.pdf"),
+    (2026, "toutes",     "Portugais LV1",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE-PORT-LV1-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Allemand LV2",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-ALL-LV2-2E-GR-26.pdf"),
+    (2026, "toutes",     "Anglais LV2",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-ANG-LV2-26.pdf"),
+    (2026, "toutes",     "Arabe LV2",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-AR-LV2-1ER-GR.pdf"),
+    (2026, "toutes",     "Espagnol LV2",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-ESP-LV2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Russe LV2",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-RUSSE-LV2-1ER-GR-26.pdf"),
+    (2026, "toutes",     "Italien LV2",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/corrige-TIALIEN-lv2-1er-gr-26.pdf"),
+    (2026, "toutes",     "Portugais LV2",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-PORT-LV2-1E-R-GR-26.pdf"),
+    (2026, "S1",         "SVT",                 "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-svt-s1_2026_TS1.pdf"),
+    (2026, "S2",         "SVT",                 "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-SVT-S2.pdf"),
+    (2026, "L2",         "SVT",                 "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/L2_corrige-SVT-L2-1ER-GR-26.pdf"),
+    (2026, "L2",         "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige_epreuve_L2_1ergroupe_2026.pdf"),
+    (2026, "toutes",     "Philosophie (canevas)","corrige","https://officedubac.sn/wp-content/uploads/2026/06/Canevas-Bac-philo-2026.doc-1.pdf"),
+    (2026, "toutes",     "Histoire-Géographie (grilles)","corrige","https://officedubac.sn/wp-content/uploads/2026/07/GRILLES-HG-BAC-2026.docx.pdf"),
+    (2026, "S",          "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/corrige-ANGLAIS-S-1ER-GR-.pdf"),
+    (2026, "toutes",     "Latin",               "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/corrige-LATIN-1ER-GR-26.pdf"),
+
+    # Session normale - 2e groupe
+    (2026, "toutes",     "Allemand LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-Allemand-LV1.pdf"),
+    (2026, "toutes",     "Anglais LV1",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Anglais-LV1Corrige.pdf"),
+    (2026, "toutes",     "Arabe LV1",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/ARABE-LV1Corrige.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-ESPAGNOL-LV1.pdf"),
+    (2026, "toutes",     "Portugais LV1",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Portugais-LV1corrige.pdf"),
+    (2026, "toutes",     "Allemand LV2",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRECTION-ALLEMAND-LV2.pdf"),
+    (2026, "L-AR",       "Anglais LV2",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Correction-Anglais-LAR.pdf"),
+    (2026, "toutes",     "Espagnol LV2",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-Espagnol-LV2-.pdf"),
+    (2026, "toutes",     "Portugais LV2",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-Portugais-LV2.pdf"),
+    (2026, "L",          "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-FRANCAIS-L-2e-groupe.pdf"),
+    (2026, "L",          "Français (alt)",      "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-FRANCAIS-L-2e-groupe-1.pdf"),
+    (2026, "S",          "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corriges-Francais-S-second-groupe.pdf"),
+    (2026, "S2A",        "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corriges-Francais-S2A-second-groupe.pdf"),
+    (2026, "L-AR",       "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/EPREUVE-FRAN-LAR.pdf"),
+    (2026, "LA",         "Français (grille)",   "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/epreuve-second-groupe-session-normale-LA.pdf"),
+    (2026, "S1/S3",      "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige-_epreuve_2emegroupe_S1S3_2026.pdf"),
+    (2026, "L2",         "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/Corrige_epreuve_L2_2emegroupe_2026-stabilise.pdf"),
+    (2026, "S1",         "SVT",                 "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-SVT-S1-G2.pdf"),
+    (2026, "S1",         "SVT (alt)",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/CORRIGE-SUJET-S1-G2.pdf"),
+
+    # Session de remplacement - 1er groupe
+    (2026, "toutes",     "Allemand LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/Corrige-ALL-LV1-1ER-GR.pdf"),
+    (2026, "L-AR",       "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/corrige-ANG-L-AR-R-1E-GR.pdf"),
+    (2026, "toutes",     "Anglais LV1",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/CORRIGE-ANG-LV1.pdf"),
+    (2026, "toutes",     "Arabe LV1",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/CORRIGE-ARA-LV1.pdf"),
+    (2026, "toutes",     "Espagnol LV1",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/Corrige-ESP-LV1-.pdf"),
+    (2026, "toutes",     "Portugais LV1",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/10/CORRIGE-PORT-LV1-1ER-GR.pdf"),
+
+    # Bac Technique - corrigés (1er groupe)
+    (2026, "F6",         "Mathématiques",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige_MATHS-F6-1er-2026.pdf"),
+    (2026, "STIDD",      "Mathématiques",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige_MATHS-STIDD-2026.pdf"),
+    (2026, "T1",         "Mécanique",           "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige-MECA-T1-1er-2026-.pdf"),
+    (2026, "T2",         "ASE",                 "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRECTION-SUJET-ASE-EPREUVE-DU-PREMIER-GROUPE.pdf"),
+    (2026, "F6",         "Chimie",              "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/SUJET-1er-Gr_F6_CHIMIE_CORRIGE_2026.pdf"),
+    (2026, "STIDD",      "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-CORRIGE_1er-gr-2026_STIDD.pdf"),
+    (2026, "F6",         "Physique",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Sujet-1_corrige_1er-gr-physique_-F6-_2026.pdf"),
+    (2026, "T2",         "Électrotechnique",    "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CORRECTION-SUJET-ELECTROTECH-ELECTRONIQUE-EPREUVE-DU-PREMIER-GROUPE.pdf"),
+    (2026, "toutes",     "Technique du Laboratoire de Chimie","corrige","https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE_G1_TECHNIQUE-DU-LABORATOIRE-DE-CHIMIE_2026.pdf"),
+    (2026, "STEG",       "Mathématiques",       "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Corrige_STEG.pdf"),
+    (2026, "STEG",       "CMC (grille)",        "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/CMC-STEG-1er-GR-PROPOSITION-GRILLE-2026-2.docx-1.pdf"),
+    (2026, "T1",         "Métallurgie",         "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Correction-Mettalurgie.pdf"),
+    (2026, "F6",         "Technologie et Maladies Professionnelles","corrige","https://officedubac.sn/wp-content/uploads/2026/06/CORRIGE_G1_TECHNOLOGIE-ET-MALADIE-PROFESSIONNELLES_2026.pdf"),
+    (2026, "STIDD/T1/T2","Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Francais-_Corrige-epreuve-STIDD_T1-T2-F6-1.pdf"),
+    (2026, "STEG",       "Français",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/Francais-_Corrige-epreuve-STEG.pdf"),
+    (2026, "STIDD/T1/T2","Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/STIDD-T1T2_2026_Answer_Key.pdf"),
+    (2026, "STEG",       "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/STEG_2026_Answer_Key.pdf"),
+    (2026, "T1/T2",      "Sciences Physiques",  "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/SCIENCES-PHYSIQUES-1_CORRIGE_T1-T2_2026.pdf"),
+    (2026, "STEG",       "Espagnol",            "corrige", "https://officedubac.sn/wp-content/uploads/2026/06/PROPUESTA-DE-CORRECCION-Texto-1.pdf"),
+    (2026, "S3",         "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/S3-2026_Answer_Key.pdf"),
+    (2026, "F6",         "Anglais",             "corrige", "https://officedubac.sn/wp-content/uploads/2026/07/F6-2026_Answer_Key-1.pdf"),
 ]
 
 
@@ -408,11 +637,19 @@ def slugify(text: str) -> str:
     text = unicodedata.normalize("NFD", text)
     text = "".join(c for c in text if unicodedata.category(c) != "Mn")  # retire les accents
     text = text.replace("/", "-").replace(" ", "_").replace(".", "")
+    text = re.sub(r"[^A-Za-z0-9_-]", "", text)  # retire tout symbole restant (°, etc.)
     return text
+
+def safe_fname(fname: str) -> str:
+    """Nettoie un nom de fichier pour en faire une clé Supabase Storage valide
+    (supprime accents et symboles comme °, garde le point de l'extension)."""
+    text = unicodedata.normalize("NFD", fname)
+    text = "".join(c for c in text if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^A-Za-z0-9._-]", "_", text)
 
 def storage_path(annee: int, serie: str, matiere: str, fname: str) -> str:
     """Chemin dans Supabase Storage : annee/serie/matiere/fichier.pdf"""
-    return f"{annee}/{slugify(serie)}/{slugify(matiere)}/{fname}"
+    return f"{annee}/{slugify(serie)}/{slugify(matiere)}/{safe_fname(fname)}"
 
 def local_dest(annee: int, type_: str, fname: str) -> Path:
     dest = BASE_DIR / str(annee) / type_

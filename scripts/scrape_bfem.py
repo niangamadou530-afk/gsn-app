@@ -1,8 +1,9 @@
 """
-Scraper épreuves & corrigés BFEM Sénégal — 3 sources
-  1. niangprogrammeur.com   (PDF, priorité 1 — épreuves + corrigés, 2000-2025)
-  2. sujetcorrige.com       (PDF, priorité 2 — épreuves uniquement, 2014-2023)
-  3. banquedesepreuves.com  (PDF, priorité 3 — épreuves + corrigés, 2014-2021)
+Scraper épreuves & corrigés BFEM Sénégal — 4 sources
+  1. niangprogrammeur.com    (PDF, priorité 1 — épreuves + corrigés, 2000-2025)
+  2. sujetcorrige.com        (PDF, priorité 2 — épreuves uniquement, 2014-2023)
+  3. banquedesepreuves.com   (PDF, priorité 3 — épreuves + corrigés, 2014-2021)
+  4. epreuvesetcorriges.com  (PDF, priorité 4 — épreuves + corrigés, dont BFEM 2026 officiel)
 
 Usage:
     pip install -r requirements.txt
@@ -115,9 +116,7 @@ def detect_type(title: str, annee: int | None, source: str) -> str:
     - Sinon → epreuve
     """
     t = _strip_accents(title).replace("-", " ")
-    if "probable" in t:
-        return "annale_preparation"
-    if source == "niangprogrammeur" and annee == 2026:
+    if any(kw in t for kw in ["probable", "annale", "annales", "prepa", "blanc"]):
         return "annale_preparation"
     if any(kw in t for kw in ["correction", "corrige", "corriges"]):
         return "corrige"
@@ -188,7 +187,7 @@ def crawl_niangprogrammeur() -> list[dict]:
 
             # Type depuis le slug — même règle que detect_type()
             slug_spaced = slug_lower.replace("-", " ")
-            if "probable" in slug_spaced or annee == 2026:
+            if any(kw in slug_spaced for kw in ["probable", "annale", "annales", "prepa", "blanc"]):
                 typ = "annale_preparation"
             elif any(kw in slug_spaced for kw in ["correction", "corrige", "corriges"]):
                 typ = "corrige"
@@ -350,6 +349,75 @@ def crawl_banquedesepreuves() -> list[dict]:
     print(f"  → {len(docs)} documents (banquedesepreuves.com)\n")
     return docs
 
+# ── SOURCE 4 : epreuvesetcorriges.com ───────────────────────────────────────
+
+EEC_BASE     = "https://epreuvesetcorriges.com"
+EEC_LIST_URL = "https://epreuvesetcorriges.com/categories/senegal/examens/bfem?start={start}"
+EEC_MAX_PAGES = 60   # borne de sécurité (≈600 docs) ; la boucle s'arrête bien avant si la pagination boucle
+
+def crawl_epreuvesetcorriges() -> list[dict]:
+    docs: list[dict] = []
+    seen: set[str] = set()   # dédup GLOBALE : certains sites reservent la dernière page en boucle au-delà de la fin
+    print("▶ epreuvesetcorriges.com (pagination dynamique)…")
+    stale_pages = 0
+    for page_i in range(EEC_MAX_PAGES):
+        start = page_i * 10
+        url = EEC_LIST_URL.format(start=start)
+        print(f"  start={start}…", end=" ", flush=True)
+        resp = http_get(url)
+        if not resp:
+            print("échec")
+            time.sleep(DELAY_SEC)
+            continue
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        new_count = 0
+        for a in soup.find_all("a", href=True):
+            href: str = a["href"]
+            # Pattern : /categories/senegal/examens/bfem/{id}-{slug}
+            if not re.search(r"/categories/senegal/examens/bfem/\d+-[a-z0-9\-]+$", href):
+                continue
+            full = urljoin(EEC_BASE, href)
+            if full in seen:
+                continue
+            seen.add(full)
+
+            title = a.get_text(strip=True)
+            if len(title) < 5:
+                continue
+
+            annee   = extract_annee(title)
+            matiere = normalize_matiere(title)
+            typ     = detect_type(title, annee, "epreuvesetcorriges")
+
+            # URL de téléchargement : /{chemin-complet}/download
+            dl_url = full.rstrip("/") + "/download"
+
+            docs.append({
+                "source":       "epreuvesetcorriges",
+                "page_url":     full,
+                "title":        title,
+                "annee":        annee,
+                "matiere":      matiere,
+                "type":         typ,
+                "download_url": dl_url,
+            })
+            new_count += 1
+
+        print(f"{new_count} docs nouveaux")
+        # Si 2 pages consécutives n'apportent rien de nouveau → la pagination
+        # a bouclé sur elle-même (fin réelle du catalogue) → on arrête.
+        if new_count == 0:
+            stale_pages += 1
+            if stale_pages >= 2:
+                break
+        else:
+            stale_pages = 0
+        time.sleep(DELAY_SEC)
+
+    print(f"  → {len(docs)} documents (epreuvesetcorriges.com)\n")
+    return docs
+
 # ── Déduplication cross-source ────────────────────────────────────────────────
 
 def build_existing_set(sb: Client) -> set[tuple]:
@@ -422,12 +490,13 @@ def upload_pdf(sb: Client, local: Path, spath: str) -> str | None:
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Scraper BFEM Sénégal — 3 sources")
+    parser = argparse.ArgumentParser(description="Scraper BFEM Sénégal — 4 sources")
     parser.add_argument("--dry-run",     action="store_true", help="Aperçu 10 docs, aucun téléchargement")
     parser.add_argument("--no-download", action="store_true", help="Pas de téléchargement local")
     parser.add_argument("--no-storage",  action="store_true", help="Pas d'upload Supabase Storage")
     parser.add_argument("--no-db",       action="store_true", help="Pas d'insertion en base")
     parser.add_argument("--banque-only", action="store_true", help="Re-crawl banquedesepreuves.com uniquement")
+    parser.add_argument("--eec-only",    action="store_true", help="Re-crawl epreuvesetcorriges.com uniquement")
     args = parser.parse_args()
 
     # ── PHASE 1 : Manifest ───────────────────────────────────────────────────
@@ -439,23 +508,32 @@ def main() -> None:
         niangp_docs = []
         sujet_docs  = []
         banque_docs = crawl_banquedesepreuves()
+        eec_docs    = []
+    elif args.eec_only:
+        niangp_docs = []
+        sujet_docs  = []
+        banque_docs = []
+        eec_docs    = crawl_epreuvesetcorriges()
     else:
         niangp_docs  = crawl_niangprogrammeur()
         sujet_docs   = crawl_sujetcorrige()
         banque_docs  = crawl_banquedesepreuves()
-    all_docs     = niangp_docs + sujet_docs + banque_docs
+        eec_docs     = crawl_epreuvesetcorriges()
+    all_docs     = niangp_docs + sujet_docs + banque_docs + eec_docs
 
     nb_niangp    = len(niangp_docs)
     nb_sujet     = len(sujet_docs)
     nb_banque    = len(banque_docs)
+    nb_eec       = len(eec_docs)
     nb_2026      = sum(1 for d in all_docs if d["annee"] == 2026)
     nb_corrige   = sum(1 for d in all_docs if d["type"] == "corrige")
     nb_annale    = sum(1 for d in all_docs if d["type"] == "annale_preparation")
 
     print(f"Manifest total : {len(all_docs)} documents")
-    print(f"  niangprogrammeur  : {nb_niangp}")
-    print(f"  sujetcorrige      : {nb_sujet}")
-    print(f"  banquedesepreuves : {nb_banque}")
+    print(f"  niangprogrammeur    : {nb_niangp}")
+    print(f"  sujetcorrige        : {nb_sujet}")
+    print(f"  banquedesepreuves   : {nb_banque}")
+    print(f"  epreuvesetcorriges  : {nb_eec}")
     print(f"  dont annale 2026  : {nb_annale}")
     print(f"  dont corrigés     : {nb_corrige}")
 
@@ -614,9 +692,10 @@ RAPPORT FINAL — Scraping BFEM Sénégal
 ═══════════════════════════════════════════════════════════
 
   Manifest total          : {len(all_docs)} documents
-  ├─ niangprogrammeur.com : {nb_niangp}
-  ├─ sujetcorrige.com     : {nb_sujet}
-  └─ banquedesepreuves.com: {nb_banque}
+  ├─ niangprogrammeur.com   : {nb_niangp}
+  ├─ sujetcorrige.com       : {nb_sujet}
+  ├─ banquedesepreuves.com  : {nb_banque}
+  └─ epreuvesetcorriges.com: {nb_eec}
 
   Résultats :
   ├─ Nouveaux insérés     : {inserted}
