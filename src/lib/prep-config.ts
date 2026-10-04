@@ -63,7 +63,7 @@ export const EXAM_CONFIG: Record<"BAC" | "BFEM", ExamDetail> = {
     displayDateFr: "13 juillet 2027",
     displayDateEn: "July 13, 2027",
     description: "Enseignement Moyen Général & Arabe",
-    referenceNote: "Date de référence : la plupart des séries (date estimée, à confirmer)",
+    referenceNote: "Date de référence du BFEM (estimée, à confirmer)",
     confirmee: "non",
     source: "Direction des Examens et Concours (DEXCO) - Ministère de l'Éducation Nationale du Sénégal (date estimée, à confirmer)",
     series: ["BFEM Général", "BFEM Option Arabe"],

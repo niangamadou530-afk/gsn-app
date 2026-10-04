@@ -75,9 +75,11 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
   }, [config.targetDate, config.targetTimeUtc]);
 
   const isOrange = themeColor === "orange";
-  const accentColor = isOrange ? "#FF6B00" : "#005bbf";
-  const badgeBg = isOrange ? "bg-orange-500/20 text-[#FF8533] border-orange-500/30" : "bg-blue-500/20 text-[#5ba2ff] border-blue-500/30";
-  const dotBg = isOrange ? "bg-[#FF6B00]" : "#005bbf";
+  // Sur fond sombre, le BFEM utilise un bleu ciel très lumineux (#38bdf8) pour un contraste optimal
+  const accentColor = isOrange ? "#FF7A1A" : "#38bdf8";
+  const badgeBg = isOrange ? "bg-orange-500/20 text-[#FF9E4A] border-orange-500/40" : "bg-sky-500/20 text-[#7dd3fc] border-sky-500/40";
+  const dotBg = isOrange ? "#FF7A1A" : "#38bdf8";
+  const dateColor = isOrange ? "#fed7aa" : "#bae6fd";
 
   const units = [
     { label: "Jours", value: timeLeft.days, pad: false },
@@ -90,7 +92,7 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
     <div className="bg-gradient-to-br from-slate-900/95 via-slate-900 to-slate-950 rounded-3xl p-4 sm:p-6 border border-slate-700/80 shadow-xl relative overflow-hidden flex flex-col justify-between backdrop-blur-md">
       {/* Subtle Ambient Glow */}
       <div
-        className="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-[60px] pointer-events-none opacity-25"
+        className="absolute -top-12 -right-12 w-36 h-36 rounded-full blur-[60px] pointer-events-none opacity-30"
         style={{ backgroundColor: accentColor }}
       />
 
@@ -101,8 +103,10 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
           {config.label}
         </span>
         <div className="text-right">
-          <span className="text-xs text-slate-300 font-bold block">{config.displayDateFr}</span>
-          <span className="text-[10px] text-slate-400 block font-medium">8h00 GMT (Sénégal)</span>
+          <span className="text-xs sm:text-sm font-extrabold block" style={{ color: dateColor }}>
+            {config.displayDateFr}
+          </span>
+          <span className="text-[10px] text-slate-300 block font-semibold">8h00 GMT (Sénégal)</span>
         </div>
       </div>
 
@@ -114,7 +118,7 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
             <p className="text-emerald-300 font-extrabold text-sm sm:text-base">
               L&apos;examen a commencé !
             </p>
-            <p className="text-xs text-slate-400">Bonne chance à tous les candidats du Sénégal 🇸🇳</p>
+            <p className="text-xs text-slate-300">Bonne chance à tous les candidats du Sénégal 🇸🇳</p>
           </div>
         ) : (
           <div>
@@ -124,7 +128,7 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
                 return (
                   <div
                     key={u.label}
-                    className="bg-slate-950/80 rounded-2xl p-2 sm:p-3 border border-slate-800 text-center flex flex-col items-center justify-center relative overflow-hidden group shadow-inner"
+                    className="bg-slate-950/90 rounded-2xl p-2 sm:p-3 border border-slate-800 text-center flex flex-col items-center justify-center relative overflow-hidden group shadow-inner"
                   >
                     {/* Live Segment Number with Smooth Flip/Slide Effect */}
                     <span
@@ -135,7 +139,7 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
                     >
                       {mounted ? formatted : "--"}
                     </span>
-                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 mt-0.5">
+                    <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-300 mt-0.5">
                       {u.label}
                     </span>
                   </div>
@@ -145,7 +149,7 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
 
             {/* School Year Progress Bar */}
             <div className="mt-3.5 space-y-1.5">
-              <div className="flex items-center justify-between text-[10px] text-slate-400 font-bold">
+              <div className="flex items-center justify-between text-[10px] text-slate-300 font-bold">
                 <span>Avancement de l&apos;année scolaire</span>
                 <span style={{ color: accentColor }}>{mounted ? `${timeLeft.totalPercent}%` : "--"}</span>
               </div>
@@ -165,13 +169,13 @@ export function LiveExamCountdownCard({ examId, themeColor }: CountdownCardProps
 
       {/* Footer Notes with Official Source Reference */}
       <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-1 relative z-10">
-        <p className="text-[11px] text-slate-300 font-semibold flex items-center gap-1.5">
+        <p className="text-[11px] text-slate-200 font-bold flex items-center gap-1.5">
           <span className="material-symbols-outlined text-[15px]" style={{ color: accentColor }}>
             event_available
           </span>
           <span>{config.referenceNote}</span>
         </p>
-        <p className="text-[10px] text-slate-500 leading-tight">
+        <p className="text-[10px] text-slate-400 font-medium leading-tight">
           {isOrange
             ? "S1, S2, L1, L2, L'1, L-AR (Bac Technique : 15 juin 2027)"
             : "Collège · 3ème générale et option arabe"}

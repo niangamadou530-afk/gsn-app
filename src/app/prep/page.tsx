@@ -8,61 +8,123 @@ import { LiveExamCountdownCard } from "@/components/LiveExamCountdown";
 
 export default function PrepLandingPage() {
   const [selectedExam, setSelectedExam] = useState<"BAC" | "BFEM">("BAC");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const countdownBac = getExamCountdown("BAC");
   const countdownBfem = getExamCountdown("BFEM");
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-[#FF6B00]/15 selection:text-[#FF6B00]">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 selection:bg-[#FF6B00]/15 selection:text-[#FF6B00] overflow-x-hidden">
       {/* Top Header / Navigation */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-2">
+          {/* Logo & Brand */}
+          <div className="flex items-center gap-2 shrink-0">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
                 GSN
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-xl tracking-tight text-slate-900">PREP</span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#FF6B00]">
+                <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900">PREP</span>
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#FF6B00]">
                   Sénégal 2027
                 </span>
               </div>
             </Link>
           </div>
 
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-600">
-            <a href="#programmes" className="hover:text-slate-900 transition-colors">Examens & Séries</a>
-            <a href="#fonctionnalites" className="hover:text-slate-900 transition-colors">Outils IA</a>
-            <a href="#annales" className="hover:text-slate-900 transition-colors">Annales & Corrigés</a>
-            <Link href="/prep/parent" className="hover:text-slate-900 transition-colors">Espace Parents</Link>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-semibold text-slate-700 whitespace-nowrap">
+            <a href="#programmes" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Examens & Séries</a>
+            <a href="#fonctionnalites" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Outils IA</a>
+            <a href="#annales" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Annales & Corrigés</a>
+            <Link href="/prep/parent" className="hover:text-purple-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 font-bold text-purple-700">
+              <span className="material-symbols-outlined text-[16px] text-purple-600">family_restroom</span>
+              <span className="whitespace-nowrap">Espace Parents</span>
+            </Link>
           </nav>
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <Link
-              href="/prep/parent"
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
-              title="Accès Espace Parents"
-            >
-              <span className="material-symbols-outlined text-[16px]">family_restroom</span>
-              <span className="hidden xs:inline sm:inline">Parents</span>
-            </Link>
+          {/* Action Buttons & Mobile Access */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Desktop Direct Button (Tableau de bord ONLY - no duplicate Parents button!) */}
             <Link
               href="/prep/dashboard"
-              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-[#005bbf] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#005bbf] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap shrink-0"
             >
               <span className="material-symbols-outlined text-[16px]">dashboard</span>
-              <span className="hidden md:inline">Tableau de bord</span>
+              <span className="whitespace-nowrap">Tableau de bord</span>
             </Link>
+
+            {/* Mobile Dropdown Menu for Parents & Dashboard */}
+            <div className="relative md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors border ${
+                  mobileMenuOpen
+                    ? "bg-slate-900 text-white border-slate-900"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
+                }`}
+                title="Accès rapide Parents & Tableau de bord"
+                aria-label="Accès rapide"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {mobileMenuOpen ? "close" : "widgets"}
+                </span>
+              </button>
+
+              {/* Mobile Quick Dropdown Popover */}
+              {mobileMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl p-2.5 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <p className="text-[10px] font-black uppercase text-slate-400 px-2 py-1 tracking-wider">
+                    Accès direct
+                  </p>
+                  <Link
+                    href="/prep/parent"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-700 hover:bg-purple-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">family_restroom</span>
+                    <span>Espace Parents</span>
+                  </Link>
+                  <Link
+                    href="/prep/dashboard"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-[#005bbf] hover:bg-blue-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                    <span>Tableau de bord</span>
+                  </Link>
+                  <div className="h-px bg-slate-100 my-1" />
+                  <a
+                    href="#programmes"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">school</span>
+                    <span>Séries BAC & BFEM</span>
+                  </a>
+                  <a
+                    href="#annales"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">auto_stories</span>
+                    <span>Annales & Corrigés</span>
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Connexion & S'inscrire - fully visible at 360px without clipping */}
             <Link
               href="/login"
-              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap"
             >
               Connexion
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all"
+              className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0"
               style={{ backgroundColor: "#FF6B00" }}
             >
               S&apos;inscrire
@@ -212,13 +274,13 @@ export default function PrepLandingPage() {
                 </div>
 
                 {/* Floating Stat Card (Annales complètes - updated to +1000) */}
-                <div className="absolute -top-4 -right-4 sm:-right-6 bg-white rounded-2xl p-3.5 shadow-xl border border-slate-100 flex items-center gap-3 z-20">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined text-[22px]">auto_stories</span>
+                <div className="absolute -top-3 right-2 sm:-top-4 sm:-right-4 bg-white rounded-2xl p-2.5 sm:p-3.5 shadow-xl border border-slate-100 flex items-center gap-2 sm:gap-3 z-20 max-w-[calc(100%-1rem)]">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+                    <span className="material-symbols-outlined text-[18px] sm:text-[22px]">auto_stories</span>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
-                    <p className="text-sm font-extrabold text-slate-900">+1000 épreuves</p>
+                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">+1000 épreuves</p>
                   </div>
                 </div>
               </div>
@@ -240,32 +302,32 @@ export default function PrepLandingPage() {
             {/* BAC Aesthetic Timer */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/80 shadow-lg relative overflow-hidden flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-orange-500/20 text-[#FF8533] border border-orange-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-orange-500/20 text-[#FF9E4A] border border-orange-500/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF7A1A] animate-pulse" />
                   Baccalauréat 2027
                 </span>
-                <span className="text-xs text-slate-400 font-semibold">{countdownBac.displayDate}</span>
+                <span className="text-xs text-amber-200 font-bold">{countdownBac.displayDate}</span>
               </div>
               <div className="mt-4 flex items-center gap-3">
-                <div className="flex-1 bg-slate-950/60 rounded-2xl p-3 border border-slate-700/60 text-center">
-                  <span className="block text-3xl sm:text-4xl font-black text-[#FF6B00] tabular-nums" suppressHydrationWarning>
+                <div className="flex-1 bg-slate-950/70 rounded-2xl p-3 border border-slate-700/80 text-center">
+                  <span className="block text-3xl sm:text-4xl font-black text-[#FF7A1A] tabular-nums" suppressHydrationWarning>
                     {countdownBac.days}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Jours restants</span>
+                  <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-wider">Jours restants</span>
                 </div>
-                <div className="flex flex-col gap-1.5 text-xs text-slate-300">
+                <div className="flex flex-col gap-1.5 text-xs text-slate-200">
                   <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-[#FF6B00]">event_available</span>
+                    <span className="material-symbols-outlined text-[16px] text-[#FF7A1A]">event_available</span>
                     <span className="font-semibold">Session Normale</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-[#FF6B00]">verified</span>
-                    <span className="text-slate-400">Toutes séries</span>
+                    <span className="material-symbols-outlined text-[16px] text-[#FF7A1A]">verified</span>
+                    <span className="text-slate-300">Toutes séries</span>
                   </div>
                 </div>
               </div>
               <div className="mt-3 pt-2.5 border-t border-slate-800">
-                <p className="text-[11px] text-slate-400 font-medium">
+                <p className="text-[11px] text-slate-300 font-medium">
                   Date de référence : la plupart des séries (date estimée, à confirmer)
                 </p>
               </div>
@@ -274,33 +336,33 @@ export default function PrepLandingPage() {
             {/* BFEM Aesthetic Timer */}
             <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/80 shadow-lg relative overflow-hidden flex flex-col justify-between">
               <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-500/20 text-[#5ba2ff] border border-blue-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#005bbf] animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-sky-500/20 text-[#7dd3fc] border border-sky-500/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#38bdf8] animate-pulse" />
                   BFEM 2027
                 </span>
-                <span className="text-xs text-slate-400 font-semibold">{countdownBfem.displayDate}</span>
+                <span className="text-xs text-sky-200 font-bold">{countdownBfem.displayDate}</span>
               </div>
               <div className="mt-4 flex items-center gap-3">
-                <div className="flex-1 bg-slate-950/60 rounded-2xl p-3 border border-slate-700/60 text-center">
-                  <span className="block text-3xl sm:text-4xl font-black text-[#5ba2ff] tabular-nums" suppressHydrationWarning>
+                <div className="flex-1 bg-slate-950/70 rounded-2xl p-3 border border-slate-700/80 text-center">
+                  <span className="block text-3xl sm:text-4xl font-black text-[#38bdf8] tabular-nums" suppressHydrationWarning>
                     {countdownBfem.days}
                   </span>
-                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Jours restants</span>
+                  <span className="text-[10px] text-slate-300 font-extrabold uppercase tracking-wider">Jours restants</span>
                 </div>
-                <div className="flex flex-col gap-1.5 text-xs text-slate-300">
+                <div className="flex flex-col gap-1.5 text-xs text-slate-200">
                   <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-[#5ba2ff]">event_available</span>
+                    <span className="material-symbols-outlined text-[16px] text-[#38bdf8]">event_available</span>
                     <span className="font-semibold">Collège · 3ème</span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-[16px] text-[#5ba2ff]">school</span>
-                    <span className="text-slate-400">Brevet national</span>
+                    <span className="material-symbols-outlined text-[16px] text-[#38bdf8]">school</span>
+                    <span className="text-slate-300">Brevet national</span>
                   </div>
                 </div>
               </div>
               <div className="mt-3 pt-2.5 border-t border-slate-800">
-                <p className="text-[11px] text-slate-400 font-medium">
-                  Date de référence : la plupart des séries (date estimée, à confirmer)
+                <p className="text-[11px] text-slate-300 font-medium">
+                  Date de référence du BFEM (estimée, à confirmer)
                 </p>
               </div>
             </div>
@@ -309,24 +371,24 @@ export default function PrepLandingPage() {
       </section>
 
       {/* Espace Parents Banner (Visible sur web et mobile avec carte claire) */}
-      <section className="py-8 sm:py-10 bg-gradient-to-r from-purple-50 via-white to-blue-50 border-b border-slate-200/80">
+      <section className="py-6 sm:py-8 bg-gradient-to-r from-purple-50 via-white to-blue-50 border-b border-slate-200/80">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-200/90 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-start sm:items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-inner">
                 <span className="material-symbols-outlined text-[32px]">family_restroom</span>
               </div>
               <div className="space-y-1 text-center sm:text-left">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-900 border border-purple-200">
                     Espace Parents & Tuteurs
                   </span>
-                  <span className="text-xs text-slate-400 font-semibold">Code sécurisé à 6 caractères</span>
+                  <span className="text-xs text-slate-700 font-bold">Code sécurisé à 6 caractères</span>
                 </div>
                 <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
                   Vous êtes parent d&apos;un candidat au BAC ou au BFEM ?
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+                <p className="text-xs sm:text-sm text-slate-700 font-medium max-w-xl">
                   Suivez les résultats des quiz, la régularité du travail et le niveau par matière de votre enfant en toute sérénité sans créer de compte compliqué.
                 </p>
               </div>
@@ -344,31 +406,33 @@ export default function PrepLandingPage() {
       </section>
 
       {/* Feature Bento Grid */}
-      <section id="fonctionnalites" className="py-16 sm:py-24 bg-white border-b border-slate-200/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-12">
+      <section id="fonctionnalites" className="pt-10 pb-14 sm:pt-12 sm:pb-18 bg-white border-b border-slate-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10">
           <div className="text-center max-w-2xl mx-auto space-y-3">
             <span className="text-xs font-black uppercase tracking-widest text-[#FF6B00]">Tout pour réussir</span>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
               Une boîte à outils complète conçue pour le système éducatif sénégalais.
             </h2>
-            <p className="text-sm sm:text-base text-slate-600">
+            <p className="text-sm sm:text-base text-slate-700 font-medium">
               Des technologies modernes combinées aux barèmes officiels de notation de l&apos;Office du Bac et du Ministère de l&apos;Éducation Nationale.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {/* Card 1: Coach IA */}
-            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+              <div className="space-y-4 flex-1 flex flex-col">
                 <div className="w-12 h-12 rounded-2xl bg-[#005bbf] text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
                   <span className="material-symbols-outlined text-[26px]">smart_toy</span>
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900">Coach IA Pédagogique</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
-                  Pose tes questions à toute heure. Il t&apos;explique les théorèmes complexes, t&apos;aide à structurer ta dissertation philosophique et sait même t&apos;expliquer un concept en Wolof si nécessaire !
+                <h3 className="text-xl font-extrabold text-slate-900 min-h-[3.25rem] flex items-center">
+                  Coach IA Pédagogique
+                </h3>
+                <p className="text-sm text-slate-700 font-medium leading-relaxed flex-1">
+                  Pose tes questions à toute heure. Il t&apos;explique les théorèmes complexes, t&apos;aide à structurer ta dissertation philosophique et sait même t&apos;expliquer un concept en Wolof si nécessaire&nbsp;!
                 </p>
               </div>
-              <div className="pt-2">
+              <div className="mt-4 pt-4 border-t border-slate-200/70">
                 <Link href="/login" className="text-xs font-bold text-[#005bbf] hover:underline flex items-center gap-1">
                   Tester le coach avec un exercice <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
@@ -376,17 +440,19 @@ export default function PrepLandingPage() {
             </div>
 
             {/* Card 2: Annales & Corrigés */}
-            <div className="bg-gradient-to-br from-slate-50 to-orange-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
+            <div className="bg-gradient-to-br from-slate-50 to-orange-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+              <div className="space-y-4 flex-1 flex flex-col">
                 <div className="w-12 h-12 rounded-2xl bg-[#FF6B00] text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
                   <span className="material-symbols-outlined text-[26px]">description</span>
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900">Annales 2023, 2024, 2025</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <h3 className="text-xl font-extrabold text-slate-900 min-h-[3.25rem] flex items-center">
+                  Annales BAC & BFEM
+                </h3>
+                <p className="text-sm text-slate-700 font-medium leading-relaxed flex-1">
                   Plus de 1000 épreuves réelles du 1er groupe, 2ème groupe et sessions de remplacement avec corrigés officiels numérisés haute définition.
                 </p>
               </div>
-              <div className="pt-2">
+              <div className="mt-4 pt-4 border-t border-slate-200/70">
                 <Link href="/login" className="text-xs font-bold text-[#FF6B00] hover:underline flex items-center gap-1">
                   Consulter les sujets récents <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
@@ -394,17 +460,19 @@ export default function PrepLandingPage() {
             </div>
 
             {/* Card 3: Simulateur de Moyenne & Orientation */}
-            <div className="bg-gradient-to-br from-slate-50 to-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-6">
-              <div className="space-y-4">
+            <div className="bg-gradient-to-br from-slate-50 to-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+              <div className="space-y-4 flex-1 flex flex-col">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
                   <span className="material-symbols-outlined text-[26px]">calculate</span>
                 </div>
-                <h3 className="text-xl font-extrabold text-slate-900">Simulateur & Orientation</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">
+                <h3 className="text-xl font-extrabold text-slate-900 min-h-[3.25rem] flex items-center">
+                  Simulateur & Orientation
+                </h3>
+                <p className="text-sm text-slate-700 font-medium leading-relaxed flex-1">
                   Calcule ta note estimée au BAC selon tes notes de contrôle et découvre les filières universitaires (UCAD, UGB, USSEIN, etc.) adaptées à ton profil.
                 </p>
               </div>
-              <div className="pt-2">
+              <div className="mt-4 pt-4 border-t border-slate-200/70">
                 <Link href="/login" className="text-xs font-bold text-emerald-700 hover:underline flex items-center gap-1">
                   Calculer mes points et débouchés <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                 </Link>
@@ -415,13 +483,13 @@ export default function PrepLandingPage() {
       </section>
 
       {/* Series & Programs Showcase */}
-      <section id="programmes" className="py-16 sm:py-20 bg-[#f8fafc]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10">
+      <section id="programmes" className="pt-10 pb-12 sm:pt-12 sm:pb-14 bg-[#f8fafc]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
               <span className="text-xs font-bold uppercase tracking-widest text-[#005bbf]">Programmes officiels</span>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Toutes les séries prises en charge</h2>
-              <p className="text-sm text-slate-500">Du BFEM aux séries scientifiques, littéraires et techniques.</p>
+              <p className="text-sm text-slate-700 font-medium">Du BFEM aux séries scientifiques, littéraires et techniques.</p>
             </div>
 
             <div className="inline-flex p-1 rounded-xl bg-slate-200/80 self-start">
@@ -456,27 +524,31 @@ export default function PrepLandingPage() {
                 { code: "Série STIDD / T1-T2", title: "Sciences Industrielles", matieres: "Mécanique, Électrotechnique" },
                 { code: "Série F6", title: "Chimie & Laboratoire", matieres: "Chimie organique, Physique" },
               ].map((s) => (
-                <div key={s.code} className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs hover:border-[#005bbf] transition-colors">
+                <div key={s.code} className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm hover:border-[#005bbf] hover:shadow-md transition-all">
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-extrabold text-sm text-[#005bbf]">{s.code}</span>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">BAC 2027</span>
+                    <span className="text-[10px] font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full uppercase">BAC 2027</span>
                   </div>
                   <p className="font-bold text-slate-900 text-xs">{s.title}</p>
-                  <p className="text-[11px] text-slate-500 mt-1 line-clamp-1">{s.matieres}</p>
+                  <p className="text-[11px] text-slate-700 font-medium mt-1 line-clamp-1">{s.matieres}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full">
+              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all space-y-2">
                 <span className="font-extrabold text-base text-[#FF6B00]">BFEM Enseignement Général</span>
-                <p className="text-xs text-slate-600 mt-1">Français (Texte suivi de questions, Dictée), Mathématiques, PC, SVT, Histoire-Géographie, Anglais, EPS.</p>
-                <p className="text-[11px] text-slate-400 mt-3 font-semibold">Annales complètes depuis 2014</p>
+                <p className="text-xs sm:text-sm text-slate-700 font-medium mt-1 leading-relaxed">
+                  Français (Texte suivi de questions, Dictée), Mathématiques, PC, SVT, Histoire-Géographie, Anglais, EPS.
+                </p>
+                <p className="text-xs text-[#005bbf] font-bold pt-2">Annales complètes depuis 2014</p>
               </div>
-              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs">
+              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all space-y-2">
                 <span className="font-extrabold text-base text-[#005bbf]">BFEM Option Franco-Arabe</span>
-                <p className="text-xs text-slate-600 mt-1">Épreuves spécifiques de langue arabe, études islamiques et matières scientifiques en bilingue.</p>
-                <p className="text-[11px] text-slate-400 mt-3 font-semibold">Sujets numérisés avec corrigés types</p>
+                <p className="text-xs sm:text-sm text-slate-700 font-medium mt-1 leading-relaxed">
+                  Épreuves spécifiques de langue arabe, études islamiques et matières scientifiques en bilingue.
+                </p>
+                <p className="text-xs text-[#005bbf] font-bold pt-2">Sujets numérisés avec corrigés types</p>
               </div>
             </div>
           )}
