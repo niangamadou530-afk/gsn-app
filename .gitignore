@@ -30,8 +30,14 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (strict - never commit env files with real secrets)
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
 
 # vercel
 .vercel
@@ -42,3 +48,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Large scraping downloads & binary archives (prevents GitHub upload timeouts)
+scripts/downloads/
+*.pdf
+*.zip
+*.tar.gz
+*.tar
+__pycache__/
+*.py[cod]

@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres, getInfoMatiere } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
 import { t } from "@/lib/i18n";
+import { isPreviewEnvironment } from "@/lib/previewAuth";
+import { PreviewBanner } from "@/components/PreviewBanner";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -129,9 +131,42 @@ function GenererPageInner() {
     return () => clearTimeout(timer);
   }, [retrySeconds]);
 
+  const [isPreview, setIsPreview] = useState(false);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) { router.push("/login"); return; }
+      if (!user) {
+        if (isPreviewEnvironment()) {
+          setIsPreview(true);
+          setExamType("BAC");
+          setSerie("S2");
+          setPrenom("Amadou (Démo)");
+          setUserId("preview-user");
+          const pMat  = searchParams.get("matiere");
+          const pChap = searchParams.get("chapitre");
+          const pType = searchParams.get("type");
+          const pView = searchParams.get("view");
+          if (pView === "mes_flashcards" || pView === "mes_quiz" || pView === "mes_resumes") {
+            loadLibrary(pView);
+          } else if (pType === "quiz" || pType === "flashcards" || pType === "resume") {
+            setGenType(pType as GenType);
+            setMode("B");
+            setPhase("setup_b");
+            if (pMat) {
+              setMatiereB(pMat);
+              if (pChap) setChapitreB(pChap);
+            }
+          } else if (pMat) {
+            setMatiereB(pMat);
+            if (pChap) setChapitreB(pChap);
+            setMode("B");
+            setPhase("setup_b");
+          }
+          return;
+        }
+        router.push("/login");
+        return;
+      }
       setUserId(user.id);
       supabase.auth.getSession().then(({ data: { session } }) => {
         setAuthToken(session?.access_token ?? "");
@@ -147,18 +182,106 @@ function GenererPageInner() {
             setPrenom(data.prenom ?? "");
           }
 
-          // Pre-fill from programme page deep-link
+          // Pre-fill from programme page or quiz/flashcards deep-link
           const pMat  = searchParams.get("matiere");
           const pChap = searchParams.get("chapitre");
-          if (pMat) {
+          const pType = searchParams.get("type");
+          const pView = searchParams.get("view");
+          if (pView === "mes_flashcards" || pView === "mes_quiz" || pView === "mes_resumes") {
+            loadLibrary(pView);
+          } else if (pType === "quiz" || pType === "flashcards" || pType === "resume") {
+            setGenType(pType as GenType);
+            setMode("B");
+            setPhase("setup_b");
+            if (pMat) {
+              setMatiereB(pMat);
+              if (pChap) setChapitreB(pChap);
+            }
+          } else if (pMat) {
             setMatiereB(pMat);
             if (pChap) setChapitreB(pChap);
             setMode("B");
             setPhase("setup_b");
           }
         });
+    }).catch(() => {
+      if (isPreviewEnvironment()) {
+        setIsPreview(true);
+        setExamType("BAC");
+        setSerie("S2");
+        setPrenom("Amadou (Démo)");
+      }
     });
   }, [router, searchParams]);
+
+  function loadSampleQuiz() {
+    setGenType("quiz");
+    setMatiereB("Mathématiques");
+    setQcmQuestions([
+      {
+        id: 1,
+        question: "Soit f(x) = ln(x) / x définie sur ]0, +∞[. Quelle est la limite de f(x) quand x tend vers +∞ ?",
+        choices: ["0", "+∞", "1", "-∞"],
+        correct_answer: "0",
+        explanation: "D'après les croissances comparées au programme officiel du Baccalauréat, lim (ln x / x) = 0 quand x -> +∞.",
+        difficulty: "Moyen",
+      },
+      {
+        id: 2,
+        question: "Dans le plan complexe, quel est le module du nombre complexe z = 1 + i√3 ?",
+        choices: ["2", "4", "√2", "1"],
+        correct_answer: "2",
+        explanation: "|z| = √(1² + (√3)²) = √(1 + 3) = √4 = 2.",
+        difficulty: "Facile",
+      },
+      {
+        id: 3,
+        question: "Quelle est la dérivée de la fonction g(x) = e^(2x + 1) ?",
+        choices: ["2 e^(2x + 1)", "e^(2x + 1)", "2x e^(2x + 1)", "(2x + 1) e^(2x)"],
+        correct_answer: "2 e^(2x + 1)",
+        explanation: "Formule de dérivation d'une exponentielle composée : (e^u)' = u' * e^u.",
+        difficulty: "Facile",
+      }
+    ]);
+    setQcmAnswers({});
+    setQcmCurrent(0);
+    setQcmShowAnswer(false);
+    setQcmScore(0);
+    setPhase("quiz_qcm");
+  }
+
+  function loadSampleFlashcards() {
+    setGenType("flashcards");
+    setMatiereB("Sciences Physiques");
+    setFlashcards([
+      { recto: "Quelle est l'expression de l'énergie cinétique d'un solide en translation ?", verso: "Ec = (1/2) * m * v² (avec m en kg, v en m/s et Ec en Joules)." },
+      { recto: "Énoncer la 2ème loi de Newton (Théorème du centre d'inertie).", verso: "Dans un référentiel galiléen, la somme vectorielle des forces extérieures est égale au produit de la masse par l'accélération : Σ F_ext = m * a_G." },
+      { recto: "Quelle est la relation entre le pH et la concentration en ions oxonium [H3O+] ?", verso: "pH = -log([H3O+]) avec [H3O+] en mol/L." }
+    ]);
+    setCurrentCard(0);
+    setFlipped(false);
+    setPhase("flashcards_result");
+  }
+
+  function loadSampleResume() {
+    setGenType("resume");
+    setMatiereB("Philosophie");
+    setResume({
+      titre: "Fiche de Révision : La Conscience et l'Inconscient (BAC)",
+      introduction: "Notion du programme officiel : la conscience suffit-elle à définir l'homme et l'ensemble de son activité psychique ?",
+      points_cles: [
+        "Le Cogito cartésien : 'Je pense donc je suis' (René Descartes pose la conscience comme fondement indubitable de l'existence).",
+        "La critique marxiste et nietzschéenne : Les déterminismes sociaux et corporels qui échappent à la pleine conscience.",
+        "L'hypothèse freudienne de l'inconscient : Les trois instances psychiques (Ça, Moi, Surmoi) et la résistance."
+      ],
+      formules_ou_citations: [
+        "« Le moi n'est pas maître dans sa propre maison. » — Sigmund Freud",
+        "« L'homme est condamné à être libre. » — Jean-Paul Sartre"
+      ],
+      conseil_epreuve: "Pour la dissertation au Bac, veillez à toujours problématiser la tension entre liberté du sujet conscient et déterminismes inconscients."
+    });
+    setPhase("resume_result");
+  }
 
   /* ── Helpers ── */
   function matieres(): string[] { return getMatieres(examType, serie); }
@@ -389,35 +512,69 @@ function GenererPageInner() {
 
   // ── HOME ──
   if (phase === "home") return (
-    <main className="min-h-screen bg-surface text-on-surface">
+    <main className="w-full min-h-screen text-slate-900">
       <header className="px-6 pt-8 pb-4">
+        {isPreview && <PreviewBanner />}
         <h1 className="text-2xl font-extrabold">{t("prep.generer.home.title")}</h1>
-        <p className="text-on-surface-variant text-sm mt-1">{t("prep.generer.home.subtitle")}</p>
+        <p className="text-slate-500 text-sm mt-1">{t("prep.generer.home.subtitle")}</p>
       </header>
       <div className="px-6 space-y-4 pb-8">
-        <p className="font-bold text-on-surface">{t("prep.generer.home.howToWork")}</p>
+        {isPreview && (
+          <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 space-y-2">
+            <span className="text-xs font-black uppercase tracking-wider text-[#005bbf] block">
+              Tests rapides de l&apos;interface (Mode Démo)
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={loadSampleQuiz}
+                className="px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold text-[#005bbf] hover:bg-blue-50 text-left flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">quiz</span>
+                <span>Démo Joueur Quiz</span>
+              </button>
+              <button
+                type="button"
+                onClick={loadSampleFlashcards}
+                className="px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold text-[#005bbf] hover:bg-blue-50 text-left flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">style</span>
+                <span>Démo Flashcards</span>
+              </button>
+              <button
+                type="button"
+                onClick={loadSampleResume}
+                className="px-3 py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold text-[#005bbf] hover:bg-blue-50 text-left flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">auto_stories</span>
+                <span>Démo Fiche Résumé</span>
+              </button>
+            </div>
+          </div>
+        )}
+        <p className="font-bold text-slate-900">{t("prep.generer.home.howToWork")}</p>
         <button
           onClick={() => { setMode("A"); setPhase("setup_a"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
+          <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
           <div>
-            <p className="font-extrabold text-on-surface text-lg">{t("prep.generer.home.optionA.title")}</p>
-            <p className="text-sm text-on-surface-variant mt-0.5">{t("prep.generer.home.optionA.desc")}</p>
+            <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionA.title")}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionA.desc")}</p>
           </div>
         </button>
         <button
           onClick={() => { setMode("B"); setPhase("setup_b"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-surface-container-lowest shadow-sm hover:border-primary/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-primary mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
+          <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
           <div>
-            <p className="font-extrabold text-on-surface text-lg">{t("prep.generer.home.optionB.title")}</p>
-            <p className="text-sm text-on-surface-variant mt-0.5">{t("prep.generer.home.optionB.desc")}</p>
+            <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionB.title")}</p>
+            <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionB.desc")}</p>
           </div>
         </button>
 
         {/* Bibliothèque */}
         <div className="pt-2">
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3">{t("prep.generer.home.savedContent")}</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">{t("prep.generer.home.savedContent")}</p>
           <div className="grid grid-cols-3 gap-3">
             {([
               { key: "mes_flashcards", icon: "style",        label: t("prep.generer.home.myFlashcards"), color: "#6366f1" },
@@ -426,9 +583,9 @@ function GenererPageInner() {
             ] as const).map(s => (
               <button key={s.key}
                 onClick={() => loadLibrary(s.key)}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-surface-container-lowest shadow-sm active:scale-95 transition-transform">
+                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs shadow-sm active:scale-95 transition-transform">
                 <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
-                <span className="text-[11px] font-semibold text-on-surface text-center leading-tight">{s.label}</span>
+                <span className="text-[11px] font-semibold text-slate-900 text-center leading-tight">{s.label}</span>
               </button>
             ))}
           </div>
@@ -439,7 +596,7 @@ function GenererPageInner() {
 
   // ── SETUP A ──
   if (phase === "setup_a") return (
-    <main className="min-h-screen bg-surface text-on-surface">
+    <main className="w-full min-h-screen text-slate-900">
       <PageHeader title={t("prep.generer.setupA.headerTitle")} onBack={() => setPhase("home")} />
       <div className="px-6 py-4 space-y-5">
 
@@ -448,19 +605,19 @@ function GenererPageInner() {
           <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.step1")}</p>
           <button
             onClick={() => fileRef.current?.click()}
-            className="w-full h-36 rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+            className="w-full h-36 rounded-2xl border-2 border-dashed border-[#005bbf]/40 bg-blue-50/50 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform">
             {filePreview ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={filePreview} alt="preview" className="h-28 object-contain rounded-xl" />
             ) : fileA ? (
               <>
-                <span className="material-symbols-outlined text-[36px] text-primary">description</span>
-                <p className="text-sm font-semibold text-primary">{fileA.name}</p>
+                <span className="material-symbols-outlined text-[36px] text-[#005bbf]">description</span>
+                <p className="text-sm font-semibold text-[#005bbf]">{fileA.name}</p>
               </>
             ) : (
               <>
-                <span className="material-symbols-outlined text-[36px] text-primary">add_photo_alternate</span>
-                <p className="text-sm text-on-surface-variant">{t("prep.generer.setupA.uploadHint")}</p>
+                <span className="material-symbols-outlined text-[36px] text-[#005bbf]">add_photo_alternate</span>
+                <p className="text-sm text-slate-500">{t("prep.generer.setupA.uploadHint")}</p>
               </>
             )}
           </button>
@@ -474,7 +631,7 @@ function GenererPageInner() {
             {(matieres().length > 0 ? matieres() : ["Mathématiques", "Français", "SVT", "Anglais", "Histoire", "Philosophie"]).map(m => (
               <button key={m}
                 onClick={() => setMatiereA(m)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereA === m ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereA === m ? "border-[#005bbf] bg-blue-50 text-[#005bbf]" : "border-slate-200 text-slate-500"}`}>
                 {m}
               </button>
             ))}
@@ -501,7 +658,7 @@ function GenererPageInner() {
     const chaps = matiereB ? chapitres(matiereB) : [];
     const showFree = chapitreB === "Autre" || chaps.length <= 1;
     return (
-      <main className="min-h-screen bg-surface text-on-surface">
+      <main className="w-full min-h-screen text-slate-900">
         <PageHeader title={t("prep.generer.setupB.headerTitle")} onBack={() => setPhase("home")} />
         <div className="px-6 py-4 space-y-5">
 
@@ -512,7 +669,7 @@ function GenererPageInner() {
               {matieres().map(m => (
                 <button key={m}
                   onClick={() => { setMatiereB(m); setChapitreB(""); setThemeLibre(""); }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereB === m ? "border-primary bg-primary/10 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereB === m ? "border-[#005bbf] bg-blue-50 text-[#005bbf]" : "border-slate-200 text-slate-500"}`}>
                   {m}
                 </button>
               ))}
@@ -525,20 +682,20 @@ function GenererPageInner() {
             if (!info || info.hidden) return null;
             const nbChapitres = info.chapitres.filter(c => c !== "Autre").length;
             return (
-              <div className="flex gap-3 px-4 py-3 rounded-2xl bg-primary/10 border border-primary/20 text-sm">
+              <div className="flex gap-3 px-4 py-3 rounded-2xl bg-blue-50 border border-[#005bbf]/20 text-sm">
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.coefficient")}</p>
-                  <p className="font-black text-primary text-lg">{info.coefficient}</p>
+                  <p className="text-slate-500 text-xs mb-0.5">{t("prep.generer.setupB.coefficient")}</p>
+                  <p className="font-black text-[#005bbf] text-lg">{info.coefficient}</p>
                 </div>
-                <div className="w-px bg-primary/20" />
+                <div className="w-px bg-blue-100" />
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.duration")}</p>
-                  <p className="font-black text-primary text-lg">{info.duree_epreuve}</p>
+                  <p className="text-slate-500 text-xs mb-0.5">{t("prep.generer.setupB.duration")}</p>
+                  <p className="font-black text-[#005bbf] text-lg">{info.duree_epreuve}</p>
                 </div>
-                <div className="w-px bg-primary/20" />
+                <div className="w-px bg-blue-100" />
                 <div className="flex-1 text-center">
-                  <p className="text-on-surface-variant text-xs mb-0.5">{t("prep.generer.setupB.chapters")}</p>
-                  <p className="font-black text-primary text-lg">{nbChapitres}</p>
+                  <p className="text-slate-500 text-xs mb-0.5">{t("prep.generer.setupB.chapters")}</p>
+                  <p className="font-black text-[#005bbf] text-lg">{nbChapitres}</p>
                 </div>
               </div>
             );
@@ -547,11 +704,11 @@ function GenererPageInner() {
           {/* Chapitre */}
           {matiereB && chaps.length > 1 && (
             <div>
-              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.chapterLabel")} <span className="font-normal text-on-surface-variant">{t("prep.generer.optionalSuffix")}</span></p>
+              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.chapterLabel")} <span className="font-normal text-slate-500">{t("prep.generer.optionalSuffix")}</span></p>
               <select
                 value={chapitreB}
                 onChange={e => setChapitreB(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary">
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white border border-slate-200/80 shadow-xs text-slate-900 focus:outline-none focus:border-[#005bbf]">
                 <option value="">{t("prep.generer.setupB.allChapters")}</option>
                 {chaps.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -563,15 +720,15 @@ function GenererPageInner() {
             const comps = getCompetences(examType, serie, chapitreB);
             if (comps.length === 0) return null;
             return (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/10">
+              <div className="rounded-2xl border border-[#005bbf]/20 bg-blue-50/50 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50">
                   <span className="text-base">📋</span>
-                  <p className="font-bold text-primary text-xs">{t("prep.generer.setupB.evaluatedAt", { examType })}</p>
+                  <p className="font-bold text-[#005bbf] text-xs">{t("prep.generer.setupB.evaluatedAt", { examType })}</p>
                 </div>
                 <ul className="px-4 py-3 space-y-1.5">
                   {comps.map((c, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-on-surface">
-                      <span className="text-primary font-black flex-shrink-0 text-xs mt-0.5">{i + 1}.</span>
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-900">
+                      <span className="text-[#005bbf] font-black flex-shrink-0 text-xs mt-0.5">{i + 1}.</span>
                       <span className="leading-relaxed">{c}</span>
                     </li>
                   ))}
@@ -583,12 +740,12 @@ function GenererPageInner() {
           {/* Thème libre */}
           {(showFree || chaps.length <= 1) && (
             <div>
-              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.themeLabel")} <span className="font-normal text-on-surface-variant">{t("prep.generer.optionalSuffix")}</span></p>
+              <p className="font-bold text-sm mb-2">{t("prep.generer.setupB.themeLabel")} <span className="font-normal text-slate-500">{t("prep.generer.optionalSuffix")}</span></p>
               <input
                 value={themeLibre}
                 onChange={e => setThemeLibre(e.target.value)}
                 placeholder={t("prep.generer.setupB.themePlaceholder")}
-                className="w-full px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary"
+                className="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white border border-slate-200/80 shadow-xs text-slate-900 focus:outline-none focus:border-[#005bbf]"
               />
             </div>
           )}
@@ -611,11 +768,11 @@ function GenererPageInner() {
 
   // ── GENERATING ──
   if (phase === "generating") return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-6 p-6">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-6 p-6">
       <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       <div className="text-center">
-        <p className="font-black text-xl text-on-surface">{t("prep.generer.generating.title")}</p>
-        <p className="text-on-surface-variant text-sm mt-1">{t("prep.generer.generating.subtitle", { genLabel: genLabel.toLowerCase() })}</p>
+        <p className="font-black text-xl text-slate-900">{t("prep.generer.generating.title")}</p>
+        <p className="text-slate-500 text-sm mt-1">{t("prep.generer.generating.subtitle", { genLabel: genLabel.toLowerCase() })}</p>
       </div>
     </div>
   );
@@ -625,7 +782,7 @@ function GenererPageInner() {
     const card = flashcards[currentCard];
     const mastered = flashcards.filter(c => c.maitrisee).length;
     return (
-      <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+      <main className="w-full min-h-screen text-slate-900 flex flex-col">
         <PageHeader title={t("prep.generer.flashcardsResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
@@ -638,11 +795,11 @@ function GenererPageInner() {
           )}
 
           {/* Progress */}
-          <div className="flex items-center justify-between text-sm text-on-surface-variant">
+          <div className="flex items-center justify-between text-sm text-slate-500">
             <span>{currentCard + 1} / {flashcards.length}</span>
             <span className="text-green-600 font-semibold">{t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}</span>
           </div>
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / flashcards.length) * 100}%` }} />
           </div>
 
@@ -662,12 +819,12 @@ function GenererPageInner() {
           <div className="flex gap-3">
             <button
               onClick={() => toggleMaitrised(currentCard)}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
+              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-slate-100 text-slate-500 border-2 border-slate-200"}`}>
               {card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}
             </button>
             <button
               onClick={() => { setCurrentCard(i => (i + 1) % flashcards.length); setFlipped(false); }}
-              className="flex-1 py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface border-2 border-outline-variant active:scale-[0.97] transition-all">
+              className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-900 border-2 border-slate-200 active:scale-[0.97] transition-all">
               {t("prep.generer.card.next")}
             </button>
           </div>
@@ -675,14 +832,14 @@ function GenererPageInner() {
           <button
             onClick={() => setCurrentCard(i => Math.max(0, i - 1))}
             disabled={currentCard === 0}
-            className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
+            className="w-full py-2.5 rounded-xl text-sm text-slate-500 disabled:opacity-30 bg-slate-100 active:scale-[0.97]">
             {t("prep.generer.card.previous")}
           </button>
 
           {/* Générer d'autres flashcards */}
           <button
             onClick={generate}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold border-2 border-primary text-primary bg-primary/5 active:scale-[0.97] transition-transform">
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold border-2 border-[#005bbf] text-[#005bbf] bg-blue-50/50 active:scale-[0.97] transition-transform">
             <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>refresh</span>
             {t("prep.generer.flashcardsResult.generateMore")}
           </button>
@@ -706,29 +863,29 @@ function GenererPageInner() {
     if (!q) return null;
     const selected = qcmAnswers[qcmCurrent];
     return (
-      <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+      <main className="w-full min-h-screen text-slate-900 flex flex-col">
         <PageHeader title={t("prep.generer.quizQcm.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-on-surface-variant">{qcmCurrent + 1} / {qcmQuestions.length}</span>
+            <span className="text-sm text-slate-500">{qcmCurrent + 1} / {qcmQuestions.length}</span>
             <span className="text-sm font-bold text-green-600">{t("prep.generer.quizQcm.score", { score: qcmScore })}</span>
           </div>
-          <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full transition-all" style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#FF6B00" }} />
           </div>
 
-          <div className="bg-surface-container-lowest rounded-2xl p-5 shadow-sm">
-            <p className="font-bold text-on-surface leading-relaxed">{q.question}</p>
+          <div className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-5 shadow-sm">
+            <p className="font-bold text-slate-900 leading-relaxed">{q.question}</p>
           </div>
 
           <div className="space-y-2.5">
             {q.choices.map(choice => {
-              let style = "border-outline-variant bg-surface-container-lowest text-on-surface";
+              let style = "border-slate-200 bg-white border border-slate-200/80 shadow-xs text-slate-900";
               if (qcmShowAnswer) {
                 if (choice === q.correct_answer) style = "border-green-400 bg-green-50 text-green-800";
                 else if (choice === selected) style = "border-red-400 bg-red-50 text-red-800";
               } else if (choice === selected) {
-                style = "border-primary bg-primary/5 text-primary";
+                style = "border-[#005bbf] bg-blue-50/50 text-[#005bbf]";
               }
               return (
                 <button key={choice}
@@ -763,18 +920,18 @@ function GenererPageInner() {
 
   // ── QUIZ RÉDACTION ──
   if (phase === "quiz_redaction") return (
-    <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+    <main className="w-full min-h-screen text-slate-900 flex flex-col">
       <PageHeader title={t("prep.generer.quizRedaction.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
       <div className="flex-1 px-6 py-4 space-y-5">
-        <p className="text-on-surface-variant text-sm">{t("prep.generer.quizRedaction.instructions")}</p>
+        <p className="text-slate-500 text-sm">{t("prep.generer.quizRedaction.instructions")}</p>
         {redactionQs.map((q, i) => (
           <div key={q.id} className="space-y-2">
-            <p className="font-bold text-on-surface">Q{i + 1}. {q.question}</p>
+            <p className="font-bold text-slate-900">Q{i + 1}. {q.question}</p>
             <textarea
               value={redactionAnswers[i] ?? ""}
               onChange={e => setRedactionAnswers(prev => ({ ...prev, [i]: e.target.value }))}
               placeholder={t("prep.generer.quizRedaction.answerPlaceholder")}
-              className="w-full min-h-[150px] px-4 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary resize-y"
+              className="w-full min-h-[150px] px-4 py-3 rounded-xl border-2 border-slate-200 bg-white border border-slate-200/80 shadow-xs text-slate-900 focus:outline-none focus:border-[#005bbf] resize-y"
             />
           </div>
         ))}
@@ -802,7 +959,7 @@ function GenererPageInner() {
     const pct = Math.round((finalScore / total) * 100);
 
     return (
-      <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+      <main className="w-full min-h-screen text-slate-900 flex flex-col">
         <PageHeader title={t("prep.generer.quizResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
@@ -814,9 +971,9 @@ function GenererPageInner() {
           {isRedaction && redactionFeedback.length > 0 && (
             <div className="space-y-3">
               {redactionFeedback.map((f, i) => (
-                <div key={i} className="bg-surface-container-lowest rounded-xl p-4 shadow-sm">
-                  <p className="font-bold text-on-surface text-sm">Q{i + 1} · {f.score}/10</p>
-                  <p className="text-on-surface-variant text-sm mt-1">{f.feedback}</p>
+                <div key={i} className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-4 shadow-sm">
+                  <p className="font-bold text-slate-900 text-sm">Q{i + 1} · {f.score}/10</p>
+                  <p className="text-slate-500 text-sm mt-1">{f.feedback}</p>
                 </div>
               ))}
             </div>
@@ -845,7 +1002,7 @@ function GenererPageInner() {
   if (phase === "resume_result" && resume) {
     const texte = (resume as { texte?: string }).texte ?? "";
     return (
-      <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+      <main className="w-full min-h-screen text-slate-900 flex flex-col">
         <PageHeader title={t("prep.generer.resumeResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
         <div className="flex-1 px-6 py-4 space-y-4">
 
@@ -890,15 +1047,15 @@ function GenererPageInner() {
       const card = libDeck[libCardIdx];
       const mastered = libDeck.filter(c => c.maitrisee).length;
       return (
-        <main className="min-h-screen bg-surface text-on-surface flex flex-col">
+        <main className="w-full min-h-screen text-slate-900 flex flex-col">
           <PageHeader title={libDeckTitle} onBack={() => { setLibDeck([]); setLibCardIdx(0); setLibCardFlipped(false); }} />
           <div className="flex-1 px-6 py-4 space-y-4">
 
-            <div className="flex items-center justify-between text-sm text-on-surface-variant">
+            <div className="flex items-center justify-between text-sm text-slate-500">
               <span>{libCardIdx + 1} / {libDeck.length}</span>
               <span className="text-green-600 font-semibold">{t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}</span>
             </div>
-            <div className="h-1.5 w-full bg-surface-container rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / libDeck.length) * 100}%` }} />
             </div>
 
@@ -917,12 +1074,12 @@ function GenererPageInner() {
             <div className="flex gap-3">
               <button
                 onClick={() => { toggleFlashMaitrisee(card.id, card.maitrisee); }}
-                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-surface-container text-on-surface-variant border-2 border-outline-variant"}`}>
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-slate-100 text-slate-500 border-2 border-slate-200"}`}>
                 {card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}
               </button>
               <button
                 onClick={() => { setLibCardIdx(i => (i + 1) % libDeck.length); setLibCardFlipped(false); }}
-                className="flex-1 py-3 rounded-xl font-bold text-sm bg-surface-container text-on-surface border-2 border-outline-variant active:scale-[0.97] transition-all">
+                className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-900 border-2 border-slate-200 active:scale-[0.97] transition-all">
                 {t("prep.generer.card.next")}
               </button>
             </div>
@@ -930,7 +1087,7 @@ function GenererPageInner() {
             <button
               onClick={() => { setLibCardIdx(i => Math.max(0, i - 1)); setLibCardFlipped(false); }}
               disabled={libCardIdx === 0}
-              className="w-full py-2.5 rounded-xl text-sm text-on-surface-variant disabled:opacity-30 bg-surface-container active:scale-[0.97]">
+              className="w-full py-2.5 rounded-xl text-sm text-slate-500 disabled:opacity-30 bg-slate-100 active:scale-[0.97]">
               {t("prep.generer.card.previous")}
             </button>
           </div>
@@ -946,7 +1103,7 @@ function GenererPageInner() {
       grouped[key].push(f);
     }
     return (
-      <main className="min-h-screen bg-surface text-on-surface pb-8">
+      <main className="w-full min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myFlashcards")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -958,18 +1115,18 @@ function GenererPageInner() {
                 <button
                   key={group}
                   onClick={() => { setLibDeck(cards); setLibDeckTitle(group); setLibCardIdx(0); setLibCardFlipped(false); }}
-                  className="w-full flex items-center gap-3 p-4 bg-surface-container-lowest rounded-2xl shadow-sm text-left active:scale-[0.98] transition-transform">
+                  className="w-full flex items-center gap-3 p-4 bg-white border border-slate-200/80 shadow-xs rounded-2xl shadow-sm text-left active:scale-[0.98] transition-transform">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: "#FF6B0020" }}>
                     <span className="material-symbols-outlined text-[20px]" style={{ color: "#FF6B00", fontVariationSettings: "'FILL' 1" }}>style</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-on-surface text-sm truncate">{group}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">{t("prep.generer.library.deckStats", { count: cards.length, done })}</p>
-                    <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1.5">
+                    <p className="font-bold text-slate-900 text-sm truncate">{group}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{t("prep.generer.library.deckStats", { count: cards.length, done })}</p>
+                    <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden mt-1.5">
                       <div className="h-full bg-green-500" style={{ width: `${cards.length > 0 ? (done / cards.length) * 100 : 0}%` }} />
                     </div>
                   </div>
-                  <span className="material-symbols-outlined text-on-surface-variant text-[20px]">chevron_right</span>
+                  <span className="material-symbols-outlined text-slate-500 text-[20px]">chevron_right</span>
                 </button>
               );
             })}
@@ -982,7 +1139,7 @@ function GenererPageInner() {
   // ── MES QUIZ ──
   if (phase === "mes_quiz") {
     return (
-      <main className="min-h-screen bg-surface text-on-surface pb-8">
+      <main className="w-full min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myQuiz")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -991,13 +1148,13 @@ function GenererPageInner() {
             ) : savedQuiz.map(q => {
               const pct = Math.round((q.score / q.total) * 100);
               return (
-                <div key={q.id} className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm flex items-center gap-3">
+                <div key={q.id} className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-4 shadow-sm flex items-center gap-3">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm text-white flex-shrink-0 ${pct >= 60 ? "bg-green-500" : pct >= 40 ? "bg-orange-400" : "bg-red-500"}`}>
                     {pct}%
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-on-surface text-sm truncate">{q.matiere}{q.chapitre ? " · " + q.chapitre : ""}</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">
+                    <p className="font-bold text-slate-900 text-sm truncate">{q.matiere}{q.chapitre ? " · " + q.chapitre : ""}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
                       {q.score}/{q.total} · {q.mode === "redaction" ? t("prep.generer.mode.redaction") : t("prep.generer.mode.qcm")} · {new Date(q.created_at).toLocaleDateString("fr-FR")}
                     </p>
                   </div>
@@ -1013,7 +1170,7 @@ function GenererPageInner() {
   // ── MES RÉSUMÉS ──
   if (phase === "mes_resumes") {
     return (
-      <main className="min-h-screen bg-surface text-on-surface pb-8">
+      <main className="w-full min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myResumes")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -1022,7 +1179,7 @@ function GenererPageInner() {
             ) : savedResumes.map(r => {
               const isOpen = expandedResume === r.id;
               return (
-                <div key={r.id} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
+                <div key={r.id} className="bg-white border border-slate-200/80 shadow-xs rounded-2xl shadow-sm overflow-hidden">
                   <button
                     onClick={() => setExpandedResume(isOpen ? null : r.id)}
                     className="w-full flex items-center gap-3 p-4 text-left">
@@ -1030,15 +1187,15 @@ function GenererPageInner() {
                       <span className="material-symbols-outlined text-amber-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-on-surface text-sm truncate">{r.matiere ?? t("prep.generer.library.resumeFallback")}</p>
-                      <p className="text-xs text-on-surface-variant">
+                      <p className="font-bold text-slate-900 text-sm truncate">{r.matiere ?? t("prep.generer.library.resumeFallback")}</p>
+                      <p className="text-xs text-slate-500">
                         {r.matiere}{r.chapitre ? " · " + r.chapitre : ""} · {new Date(r.created_at).toLocaleDateString("fr-FR")}
                       </p>
                     </div>
-                    <span className="material-symbols-outlined text-on-surface-variant text-[20px]" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}>expand_more</span>
+                    <span className="material-symbols-outlined text-slate-500 text-[20px]" style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}>expand_more</span>
                   </button>
                   {isOpen && (
-                    <div className="border-t border-outline-variant/15 p-4">
+                    <div className="border-t border-slate-200/15 p-4">
                       <ResumeDisplay texte={r.contenu} matiere={r.matiere ?? ""} />
                     </div>
                   )}
@@ -1080,10 +1237,10 @@ function LibLoader() {
 
 function EmptyLib({ icon, msg, sub }: { icon: string; msg: string; sub: string }) {
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 text-center shadow-sm">
-      <span className="material-symbols-outlined text-[40px] text-on-surface-variant" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-      <p className="font-bold text-on-surface mt-2">{msg}</p>
-      <p className="text-sm text-on-surface-variant mt-1">{sub}</p>
+    <div className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-8 text-center shadow-sm">
+      <span className="material-symbols-outlined text-[40px] text-slate-500" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+      <p className="font-bold text-slate-900 mt-2">{msg}</p>
+      <p className="text-sm text-slate-500 mt-1">{sub}</p>
     </div>
   );
 }
@@ -1304,11 +1461,11 @@ function ResumeDisplay({ texte, matiere = "" }: { texte: string; matiere?: strin
 
 function PageHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
-    <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-4 py-3 flex items-center gap-3">
-      <button onClick={onBack} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
-        <span className="material-symbols-outlined">arrow_back</span>
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center gap-3 shadow-xs">
+      <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95">
+        <span className="material-symbols-outlined text-[20px]">arrow_back</span>
       </button>
-      <h1 className="font-bold text-on-surface truncate">{title}</h1>
+      <h1 className="font-extrabold text-slate-900 truncate text-base sm:text-lg">{title}</h1>
     </header>
   );
 }
@@ -1330,11 +1487,11 @@ function GenTypeSelector({
         ] as const).map(opt => (
           <button key={opt.key}
             onClick={() => setGenType(opt.key)}
-            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all ${genType === opt.key ? "border-primary bg-primary/5" : "border-outline-variant"}`}>
+            className={`flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all ${genType === opt.key ? "border-[#005bbf] bg-blue-50/50" : "border-slate-200"}`}>
             <span className="material-symbols-outlined text-[22px]" style={{ color: genType === opt.key ? "#FF6B00" : undefined, fontVariationSettings: genType === opt.key ? "'FILL' 1" : "'FILL' 0" }}>
               {opt.icon}
             </span>
-            <span className={`text-xs font-bold ${genType === opt.key ? "text-primary" : "text-on-surface-variant"}`}>{opt.label}</span>
+            <span className={`text-xs font-bold ${genType === opt.key ? "text-[#005bbf]" : "text-slate-500"}`}>{opt.label}</span>
           </button>
         ))}
       </div>
@@ -1346,7 +1503,7 @@ function GenTypeSelector({
           ] as const).map(m => (
             <button key={m.key}
               onClick={() => setQuizMode(m.key)}
-              className={`flex-1 py-2 rounded-xl border-2 text-sm font-bold transition-all ${quizMode === m.key ? "border-primary bg-primary/5 text-primary" : "border-outline-variant text-on-surface-variant"}`}>
+              className={`flex-1 py-2 rounded-xl border-2 text-sm font-bold transition-all ${quizMode === m.key ? "border-[#005bbf] bg-blue-50/50 text-[#005bbf]" : "border-slate-200 text-slate-500"}`}>
               {m.label}
             </button>
           ))}
@@ -1358,10 +1515,10 @@ function GenTypeSelector({
 
 function Section({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
+    <div className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-3">
-        <span className="material-symbols-outlined text-primary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
-        <p className="font-bold text-on-surface text-sm">{title}</p>
+        <span className="material-symbols-outlined text-[#005bbf] text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+        <p className="font-bold text-slate-900 text-sm">{title}</p>
       </div>
       {children}
     </div>
@@ -1378,9 +1535,9 @@ function VideoSection({
   if (videos.length === 0) return null;
   return (
     <div className="px-6 pb-6 space-y-3">
-      <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest">{t("prep.generer.videos.title")}</p>
+      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t("prep.generer.videos.title")}</p>
       {videos.map(v => (
-        <div key={v.videoId} className="bg-surface-container-lowest rounded-2xl overflow-hidden shadow-sm">
+        <div key={v.videoId} className="bg-white border border-slate-200/80 shadow-xs rounded-2xl overflow-hidden shadow-sm">
           {videoPlaying === v.videoId ? (
             <div className="aspect-video">
               <iframe
@@ -1400,10 +1557,10 @@ function VideoSection({
                 </div>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-on-surface line-clamp-2">{v.title}</p>
+                <p className="text-sm font-semibold text-slate-900 line-clamp-2">{v.title}</p>
                 <button
                   onClick={() => setVideoPlaying(v.videoId)}
-                  className="mt-1 text-xs font-bold text-primary underline">
+                  className="mt-1 text-xs font-bold text-[#005bbf] underline">
                   {t("prep.generer.videos.watch")}
                 </button>
               </div>
@@ -1418,7 +1575,7 @@ function VideoSection({
 export default function GenererPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-surface flex items-center justify-center">
+      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
         <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       </div>
     }>

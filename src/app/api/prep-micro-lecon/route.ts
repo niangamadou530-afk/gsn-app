@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
+  if (!process.env.GROQ_API_KEY) {
+    return NextResponse.json({ error: "GROQ_API_KEY non configurée." }, { status: 500 });
+  }
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
   try {
     const { subject, chapter, serie } = await req.json();
 

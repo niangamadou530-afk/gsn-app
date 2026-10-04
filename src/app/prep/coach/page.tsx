@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getMatiereData } from "@/data/programmes";
 import { t } from "@/lib/i18n";
+import { EXAM_CONFIG } from "@/lib/prep-config";
+import { isPreviewEnvironment } from "@/lib/previewAuth";
+import { PreviewBanner } from "@/components/PreviewBanner";
+import { SlowConnectionNotice } from "@/components/SlowConnectionNotice";
 
-const BAC_DATE  = "2026-06-30";
-const BFEM_DATE = "2026-07-14";
+const BAC_DATE  = EXAM_CONFIG.BAC.targetDate;
+const BFEM_DATE = EXAM_CONFIG.BFEM.targetDate;
 
 function daysUntil(d: string) {
   return Math.max(0, Math.ceil((new Date(d).getTime() - Date.now()) / 86400000));
@@ -15,6 +19,13 @@ function daysUntil(d: string) {
 
 type Message = { role: "user" | "assistant"; content: string };
 type Profile = { prenom: string | null; exam_type: string; serie: string | null; ecole: string | null };
+
+const SUGGESTIONS = [
+  "Comment bien réviser pour décrocher une mention ?",
+  "Explique-moi la méthode de la dissertation",
+  "Donne-moi un exercice type examen avec son corrigé",
+  "Quelles sont les erreurs fréquentes à éviter ?",
+];
 
 export default function CoachPage() {
   const router = useRouter();
@@ -27,50 +38,107 @@ export default function CoachPage() {
   const [authToken, setAuthToken] = useState("");
   const [retrySeconds, setRetrySeconds] = useState(0);
   const [lastUserMsg, setLastUserMsg]   = useState("");
+  const [isPreview, setIsPreview]       = useState(false);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
+  const [retryCount, setRetryCount]     = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let mounted = true;
+    setIsSlowConnection(false);
+
+    const slowTimer = setTimeout(() => {
+      if (mounted && loading) {
+        setIsSlowConnection(true);
+      }
+    }, 8000);
+
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+      try {
+        const authPromise = supabase.auth.getUser();
+        const previewTimeout = new Promise<{ data: { user: null } }>((resolve) =>
+          setTimeout(() => resolve({ data: { user: null } }), 1200)
+        );
+        const authResult = isPreviewEnvironment()
+          ? await Promise.race([authPromise, previewTimeout])
+          : await authPromise;
+        const user = authResult.data?.user;
 
-      const [{ data: stu }, { data: results }] = await Promise.all([
-        supabase.from("prep_students").select("prenom, exam_type, serie, ecole").eq("user_id", user.id).maybeSingle(),
-        supabase.from("quiz_results").select("matiere, score, total").eq("user_id", user.id),
-      ]);
+        if (!user) {
+          if (isPreviewEnvironment()) {
+            if (mounted) {
+              setIsPreview(true);
+              const p = { prenom: "Amadou (Démo)", exam_type: "BAC", serie: "S2", ecole: "Lycée Pilote de l'Avenir (Fictif)" };
+              setProfile(p);
+              setQuizStats({ "Mathématiques": 78, "Sciences Physiques": 85, "SVT": 72 });
+              const days = daysUntil(BAC_DATE);
+              setMessages([{
+                role: "assistant",
+                content: `Bonjour Amadou ! Je suis ton coach personnel pour préparer le BAC (J-${days}).\n\nPose-moi une question sur le programme du Baccalauréat sénégalais ou choisis une suggestion ci-dessous pour démarrer !`,
+              }]);
+              setLoading(false);
+            }
+            return;
+          }
+          router.push("/login");
+          setLoading(false);
+          return;
+        }
 
-      const p = stu as Profile | null;
-      setProfile(p);
+        const [{ data: stu }, { data: results }] = await Promise.all([
+          supabase.from("prep_students").select("prenom, exam_type, serie, ecole").eq("user_id", user.id).maybeSingle(),
+          supabase.from("quiz_results").select("matiere, score, total").eq("user_id", user.id),
+        ]);
 
-      const byMat: Record<string, number[]> = {};
-      for (const r of results ?? []) {
-        if (!byMat[r.matiere]) byMat[r.matiere] = [];
-        byMat[r.matiere].push(Math.round((r.score / r.total) * 100));
+        const p = stu as Profile | null;
+        if (mounted) {
+          setProfile(p);
+
+          const byMat: Record<string, number[]> = {};
+          for (const r of results ?? []) {
+            if (!byMat[r.matiere]) byMat[r.matiere] = [];
+            byMat[r.matiere].push(Math.round((r.score / r.total) * 100));
+          }
+          const stats: Record<string, number> = {};
+          for (const [m, sc] of Object.entries(byMat)) {
+            stats[m] = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
+          }
+          setQuizStats(stats);
+          const { data: { session } } = await supabase.auth.getSession();
+          setAuthToken(session?.access_token ?? "");
+          setLoading(false);
+
+          const prenom = p?.prenom ?? t("prep.coach.defaultName");
+          const exam   = p?.exam_type ?? "BAC";
+          const days   = daysUntil(exam === "BFEM" ? BFEM_DATE : BAC_DATE);
+          const greeting = [
+            t("prep.coach.greetingLine1", { prenom }),
+            t("prep.coach.greetingLine2", { days, exam }),
+            t("prep.coach.greetingLine3"),
+          ].join("\n\n");
+          setMessages([{
+            role: "assistant",
+            content: greeting,
+          }]);
+        }
+      } catch (err) {
+        console.error(err);
+        if (isPreviewEnvironment() && mounted) {
+          setIsPreview(true);
+          const p = { prenom: "Amadou (Démo)", exam_type: "BAC", serie: "S2", ecole: "Lycée Pilote de l'Avenir (Fictif)" };
+          setProfile(p);
+          setLoading(false);
+        }
+      } finally {
+        if (mounted) setLoading(false);
       }
-      const stats: Record<string, number> = {};
-      for (const [m, sc] of Object.entries(byMat)) {
-        stats[m] = Math.round(sc.reduce((a, b) => a + b, 0) / sc.length);
-      }
-      setQuizStats(stats);
-      const { data: { session } } = await supabase.auth.getSession();
-      setAuthToken(session?.access_token ?? "");
-      setLoading(false);
-
-      const prenom = p?.prenom ?? t("prep.coach.defaultName");
-      const exam   = p?.exam_type ?? "BAC";
-      const days   = daysUntil(exam === "BFEM" ? BFEM_DATE : BAC_DATE);
-      const greeting = [
-        t("prep.coach.greetingLine1", { prenom }),
-        t("prep.coach.greetingLine2", { days, exam }),
-        t("prep.coach.greetingLine3"),
-      ].join("\n\n");
-      setMessages([{
-        role: "assistant",
-        content: greeting,
-      }]);
     }
     load();
-  }, [router]);
+    return () => {
+      mounted = false;
+      clearTimeout(slowTimer);
+    };
+  }, [router, retryCount]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
@@ -86,9 +154,10 @@ export default function CoachPage() {
     await doSend(lastUserMsg);
   }
 
-  async function sendMessage() {
-    if (!input.trim() || sending) return;
-    const userMsg = input.trim();
+  async function sendMessage(textToSend?: string) {
+    const raw = textToSend ?? input;
+    if (!raw.trim() || sending) return;
+    const userMsg = raw.trim();
     setInput("");
     setLastUserMsg(userMsg);
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
@@ -105,7 +174,6 @@ export default function CoachPage() {
         ? Object.entries(quizStats).map(([m, s]) => `${m}: ${s}%`).join(", ")
         : "Aucun quiz réalisé encore";
 
-      // Détection de matière dans le message pour injecter le programme officiel
       const matieresList = getMatieres(exam, serie || undefined);
       let programmeContext = "";
       const msgLower = userMsg.toLowerCase();
@@ -138,14 +206,12 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
         .replace(/_{1,2}(.*?)_{1,2}/g, "$1")
         .trim();
 
-      // Détecter la matière et le chapitre dans le message pour enrichir le contexte DB
       let detectedMatiere = "";
       let detectedChapitre = "";
       for (const mat of matieresList) {
         const keywords = mat.toLowerCase().split(/[\s-]+/).filter(k => k.length > 3);
         if (keywords.some(k => msgLower.includes(k))) {
           detectedMatiere = mat;
-          // Cherche un chapitre mentionné dans le message
           const data = getMatiereData(exam, serie || "", mat);
           for (const ch of data?.chapitres ?? []) {
             if (ch !== "Autre" && msgLower.includes(ch.toLowerCase().slice(0, 10))) {
@@ -188,83 +254,171 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
     }
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+  if (isSlowConnection && loading) return (
+    <div className="max-w-xl mx-auto px-4 py-12">
+      <SlowConnectionNotice
+        onRetry={() => {
+          setIsSlowConnection(false);
+          setLoading(true);
+          setRetryCount(c => c + 1);
+        }}
+      />
     </div>
   );
 
-  return (
-    <main className="h-screen bg-surface text-on-surface flex flex-col">
-      <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-outline-variant/20 px-4 py-3 flex items-center gap-3">
-        <button onClick={() => router.push("/prep/dashboard")} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container">
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
-        <div className="w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: "linear-gradient(135deg, #8b5cf6, #6366f1)" }}>
-          🤖
-        </div>
-        <div>
-          <p className="font-bold text-on-surface text-sm">{t("prep.coach.headerTitle")}</p>
-          <p className="text-xs text-on-surface-variant">{t("prep.coach.headerSubtitle")}</p>
-        </div>
-      </header>
+  if (loading) return (
+    <div className="min-h-[70vh] flex flex-col items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin mb-3" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      <p className="text-xs font-bold text-slate-500">Connexion avec votre Coach IA...</p>
+    </div>
+  );
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-                m.role === "user"
-                  ? "text-white rounded-br-sm"
-                  : "bg-surface-container-lowest text-on-surface shadow-sm rounded-bl-sm"
-              }`}
-              style={m.role === "user" ? { backgroundColor: "#FF6B00" } : {}}>
-              {m.content}
-            </div>
+  const exam = profile?.exam_type ?? "BAC";
+  const days = daysUntil(exam === "BFEM" ? BFEM_DATE : BAC_DATE);
+
+  return (
+    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4 flex flex-col h-[calc(100vh-140px)] min-h-[580px]">
+      {isPreview && <PreviewBanner />}
+      {/* Coach Header Bar */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-3 mb-4 shrink-0">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push("/prep/dashboard")}
+            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors active:scale-95 shrink-0"
+            title="Retour au tableau de bord"
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#005bbf] to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+            <span className="material-symbols-outlined text-[24px]">smart_toy</span>
           </div>
-        ))}
-        {sending && (
-          <div className="flex justify-start">
-            <div className="bg-surface-container-lowest rounded-2xl px-4 py-3 shadow-sm">
-              <div className="flex gap-1">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className="w-2 h-2 rounded-full bg-on-surface-variant animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                ))}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="font-extrabold text-slate-900 text-base leading-tight">Coach IA PREP</h1>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Disponible 24/7
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Conseils personnalisés · Objectif {exam} {profile?.serie ? `(${profile.serie})` : ""} · J-{days}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            const prenom = profile?.prenom ?? t("prep.coach.defaultName");
+            const greeting = [
+              t("prep.coach.greetingLine1", { prenom }),
+              t("prep.coach.greetingLine2", { days, exam }),
+              t("prep.coach.greetingLine3"),
+            ].join("\n\n");
+            setMessages([{ role: "assistant", content: greeting }]);
+          }}
+          className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-colors"
+          title="Réinitialiser la discussion"
+        >
+          <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+          <span>Effacer</span>
+        </button>
+      </div>
+
+      {/* Message Stream */}
+      <div className="flex-1 overflow-y-auto bg-white/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3.5">
+        {messages.map((m, i) => {
+          const isUser = m.role === "user";
+          return (
+            <div key={i} className={`flex items-start gap-2.5 ${isUser ? "justify-end" : "justify-start"}`}>
+              {!isUser && (
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#005bbf] to-indigo-600 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-xs">
+                  <span className="material-symbols-outlined text-[17px]">smart_toy</span>
+                </div>
+              )}
+              <div
+                className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                  isUser
+                    ? "bg-[#005bbf] text-white shadow-xs rounded-tr-xs font-medium"
+                    : "bg-white border border-slate-200/80 text-slate-800 shadow-xs rounded-tl-xs"
+                }`}
+              >
+                {m.content}
               </div>
+            </div>
+          );
+        })}
+
+        {sending && (
+          <div className="flex items-start gap-2.5 justify-start">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#005bbf] to-indigo-600 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-xs">
+              <span className="material-symbols-outlined text-[17px]">smart_toy</span>
+            </div>
+            <div className="bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-xs rounded-tl-xs flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-[#005bbf] animate-bounce" style={{ animationDelay: "0ms" }} />
+              <div className="w-2 h-2 rounded-full bg-[#005bbf] animate-bounce" style={{ animationDelay: "150ms" }} />
+              <div className="w-2 h-2 rounded-full bg-[#005bbf] animate-bounce" style={{ animationDelay: "300ms" }} />
             </div>
           </div>
         )}
+
         <div ref={bottomRef} />
       </div>
 
+      {/* Suggestion Chips */}
+      {messages.length <= 2 && !sending && (
+        <div className="flex gap-2 overflow-x-auto py-2.5 scrollbar-hide shrink-0">
+          {SUGGESTIONS.map((s, idx) => (
+            <button
+              key={idx}
+              onClick={() => sendMessage(s)}
+              className="px-3 py-1.5 rounded-full bg-white hover:bg-blue-50 border border-slate-200/80 hover:border-blue-200 text-xs font-semibold text-slate-700 hover:text-[#005bbf] transition-all whitespace-nowrap shadow-xs active:scale-95 shrink-0"
+            >
+              💡 {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Retry banner if throttled */}
       {lastUserMsg && !sending && (
-        <div className="px-4 pb-2">
+        <div className="pt-2 shrink-0">
           <button
             onClick={retryMessage}
             disabled={retrySeconds > 0}
-            className="w-full py-2.5 rounded-xl font-bold text-sm border-2 transition-all disabled:opacity-50"
-            style={{ borderColor: "#FF6B00", color: retrySeconds > 0 ? "#999" : "#FF6B00", backgroundColor: retrySeconds > 0 ? "transparent" : "#FF6B0010" }}>
+            className="w-full py-2.5 rounded-xl font-bold text-xs border border-orange-200 bg-orange-50 text-[#FF6B00] hover:bg-orange-100 transition-all disabled:opacity-50"
+          >
             {retrySeconds > 0 ? t("prep.coach.retryIn", { seconds: retrySeconds }) : t("prep.coach.retry")}
           </button>
         </div>
       )}
-      <div className="border-t border-outline-variant/20 px-4 py-3 pb-6 flex items-end gap-3">
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-          placeholder={t("prep.coach.inputPlaceholder")}
-          rows={1}
-          className="flex-1 px-4 py-3 rounded-2xl border-2 border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary resize-none text-sm"
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!input.trim() || sending}
-          className="w-11 h-11 rounded-full flex items-center justify-center text-white disabled:opacity-40 active:scale-95 flex-shrink-0"
-          style={{ backgroundColor: "#FF6B00" }}>
-          <span className="material-symbols-outlined text-[20px]">send</span>
-        </button>
+
+      {/* Input Form */}
+      <div className="pt-3 shrink-0">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage();
+          }}
+          className="flex items-center gap-2 bg-white border border-slate-200/80 rounded-2xl p-2 shadow-xs focus-within:border-[#005bbf] focus-within:ring-2 focus-within:ring-blue-100 transition-all"
+        >
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={t("prep.coach.inputPlaceholder")}
+            disabled={sending}
+            className="flex-1 px-3 py-2 bg-transparent text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || sending}
+            className="w-10 h-10 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white flex items-center justify-center disabled:opacity-40 transition-all shadow-xs active:scale-95 shrink-0"
+            title="Envoyer"
+          >
+            <span className="material-symbols-outlined text-[20px]">send</span>
+          </button>
+        </form>
       </div>
-    </main>
+    </div>
   );
 }

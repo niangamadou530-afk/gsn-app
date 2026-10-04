@@ -1,0 +1,7 @@
+{
+  "name": "GSN",
+  "description": "Plateforme d'apprentissage et de préparation aux examens GSN",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

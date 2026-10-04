@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getMatieres, getChapitres } from "@/data/programmes";
 import { t } from "@/lib/i18n";
+import { isPreviewEnvironment } from "@/lib/previewAuth";
+import { PreviewBanner } from "@/components/PreviewBanner";
+import { SlowConnectionNotice } from "@/components/SlowConnectionNotice";
 
 type Profile = { prenom: string | null; exam_type: string; serie: string | null };
 
@@ -12,37 +15,91 @@ export default function ProgrammePage() {
   const router = useRouter();
 
   const [profile,  setProfile]  = useState<Profile | null>(null);
-  const [worked,   setWorked]   = useState<Set<string>>(new Set());   // "Matière||Chapitre"
+  const [worked,   setWorked]   = useState<Set<string>>(new Set());
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading,  setLoading]  = useState(true);
+  const [isPreview, setIsPreview] = useState(false);
+  const [isSlowConnection, setIsSlowConnection] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+    let mounted = true;
+    setIsSlowConnection(false);
 
-      const [{ data: stu }, { data: quiz }, { data: flash }] = await Promise.all([
-        supabase.from("prep_students").select("prenom, exam_type, serie").eq("user_id", user.id).maybeSingle(),
-        supabase.from("quiz_results").select("matiere, chapitre").eq("user_id", user.id),
-        supabase.from("flashcards").select("matiere, chapitre").eq("user_id", user.id),
-      ]);
-
-      setProfile(stu as Profile | null);
-
-      const w = new Set<string>();
-      for (const r of [...(quiz ?? []), ...(flash ?? [])]) {
-        if (r.chapitre) w.add(`${r.matiere}||${r.chapitre}`);
-        w.add(`${r.matiere}||`);   // matiere worked (no chapter)
+    const slowTimer = setTimeout(() => {
+      if (mounted && loading) {
+        setIsSlowConnection(true);
       }
-      setWorked(w);
-      setLoading(false);
+    }, 8000);
+
+    async function load() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          if (isPreviewEnvironment()) {
+            if (mounted) {
+              setProfile({ prenom: "Amadou (Démo)", exam_type: "BAC", serie: "S2" });
+              setIsPreview(true);
+              setLoading(false);
+            }
+            return;
+          }
+          router.push("/login");
+          setLoading(false);
+          return;
+        }
+
+        const [{ data: stu }, { data: quiz }, { data: flash }] = await Promise.all([
+          supabase.from("prep_students").select("prenom, exam_type, serie").eq("user_id", user.id).maybeSingle(),
+          supabase.from("quiz_results").select("matiere, chapitre").eq("user_id", user.id),
+          supabase.from("flashcards").select("matiere, chapitre").eq("user_id", user.id),
+        ]);
+
+        if (mounted) {
+          setProfile(stu as Profile | null);
+
+          const w = new Set<string>();
+          for (const r of [...(quiz ?? []), ...(flash ?? [])]) {
+            if (r.chapitre) w.add(`${r.matiere}||${r.chapitre}`);
+            w.add(`${r.matiere}||`);
+          }
+          setWorked(w);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error(err);
+        if (isPreviewEnvironment() && mounted) {
+          setProfile({ prenom: "Amadou (Démo)", exam_type: "BAC", serie: "S2" });
+          setIsPreview(true);
+          setLoading(false);
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
     }
     load();
-  }, [router]);
+    return () => {
+      mounted = false;
+      clearTimeout(slowTimer);
+    };
+  }, [router, retryCount]);
+
+  if (isSlowConnection && loading) return (
+    <div className="max-w-xl mx-auto px-4 py-12">
+      <SlowConnectionNotice
+        onRetry={() => {
+          setIsSlowConnection(false);
+          setLoading(true);
+          setRetryCount(c => c + 1);
+        }}
+      />
+    </div>
+  );
 
   if (loading) return (
-    <div className="min-h-screen bg-surface flex items-center justify-center">
-      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+    <div className="min-h-[70vh] flex flex-col items-center justify-center">
+      <div className="w-10 h-10 rounded-full border-4 border-t-transparent animate-spin mb-3" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
+      <p className="text-xs font-bold text-slate-500">Chargement des programmes officiels...</p>
     </div>
   );
 
@@ -72,36 +129,51 @@ export default function ProgrammePage() {
 
   const totalDone  = matieres.reduce((s, m) => s + matiereProgress(m).done, 0);
   const totalChaps = matieres.reduce((s, m) => s + matiereProgress(m).total, 0);
+  const globalPct  = totalChaps > 0 ? Math.round((totalDone / totalChaps) * 100) : 0;
 
   return (
-    <main className="min-h-screen bg-surface text-on-surface pb-8">
-      <header className="px-6 pt-8 pb-4">
-        <h1 className="text-2xl font-extrabold">{t("prep.programme.title")}</h1>
-        <p className="text-on-surface-variant text-sm mt-0.5">
-          {exam}{serie ? t("prep.programme.serieSuffix", { serie }) : ""}{t("prep.programme.officialBoard")}
-        </p>
-      </header>
-
-      <div className="px-6 space-y-4">
-
-        {/* Global progress */}
-        {totalChaps > 0 && (
-          <div className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-bold text-on-surface">{t("prep.programme.globalProgress")}</p>
-              <p className="text-sm font-black text-primary">{t("prep.programme.chaptersCount", { done: totalDone, total: totalChaps })}</p>
-            </div>
-            <div className="h-2 w-full bg-surface-container rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${totalChaps > 0 ? Math.round((totalDone / totalChaps) * 100) : 0}%`, backgroundColor: "#FF6B00" }}
-              />
-            </div>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {isPreview && <PreviewBanner />}
+      {/* Header Banner */}
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
+        <div className="max-w-2xl relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[#005bbf] text-xs font-bold mb-3">
+            <span className="material-symbols-outlined text-[16px]">menu_book</span>
+            <span>Programmes conformes aux directives du Ministère sénégalais</span>
           </div>
-        )}
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            {t("prep.programme.title")}
+          </h1>
+          <p className="text-sm text-slate-600 mt-1 leading-relaxed">
+            {exam}{serie ? t("prep.programme.serieSuffix", { serie }) : ""}{t("prep.programme.officialBoard")}
+          </p>
+        </div>
+      </div>
 
-        {/* Matières */}
-        {matieres.map(m => {
+      {/* Global Curriculum Progress Card */}
+      {totalChaps > 0 && (
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <p className="text-sm font-extrabold text-slate-900">{t("prep.programme.globalProgress")}</p>
+              <p className="text-xs text-slate-500">Chapitres déjà travaillés en quiz ou flashcards</p>
+            </div>
+            <span className="text-sm font-black text-[#005bbf]">
+              {t("prep.programme.chaptersCount", { done: totalDone, total: totalChaps })} ({globalPct}%)
+            </span>
+          </div>
+          <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${globalPct}%`, backgroundColor: "#FF6B00" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Subjects Accordion List */}
+      <div className="space-y-3">
+        {matieres.map((m) => {
           const chaps = getChapitres(exam, serie, m).filter(c => c !== "Autre");
           const { done, total } = matiereProgress(m);
           const isOpen = expanded.has(m);
@@ -109,63 +181,83 @@ export default function ProgrammePage() {
           const pct = total > 0 ? Math.round((done / total) * 100) : null;
 
           return (
-            <div key={m} className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden">
-              {/* Header matière */}
-              <button
+            <div key={m} className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden transition-all">
+              {/* Header row */}
+              <div
                 onClick={() => toggle(m)}
-                className="w-full flex items-center gap-3 p-4 text-left">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${matiereWorked ? "bg-orange-100" : "bg-surface-container"}`}>
-                  <span
-                    className="material-symbols-outlined text-[18px]"
-                    style={{ color: matiereWorked ? "#FF6B00" : "var(--color-on-surface-variant)", fontVariationSettings: "'FILL' 1" }}>
-                    {matiereWorked ? "check_circle" : "menu_book"}
-                  </span>
+                className="w-full flex items-center justify-between gap-3 p-4 sm:p-5 text-left cursor-pointer hover:bg-slate-50/60 transition-colors"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    matiereWorked ? "bg-orange-50 text-[#FF6B00]" : "bg-slate-100 text-slate-500"
+                  }`}>
+                    <span className="material-symbols-outlined text-[20px]">
+                      {matiereWorked ? "verified" : "menu_book"}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-extrabold text-slate-900 text-sm truncate">{m}</p>
+                    {total > 0 && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {t("prep.programme.matiereProgress", { done, total, pct: pct ?? 0 })}
+                      </p>
+                    )}
+                    {total > 0 && (
+                      <div className="h-1.5 w-32 sm:w-48 bg-slate-100 rounded-full overflow-hidden mt-1.5">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: pct && pct >= 60 ? "#10b981" : "#FF6B00"
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-on-surface text-sm">{m}</p>
-                  {total > 0 && (
-                    <p className="text-xs text-on-surface-variant mt-0.5">{t("prep.programme.matiereProgress", { done, total, pct: pct ?? 0 })}</p>
-                  )}
-                  {total > 0 && (
-                    <div className="h-1 w-full bg-surface-container rounded-full overflow-hidden mt-1">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: pct && pct >= 60 ? "#22c55e" : "#FF6B00" }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+
+                <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={e => { e.stopPropagation(); goGenerer(m); }}
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white active:scale-95 transition-transform"
-                    style={{ backgroundColor: "#FF6B00" }}>
+                    onClick={(e) => { e.stopPropagation(); goGenerer(m); }}
+                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs transition-colors active:scale-95"
+                    style={{ backgroundColor: "#FF6B00" }}
+                  >
                     {t("prep.programme.generateButton")}
                   </button>
                   <span
-                    className="material-symbols-outlined text-on-surface-variant text-[20px] transition-transform"
-                    style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}>
+                    className="material-symbols-outlined text-slate-400 text-[20px] transition-transform duration-200"
+                    style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+                  >
                     expand_more
                   </span>
                 </div>
-              </button>
+              </div>
 
-              {/* Chapitres */}
+              {/* Chapters Drawer */}
               {isOpen && chaps.length > 0 && (
-                <div className="border-t border-outline-variant/15 divide-y divide-outline-variant/10">
-                  {chaps.map(c => {
-                    const done = worked.has(`${m}||${c}`);
+                <div className="border-t border-slate-100 divide-y divide-slate-100 bg-slate-50/50">
+                  {chaps.map((c) => {
+                    const isDone = worked.has(`${m}||${c}`);
                     return (
-                      <div key={c} className={`flex items-center gap-3 px-4 py-3 ${done ? "bg-green-50/50" : ""}`}>
-                        <span
-                          className="material-symbols-outlined text-[16px] flex-shrink-0"
-                          style={{ color: done ? "#22c55e" : "var(--color-on-surface-variant)", fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
-                          {done ? "task_alt" : "radio_button_unchecked"}
-                        </span>
-                        <p className={`flex-1 text-sm ${done ? "text-on-surface line-through decoration-green-400" : "text-on-surface"}`}>{c}</p>
+                      <div key={c} className="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className={`material-symbols-outlined text-[18px] shrink-0 ${
+                              isDone ? "text-emerald-600" : "text-slate-300"
+                            }`}
+                          >
+                            {isDone ? "check_circle" : "radio_button_unchecked"}
+                          </span>
+                          <span className={`text-xs sm:text-sm font-medium truncate ${
+                            isDone ? "text-slate-500 line-through decoration-emerald-500" : "text-slate-800"
+                          }`}>
+                            {c}
+                          </span>
+                        </div>
                         <button
                           onClick={() => goGenerer(m, c)}
-                          className="text-xs font-semibold text-primary underline active:opacity-70">
+                          className="text-xs font-bold text-[#005bbf] hover:underline shrink-0"
+                        >
                           {t("prep.programme.reviewButton")}
                         </button>
                       </div>
@@ -175,11 +267,12 @@ export default function ProgrammePage() {
               )}
 
               {isOpen && chaps.length === 0 && (
-                <div className="border-t border-outline-variant/15 px-4 py-4">
+                <div className="border-t border-slate-100 p-4 bg-slate-50/50">
                   <button
                     onClick={() => goGenerer(m)}
-                    className="w-full py-3 rounded-xl font-bold text-white text-sm active:scale-[0.98] transition-transform"
-                    style={{ backgroundColor: "#FF6B00" }}>
+                    className="w-full py-3 rounded-xl font-bold text-white text-xs shadow-xs active:scale-[0.98] transition-transform"
+                    style={{ backgroundColor: "#FF6B00" }}
+                  >
                     {t("prep.programme.generateContentFor", { matiere: m })}
                   </button>
                 </div>
@@ -187,21 +280,21 @@ export default function ProgrammePage() {
             </div>
           );
         })}
-
-        {matieres.length === 0 && (
-          <div className="bg-surface-container-lowest rounded-2xl p-6 text-center shadow-sm">
-            <p className="font-bold text-on-surface">{t("prep.programme.incompleteProfile.title")}</p>
-            <p className="text-sm text-on-surface-variant mt-1">{t("prep.programme.incompleteProfile.desc")}</p>
-            <button
-              onClick={() => router.push("/prep/onboarding")}
-              className="mt-4 px-6 py-2.5 rounded-xl font-bold text-white text-sm"
-              style={{ backgroundColor: "#FF6B00" }}>
-              {t("prep.programme.incompleteProfile.button")}
-            </button>
-          </div>
-        )}
-
       </div>
-    </main>
+
+      {matieres.length === 0 && (
+        <div className="bg-white border border-slate-200/80 rounded-3xl p-10 text-center shadow-xs space-y-3">
+          <p className="font-extrabold text-slate-900 text-base">{t("prep.programme.incompleteProfile.title")}</p>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">{t("prep.programme.incompleteProfile.desc")}</p>
+          <button
+            onClick={() => router.push("/prep/onboarding")}
+            className="mt-2 px-5 py-2.5 rounded-xl font-bold text-white text-xs shadow-xs"
+            style={{ backgroundColor: "#FF6B00" }}
+          >
+            {t("prep.programme.incompleteProfile.button")}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

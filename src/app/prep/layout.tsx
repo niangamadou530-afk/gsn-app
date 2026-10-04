@@ -1,45 +1,237 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { t } from "@/lib/i18n";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+
+interface StudentInfo {
+  prenom: string | null;
+  exam_type: string;
+  serie: string | null;
+}
 
 const NAV_ITEMS = [
-  { href: "/prep/dashboard",   icon: "home",         labelKey: "prep.layout.navHome"        },
-  { href: "/prep/generer",     icon: "auto_awesome",  labelKey: "prep.layout.navGenerate"    },
-  { href: "/prep/progression", icon: "trending_up",   labelKey: "prep.layout.navProgress"    },
-  { href: "/prep/classement",  icon: "leaderboard",   labelKey: "prep.layout.navRanking"     },
-  { href: "/prep/orientation", icon: "explore",       labelKey: "prep.layout.navOrientation" },
+  { href: "/prep/dashboard", icon: "home", label: "Accueil" },
+  { href: "/prep/epreuves", icon: "menu_book", label: "Annales" },
+  { href: "/prep/generer", icon: "auto_awesome", label: "Réviser" },
+  { href: "/prep/coach", icon: "smart_toy", label: "Coach IA" },
+  { href: "/prep/progression", icon: "trending_up", label: "Progrès" },
 ];
 
 export default function PrepLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const hideNav = pathname === "/prep" || pathname === "/prep/onboarding";
+  const router = useRouter();
+  const [student, setStudent] = useState<StudentInfo | null>(null);
+
+  // Routes where the authenticated dashboard navigation is hidden
+  const normalizedPath = pathname?.replace(/\/+$/, "") || "/prep";
+  const isPublicLanding = normalizedPath === "/prep" || normalizedPath === "/prep/onboarding";
+
+  useEffect(() => {
+    if (isPublicLanding) return;
+
+    let isMounted = true;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user && !isPublicLanding) return;
+
+        if (user) {
+          const { data } = await supabase
+            .from("prep_students")
+            .select("prenom, exam_type, serie")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (isMounted && data) {
+            setStudent(data);
+          }
+        }
+      } catch (err) {
+        console.error("PrepLayout load error:", err);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [pathname, isPublicLanding]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  const annalesHref = student?.exam_type === "BFEM" ? "/prep/bfem" : "/prep/epreuves";
 
   return (
-    <div className="min-h-screen bg-surface flex flex-col">
-      <main className={`flex-1 ${hideNav ? "" : "pb-20"}`}>
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-[#FF6B00]/15 selection:text-[#FF6B00]">
+      {/* Top Navbar for authenticated PREP app (Desktop & Tablet) */}
+      {!isPublicLanding && (
+        <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            {/* Brand Zone */}
+            <div className="flex items-center gap-3">
+              <Link href="/prep/dashboard" className="flex items-center gap-2 group">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                  GSN
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-extrabold text-lg tracking-tight text-slate-900">PREP</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-orange-100 text-[#FF6B00]">
+                    {student?.exam_type ?? "2027"}
+                  </span>
+                </div>
+              </Link>
+            </div>
+
+            {/* Desktop Navigation Links */}
+            <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+              <Link
+                href="/prep/dashboard"
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname === "/prep/dashboard"
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Tableau de bord
+              </Link>
+              <Link
+                href={annalesHref}
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname.startsWith("/prep/epreuves") || pathname.startsWith("/prep/bfem")
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Annales & Corrigés
+              </Link>
+              <Link
+                href="/prep/generer"
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname.startsWith("/prep/generer") || pathname.startsWith("/prep/quiz") || pathname.startsWith("/prep/flashcards")
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Entraînement IA
+              </Link>
+              <Link
+                href="/prep/coach"
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname.startsWith("/prep/coach")
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Coach IA
+              </Link>
+              <Link
+                href="/prep/classement"
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname.startsWith("/prep/classement")
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Classement
+              </Link>
+              <Link
+                href="/prep/orientation"
+                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                  pathname.startsWith("/prep/orientation")
+                    ? "bg-slate-100 text-[#005bbf]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                Orientation
+              </Link>
+            </nav>
+
+            {/* Right Quick Actions */}
+            <div className="flex items-center gap-2">
+              <a
+                href="https://wa.me/221781246504?text=Bonjour%20GSN%20Prep%2C%20j%27ai%20une%20question"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Assistance WhatsApp"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">chat</span>
+                <span>Aide WhatsApp</span>
+              </a>
+
+              <Link
+                href="/prep/parent"
+                className="hidden lg:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                title="Espace Parents"
+              >
+                <span className="material-symbols-outlined text-[18px]">family_restroom</span>
+                <span>Parents</span>
+              </Link>
+
+              <button
+                onClick={handleSignOut}
+                title="Déconnexion"
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">logout</span>
+              </button>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Main Content Area */}
+      <main className={`flex-1 ${!isPublicLanding ? "pb-24 md:pb-12" : ""}`}>
         {children}
       </main>
 
-      {!hideNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-surface/95 backdrop-blur border-t border-outline-variant/20">
-          <div className="max-w-lg mx-auto flex items-center justify-around px-2 py-1">
-            {NAV_ITEMS.map(item => {
-              const active = pathname.startsWith(item.href);
+      {/* Mobile Bottom Tab Bar (Navigation Anchor) */}
+      {!isPublicLanding && (
+        <nav
+          aria-label="Navigation mobile"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+        >
+          <div className="grid grid-cols-5 items-center h-16 max-w-md mx-auto px-1">
+            {NAV_ITEMS.map((item) => {
+              const active =
+                item.href === "/prep/dashboard"
+                  ? pathname === "/prep/dashboard"
+                  : pathname.startsWith(item.href) ||
+                    (item.href === "/prep/epreuves" && pathname.startsWith("/prep/bfem"));
+
+              const targetHref = item.href === "/prep/epreuves" ? annalesHref : item.href;
+
               return (
-                <Link key={item.href} href={item.href}
-                  className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all active:scale-95">
+                <Link
+                  key={item.label}
+                  href={targetHref}
+                  className="flex flex-col items-center justify-center min-h-[48px] py-1 transition-transform active:scale-95"
+                >
+                  <div
+                    className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                      active ? "bg-orange-50 text-[#FF6B00]" : "text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    <span
+                      className="material-symbols-outlined text-[22px]"
+                      style={{ fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0" }}
+                    >
+                      {item.icon}
+                    </span>
+                    {active && (
+                      <span className="absolute -bottom-0.5 w-1.5 h-1.5 rounded-full bg-[#FF6B00]" />
+                    )}
+                  </div>
                   <span
-                    className="material-symbols-outlined text-[24px]"
-                    style={{
-                      fontVariationSettings: active ? "'FILL' 1" : "'FILL' 0",
-                      color: active ? "#FF6B00" : "var(--color-on-surface-variant)",
-                    }}>
-                    {item.icon}
-                  </span>
-                  <span className={`text-[10px] font-semibold ${active ? "text-primary" : "text-on-surface-variant"}`}>
-                    {t(item.labelKey)}
+                    className={`text-[10px] font-bold tracking-tight mt-0.5 ${
+                      active ? "text-[#FF6B00]" : "text-slate-500"
+                    }`}
+                  >
+                    {item.label}
                   </span>
                 </Link>
               );

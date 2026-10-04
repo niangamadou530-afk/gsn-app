@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(req: NextRequest) {
+  if (!process.env.GROQ_API_KEY) {
+    return NextResponse.json({ error: "GROQ_API_KEY non configurée." }, { status: 500 });
+  }
+  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
   if (!(await acquireGroqSlot())) return rateLimitResponse();
   try {
     const { subject, serie, examType, questions } = await req.json();
