@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getExamCountdown } from "@/lib/prep-config";
+import { getExamCountdown, loadStoredCustomExamDate, CustomExamDateRecord } from "@/lib/prep-config";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { SlowConnectionNotice, DashboardSkeleton } from "@/components/SlowConnectionNotice";
+import { ExamDateModal } from "@/components/ExamDateModal";
 
 type Student = {
   prenom: string | null;
@@ -33,6 +34,17 @@ export default function PrepDashboardPage() {
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [flashCount, setFlashCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Custom exam date state (localStorage)
+  const [customExamRecord, setCustomExamRecord] = useState<CustomExamDateRecord | null>(null);
+  const [showDateModal, setShowDateModal] = useState(false);
+
+  useEffect(() => {
+    const stored = loadStoredCustomExamDate();
+    if (stored) {
+      setCustomExamRecord(stored);
+    }
+  }, []);
 
   // Feedback modal state
   const [showFeedback, setShowFeedback] = useState(false);
@@ -207,9 +219,11 @@ export default function PrepDashboardPage() {
   }
 
   const examType = student?.exam_type ?? "BAC";
-  const countdown = getExamCountdown(examType);
+  const effectiveTargetDate = customExamRecord ? customExamRecord.date : null;
+  const countdown = getExamCountdown(examType, effectiveTargetDate);
+  const displayDateText = customExamRecord ? customExamRecord.displayDateFr : countdown.displayDate;
   const prenom = student?.prenom ?? "Élève";
-  const serie = student?.serie ?? "";
+  const serie = customExamRecord?.seriesCode || student?.serie || "";
   const highlights = SERIE_HIGHLIGHTS[serie] ?? (examType === "BFEM" ? SERIE_HIGHLIGHTS.BFEM : null);
   const annalesHref = examType === "BFEM" ? "/prep/bfem" : "/prep/epreuves";
 
@@ -241,20 +255,32 @@ export default function PrepDashboardPage() {
           </p>
         </div>
 
-        {/* Countdown Box */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex items-center justify-between gap-6 min-w-[240px] shadow-sm">
-          <div>
-            <p className="text-[11px] font-bold text-orange-400 uppercase tracking-wider">
-              {examType === "BFEM" ? "BFEM 2027" : "BAC 2027"}
-            </p>
-            <p className="text-xs text-slate-300 font-medium mt-0.5">{countdown.displayDate}</p>
+        {/* Countdown Box with Change Date Button */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 min-w-[260px] shadow-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-bold text-orange-400 uppercase tracking-wider">
+                {customExamRecord?.label || (examType === "BFEM" ? "BFEM 2027" : "BAC 2027")}
+              </p>
+              <p className="text-xs text-slate-300 font-medium mt-0.5">{displayDateText}</p>
+            </div>
+            <div className="text-right">
+              <span className="text-3xl sm:text-4xl font-black text-white tabular-nums">
+                J-{countdown.days}
+              </span>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">jours restants</p>
+            </div>
           </div>
-          <div className="text-right">
-            <span className="text-3xl sm:text-4xl font-black text-white tabular-nums">
-              J-{countdown.days}
-            </span>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">jours restants</p>
-          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowDateModal(true)}
+            className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+            title="Modifier la série ou entrer une date personnalisée"
+          >
+            <span className="material-symbols-outlined text-[15px]">edit_calendar</span>
+            <span>Modifier ma date d&apos;examen</span>
+          </button>
         </div>
       </section>
 
@@ -467,23 +493,6 @@ export default function PrepDashboardPage() {
             <p className="text-[11px] text-slate-500">Compare-toi aux autres élèves</p>
           </div>
         </Link>
-
-        {/* Espace Parents (Accessible sur mobile et web) */}
-        <Link
-          href="/prep/parent"
-          className="bg-white rounded-2xl p-4 border border-slate-200/80 flex items-center gap-3 hover:bg-slate-50 transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <span className="material-symbols-outlined text-[22px]">family_restroom</span>
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <p className="font-bold text-slate-900 text-sm">Espace Parents</p>
-              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">Code 6 car.</span>
-            </div>
-            <p className="text-[11px] text-slate-500 truncate">Suivi de progression pour tes parents</p>
-          </div>
-        </Link>
       </section>
 
       {/* Action Strip: Feedback & WhatsApp */}
@@ -581,6 +590,14 @@ export default function PrepDashboardPage() {
           </div>
         </div>
       )}
+      {/* Modal de modification de date d'examen */}
+      <ExamDateModal
+        isOpen={showDateModal}
+        onClose={() => setShowDateModal(false)}
+        currentExamType={examType === "BFEM" ? "BFEM" : "BAC"}
+        currentSerie={student?.serie || undefined}
+        onDateUpdated={(rec) => setCustomExamRecord(rec)}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { getExamCountdown } from "@/lib/prep-config";
+import { LiveExamCountdownCard } from "@/components/LiveExamCountdown";
 
 export default function PrepLandingPage() {
   const [selectedExam, setSelectedExam] = useState<"BAC" | "BFEM">("BAC");
@@ -37,23 +38,31 @@ export default function PrepLandingPage() {
             <Link href="/prep/parent" className="hover:text-slate-900 transition-colors">Espace Parents</Link>
           </nav>
 
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <Link
+              href="/prep/parent"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 transition-colors"
+              title="Accès Espace Parents"
+            >
+              <span className="material-symbols-outlined text-[16px]">family_restroom</span>
+              <span className="hidden xs:inline sm:inline">Parents</span>
+            </Link>
             <Link
               href="/prep/dashboard"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#005bbf] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold text-[#005bbf] bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">dashboard</span>
-              <span>Tableau de bord</span>
+              <span className="hidden md:inline">Tableau de bord</span>
             </Link>
             <Link
               href="/login"
-              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors"
             >
               Connexion
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all"
+              className="inline-flex items-center justify-center px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all"
               style={{ backgroundColor: "#FF6B00" }}
             >
               S&apos;inscrire
@@ -218,13 +227,13 @@ export default function PrepLandingPage() {
         </div>
       </section>
 
-      {/* Countdown & Key Milestones Bar */}
-      <section className="bg-slate-900 text-white py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      {/* Countdown & Key Milestones Bar with Live Real-Time Countdowns */}
+      <section className="bg-slate-900 text-white py-10">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
             <div className="space-y-1 text-center md:text-left">
               <p className="text-xs font-bold uppercase tracking-widest text-[#FF6B00]">Calendrier officiel 2027</p>
-              <h2 className="text-xl font-extrabold">Les dates clés des examens</h2>
+              <h2 className="text-xl sm:text-2xl font-extrabold">Les dates clés des examens</h2>
               <p className="text-xs text-slate-400">Reste informé pour organiser tes révisions sereinement.</p>
             </div>
 
@@ -255,6 +264,11 @@ export default function PrepLandingPage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-3 pt-2.5 border-t border-slate-800">
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Date de référence : la plupart des séries (date estimée, à confirmer)
+                </p>
+              </div>
             </div>
 
             {/* BFEM Aesthetic Timer */}
@@ -284,7 +298,70 @@ export default function PrepLandingPage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-3 pt-2.5 border-t border-slate-800">
+                <p className="text-[11px] text-slate-400 font-medium">
+                  Date de référence : la plupart des séries (date estimée, à confirmer)
+                </p>
+              </div>
             </div>
+          </div>
+
+          {/* Live Real-Time Countdowns for BAC & BFEM (Days, Hours, Minutes, Seconds) */}
+          <div className="pt-2 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-800 pt-6">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#FF6B00]">
+                  Direct Synchro Sénégal (UTC)
+                </span>
+                <h3 className="text-lg sm:text-xl font-extrabold text-white">
+                  Compte à rebours en temps réel
+                </h3>
+              </div>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>Heure de Dakar (GMT+0) · Mise à jour à la seconde</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <LiveExamCountdownCard examId="BAC" themeColor="orange" />
+              <LiveExamCountdownCard examId="BFEM" themeColor="blue" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Espace Parents Banner (Visible sur web et mobile avec carte claire) */}
+      <section className="py-8 sm:py-10 bg-gradient-to-r from-purple-50 via-white to-blue-50 border-b border-slate-200/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-inner">
+                <span className="material-symbols-outlined text-[32px]">family_restroom</span>
+              </div>
+              <div className="space-y-1 text-center sm:text-left">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                    Espace Parents & Tuteurs
+                  </span>
+                  <span className="text-xs text-slate-400 font-semibold">Code sécurisé à 6 caractères</span>
+                </div>
+                <h3 className="font-extrabold text-slate-900 text-lg sm:text-xl">
+                  Vous êtes parent d&apos;un candidat au BAC ou au BFEM ?
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-xl">
+                  Suivez les résultats des quiz, la régularité du travail et le niveau par matière de votre enfant en toute sérénité sans créer de compte compliqué.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/prep/parent"
+              className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-sm shadow-md shadow-purple-500/20 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[20px]">vpn_key</span>
+              <span>Accéder à l&apos;Espace Parents</span>
+            </Link>
           </div>
         </div>
       </section>
