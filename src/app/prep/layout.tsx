@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+import { SoundToggle } from "@/components/SoundToggle";
+
 interface StudentInfo {
   prenom: string | null;
   exam_type: string;
@@ -151,7 +153,9 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
             </nav>
 
             {/* Right Quick Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <SoundToggle />
+
               <a
                 href="https://wa.me/221781246504?text=Bonjour%20GSN%20Prep%2C%20j%27ai%20une%20question"
                 target="_blank"
@@ -165,12 +169,19 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
 
               <Link
                 href="/prep/parent"
-                className="hidden lg:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors"
                 title="Espace Parents"
               >
-                <span className="material-symbols-outlined text-[18px]">family_restroom</span>
-                <span>Parents</span>
+                <span className="material-symbols-outlined text-[17px]">family_restroom</span>
+                <span className="hidden sm:inline">Parents</span>
               </Link>
+
+              {student?.prenom && (
+                <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span>{student.prenom}</span>
+                </div>
+              )}
 
               <button
                 onClick={handleSignOut}

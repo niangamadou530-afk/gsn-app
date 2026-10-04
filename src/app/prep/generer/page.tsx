@@ -8,6 +8,8 @@ import { getCompetences } from "@/data/competences";
 import { t } from "@/lib/i18n";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
+import { sounds } from "@/lib/soundEffects";
+import { SoundToggle } from "@/components/SoundToggle";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -376,6 +378,8 @@ function GenererPageInner() {
 
       const data = await res.json();
 
+      sounds.playGenerationComplete();
+
       if (genType === "flashcards") {
         const cards: Flashcard[] = (data.flashcards ?? []).map((c: { recto: string; verso: string }) => ({ recto: c.recto, verso: c.verso, maitrisee: false }));
         setFlashcards(cards);
@@ -451,13 +455,19 @@ function GenererPageInner() {
   function handleQcmAnswer(choice: string) {
     const q = qcmQuestions[qcmCurrent];
     const correct = choice === q.correct_answer;
-    if (correct) setQcmScore(s => s + 1);
+    if (correct) {
+      sounds.playCorrect();
+      setQcmScore(s => s + 1);
+    } else {
+      sounds.playWrong();
+    }
     setQcmAnswers(prev => ({ ...prev, [qcmCurrent]: choice }));
     setQcmShowAnswer(true);
   }
 
   function qcmNext() {
     if (qcmCurrent + 1 >= qcmQuestions.length) {
+      sounds.playQuizFinish();
       saveQuizResult(qcmScore + (qcmAnswers[qcmCurrent] === qcmQuestions[qcmCurrent].correct_answer ? 1 : 0), qcmQuestions.length);
       setPhase("quiz_result");
     } else {
@@ -487,6 +497,7 @@ function GenererPageInner() {
       setRedactionFeedback(data.feedback ?? []);
       const total = redactionQs.length;
       const score = Math.round((data.feedback ?? []).reduce((sum: number, f: { score: number }) => sum + f.score, 0) / total * total / 10);
+      sounds.playQuizFinish();
       await saveQuizResult(score, total);
       setPhase("quiz_result");
     } catch {
@@ -498,7 +509,13 @@ function GenererPageInner() {
 
   /* ── Flashcard mastery ── */
   function toggleMaitrised(idx: number) {
-    setFlashcards(prev => prev.map((c, i) => i === idx ? { ...c, maitrisee: !c.maitrisee } : c));
+    const nextMastered = !flashcards[idx]?.maitrisee;
+    if (nextMastered) {
+      sounds.playMastery();
+    } else {
+      sounds.playReview();
+    }
+    setFlashcards(prev => prev.map((c, i) => i === idx ? { ...c, maitrisee: nextMastered } : c));
   }
 
   /* ── WhatsApp share ── */
@@ -782,73 +799,139 @@ function GenererPageInner() {
     const card = flashcards[currentCard];
     const mastered = flashcards.filter(c => c.maitrisee).length;
     return (
-      <main className="w-full min-h-screen text-slate-900 flex flex-col">
-        <PageHeader title={t("prep.generer.flashcardsResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
-        <div className="flex-1 px-6 py-4 space-y-4">
+      <main className="w-full min-h-screen text-slate-900 flex flex-col bg-[#f8fafc]">
+        <PageHeader
+          title={t("prep.generer.flashcardsResult.headerTitle", { matiere: activeMat() })}
+          onBack={() => setPhase("home")}
+          action={<SoundToggle />}
+        />
+        <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
           {/* Confirmation sauvegarde */}
           {flashSaved && (
-            <div className="flex items-center gap-2 bg-green-50 border-2 border-green-200 rounded-xl px-4 py-2.5">
-              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-green-700 font-semibold text-sm">{t("prep.generer.flashcardsResult.saved")}</p>
+            <div className="flex items-center gap-2.5 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 shadow-2xs">
+              <span className="material-symbols-outlined text-emerald-600 text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-emerald-800 font-bold text-xs sm:text-sm">{t("prep.generer.flashcardsResult.saved")}</p>
             </div>
           )}
 
-          {/* Progress */}
-          <div className="flex items-center justify-between text-sm text-slate-500">
-            <span>{currentCard + 1} / {flashcards.length}</span>
-            <span className="text-green-600 font-semibold">{t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}</span>
-          </div>
-          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full bg-green-500 transition-all" style={{ width: `${(mastered / flashcards.length) * 100}%` }} />
+          {/* Progress bar and counter */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-2">
+            <div className="flex items-center justify-between text-xs font-extrabold text-slate-600">
+              <span className="uppercase tracking-wider">Carte {currentCard + 1} sur {flashcards.length}</span>
+              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                <span className="material-symbols-outlined text-[14px]">check</span>
+                {t("prep.generer.flashcardsResult.masteredCount", { count: mastered })}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${(mastered / flashcards.length) * 100}%`, backgroundColor: "#10b981" }}
+              />
+            </div>
           </div>
 
-          {/* Card */}
+          {/* Flashcard 3D Feel */}
           <div
-            onClick={() => setFlipped(f => !f)}
-            className="rounded-2xl shadow-lg p-6 min-h-48 flex flex-col items-center justify-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: flipped ? "#1e293b" : "#FF6B00" }}>
-            <p className="text-xs font-bold text-white/70 uppercase tracking-widest">{flipped ? t("prep.generer.card.answer") : t("prep.generer.card.question")}</p>
-            {flipped ? <VersoContent verso={card.verso} /> : (
-              <p className="text-white font-bold text-lg text-center leading-relaxed">{card.recto}</p>
-            )}
-            <p className="text-xs text-white/50 mt-2">{t("prep.generer.card.tapToFlip")}</p>
+            onClick={() => {
+              sounds.playCardFlip();
+              setFlipped(f => !f);
+            }}
+            className={`rounded-3xl shadow-lg p-6 sm:p-8 min-h-[240px] sm:min-h-[260px] flex flex-col items-center justify-between text-center cursor-pointer transition-all duration-300 active:scale-[0.98] border border-white/20 select-none ${
+              flipped ? "bg-slate-900 text-white" : "bg-gradient-to-br from-[#FF6B00] to-[#e05e00] text-white"
+            }`}
+          >
+            <div className="w-full flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs">
+                {flipped ? "Verso · Réponse" : "Recto · Question"}
+              </span>
+              <span className="material-symbols-outlined text-white/70 text-[20px]">
+                {flipped ? "visibility" : "touch_app"}
+              </span>
+            </div>
+
+            <div className="my-auto py-4">
+              {flipped ? (
+                <div className="text-white text-base sm:text-lg font-bold leading-relaxed max-w-md mx-auto">
+                  <VersoContent verso={card.verso} />
+                </div>
+              ) : (
+                <p className="text-white font-extrabold text-lg sm:text-xl leading-relaxed max-w-md mx-auto">
+                  {card.recto}
+                </p>
+              )}
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-white/60">
+              <span className="material-symbols-outlined text-[15px]">sync</span>
+              <span>{t("prep.generer.card.tapToFlip")}</span>
+            </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3">
+          {/* Actions & Mastery Buttons */}
+          <div className="grid grid-cols-2 gap-3">
             <button
+              type="button"
               onClick={() => toggleMaitrised(currentCard)}
-              className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-[0.97] ${card.maitrisee ? "bg-green-100 text-green-700 border-2 border-green-300" : "bg-slate-100 text-slate-500 border-2 border-slate-200"}`}>
-              {card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}
+              className={`min-h-[48px] py-3 px-4 rounded-2xl font-extrabold text-xs sm:text-sm transition-all active:scale-[0.97] flex items-center justify-center gap-1.5 ${
+                card.maitrisee
+                  ? "bg-emerald-100 text-emerald-800 border-2 border-emerald-300 shadow-2xs"
+                  : "bg-white text-slate-700 border-2 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {card.maitrisee ? "check_circle" : "check"}
+              </span>
+              <span>{card.maitrisee ? t("prep.generer.card.mastered") : t("prep.generer.card.markMastered")}</span>
             </button>
+
             <button
-              onClick={() => { setCurrentCard(i => (i + 1) % flashcards.length); setFlipped(false); }}
-              className="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-900 border-2 border-slate-200 active:scale-[0.97] transition-all">
-              {t("prep.generer.card.next")}
+              type="button"
+              onClick={() => {
+                sounds.playCardFlip();
+                setCurrentCard(i => (i + 1) % flashcards.length);
+                setFlipped(false);
+              }}
+              className="min-h-[48px] py-3 px-4 rounded-2xl font-extrabold text-xs sm:text-sm bg-[#005bbf] hover:bg-[#004ba0] text-white shadow-md shadow-blue-500/20 active:scale-[0.97] transition-all flex items-center justify-center gap-1.5"
+            >
+              <span>{t("prep.generer.card.next")}</span>
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </div>
 
-          <button
-            onClick={() => setCurrentCard(i => Math.max(0, i - 1))}
-            disabled={currentCard === 0}
-            className="w-full py-2.5 rounded-xl text-sm text-slate-500 disabled:opacity-30 bg-slate-100 active:scale-[0.97]">
-            {t("prep.generer.card.previous")}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                sounds.playCardFlip();
+                setCurrentCard(i => Math.max(0, i - 1));
+                setFlipped(false);
+              }}
+              disabled={currentCard === 0}
+              className="flex-1 min-h-[44px] py-2.5 rounded-xl text-xs font-bold text-slate-600 disabled:opacity-30 bg-white border border-slate-200 hover:bg-slate-50 active:scale-[0.97] transition-all"
+            >
+              ← {t("prep.generer.card.previous")}
+            </button>
 
-          {/* Générer d'autres flashcards */}
-          <button
-            onClick={generate}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold border-2 border-[#005bbf] text-[#005bbf] bg-blue-50/50 active:scale-[0.97] transition-transform">
-            <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>refresh</span>
-            {t("prep.generer.flashcardsResult.generateMore")}
-          </button>
+            <button
+              type="button"
+              onClick={generate}
+              className="flex-1 min-h-[44px] flex items-center justify-center gap-1.5 py-2.5 rounded-xl font-bold text-xs border border-[#005bbf] text-[#005bbf] bg-blue-50/50 hover:bg-blue-100/60 active:scale-[0.97] transition-all"
+            >
+              <span className="material-symbols-outlined text-[16px]">refresh</span>
+              <span>Régénérer</span>
+            </button>
+          </div>
 
-          {/* WhatsApp */}
+          {/* WhatsApp sharing */}
           <button
+            type="button"
             onClick={() => shareWhatsApp(t("prep.generer.share.flashcards", { matiere: activeMat(), count: flashcards.length, examType }))}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
+            className="w-full min-h-[48px] flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-sm text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-emerald-500/20 active:scale-[0.97] transition-all"
+          >
+            <span className="text-lg">📱</span>
+            <span>{t("prep.generer.shareWhatsApp")}</span>
           </button>
         </div>
 
@@ -862,55 +945,117 @@ function GenererPageInner() {
     const q = qcmQuestions[qcmCurrent];
     if (!q) return null;
     const selected = qcmAnswers[qcmCurrent];
+    const letters = ["A", "B", "C", "D", "E", "F"];
+
     return (
-      <main className="w-full min-h-screen text-slate-900 flex flex-col">
-        <PageHeader title={t("prep.generer.quizQcm.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
-        <div className="flex-1 px-6 py-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-500">{qcmCurrent + 1} / {qcmQuestions.length}</span>
-            <span className="text-sm font-bold text-green-600">{t("prep.generer.quizQcm.score", { score: qcmScore })}</span>
-          </div>
-          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-full transition-all" style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#FF6B00" }} />
+      <main className="w-full min-h-screen text-slate-900 flex flex-col bg-[#f8fafc]">
+        <PageHeader
+          title={t("prep.generer.quizQcm.headerTitle", { matiere: activeMat() })}
+          onBack={() => setPhase("home")}
+          action={<SoundToggle />}
+        />
+        <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-4">
+          {/* Header Stats */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Question {qcmCurrent + 1} sur {qcmQuestions.length}
+              </span>
+              <span className="text-xs font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Score : {qcmScore} / {qcmCurrent + (qcmShowAnswer ? 1 : 0)}
+              </span>
+            </div>
+            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{ width: `${((qcmCurrent + 1) / qcmQuestions.length) * 100}%`, backgroundColor: "#FF6B00" }}
+              />
+            </div>
           </div>
 
-          <div className="bg-white border border-slate-200/80 shadow-xs rounded-2xl p-5 shadow-sm">
-            <p className="font-bold text-slate-900 leading-relaxed">{q.question}</p>
+          {/* Question Prompt Card */}
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-7 shadow-xs">
+            <p className="font-extrabold text-slate-900 text-base sm:text-lg leading-relaxed">
+              {q.question}
+            </p>
           </div>
 
-          <div className="space-y-2.5">
-            {q.choices.map(choice => {
-              let style = "border-slate-200 bg-white border border-slate-200/80 shadow-xs text-slate-900";
+          {/* Multiple Choices */}
+          <div className="space-y-3">
+            {q.choices.map((choice, idx) => {
+              const letter = letters[idx] ?? String(idx + 1);
+              let cardStyle = "border-slate-200 bg-white hover:border-[#005bbf]/60 hover:bg-slate-50 text-slate-900 shadow-2xs";
+
               if (qcmShowAnswer) {
-                if (choice === q.correct_answer) style = "border-green-400 bg-green-50 text-green-800";
-                else if (choice === selected) style = "border-red-400 bg-red-50 text-red-800";
+                if (choice === q.correct_answer) {
+                  cardStyle = "border-emerald-500 bg-emerald-50 text-emerald-900 shadow-xs ring-2 ring-emerald-500/20";
+                } else if (choice === selected) {
+                  cardStyle = "border-rose-400 bg-rose-50 text-rose-900";
+                } else {
+                  cardStyle = "border-slate-200 bg-slate-50/60 opacity-60 text-slate-700";
+                }
               } else if (choice === selected) {
-                style = "border-[#005bbf] bg-blue-50/50 text-[#005bbf]";
+                cardStyle = "border-[#005bbf] bg-blue-50/70 text-[#005bbf]";
               }
+
               return (
-                <button key={choice}
+                <button
+                  key={choice}
+                  type="button"
                   onClick={() => !qcmShowAnswer && handleQcmAnswer(choice)}
                   disabled={qcmShowAnswer}
-                  className={`w-full text-left p-4 rounded-xl border-2 font-medium transition-all ${style}`}>
-                  {choice}
+                  className={`w-full text-left p-4 rounded-2xl border-2 font-semibold text-sm transition-all flex items-start gap-3.5 min-h-[52px] ${cardStyle}`}
+                >
+                  <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 mt-0.5 ${
+                    qcmShowAnswer && choice === q.correct_answer
+                      ? "bg-emerald-600 text-white"
+                      : qcmShowAnswer && choice === selected
+                      ? "bg-rose-500 text-white"
+                      : choice === selected
+                      ? "bg-[#005bbf] text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}>
+                    {letter}
+                  </span>
+                  <span className="flex-1 leading-relaxed">{choice}</span>
+                  {qcmShowAnswer && choice === q.correct_answer && (
+                    <span className="material-symbols-outlined text-emerald-600 text-[20px] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      check_circle
+                    </span>
+                  )}
+                  {qcmShowAnswer && choice === selected && choice !== q.correct_answer && (
+                    <span className="material-symbols-outlined text-rose-600 text-[20px] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      cancel
+                    </span>
+                  )}
                 </button>
               );
             })}
           </div>
 
+          {/* Explanation Box */}
           {qcmShowAnswer && (
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
-              <p className="text-blue-800 text-sm font-semibold">{t("prep.generer.quizQcm.explanationLabel")}</p>
-              <p className="text-blue-700 text-sm mt-1">{q.explanation}</p>
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-blue-900 font-extrabold text-xs uppercase tracking-wider">
+                <span className="material-symbols-outlined text-[16px]">info</span>
+                <span>{t("prep.generer.quizQcm.explanationLabel")}</span>
+              </div>
+              <p className="text-blue-950 text-xs sm:text-sm leading-relaxed font-medium">
+                {q.explanation}
+              </p>
             </div>
           )}
 
+          {/* Next Button */}
           {qcmShowAnswer && (
             <button
+              type="button"
               onClick={qcmNext}
-              className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-              style={{ backgroundColor: "#FF6B00" }}>
-              {qcmCurrent + 1 >= qcmQuestions.length ? t("prep.generer.quizQcm.seeResult") : t("prep.generer.quizQcm.nextQuestion")}
+              className="w-full min-h-[50px] py-4 font-black text-white rounded-2xl shadow-lg shadow-orange-500/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+              style={{ backgroundColor: "#FF6B00" }}
+            >
+              <span>{qcmCurrent + 1 >= qcmQuestions.length ? t("prep.generer.quizQcm.seeResult") : t("prep.generer.quizQcm.nextQuestion")}</span>
+              <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
             </button>
           )}
         </div>
@@ -959,37 +1104,58 @@ function GenererPageInner() {
     const pct = Math.round((finalScore / total) * 100);
 
     return (
-      <main className="w-full min-h-screen text-slate-900 flex flex-col">
-        <PageHeader title={t("prep.generer.quizResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
-        <div className="flex-1 px-6 py-4 space-y-4">
-
-          <div className="rounded-2xl p-6 text-center text-white" style={{ backgroundColor: pct >= 60 ? "#22c55e" : pct >= 40 ? "#f97316" : "#ef4444" }}>
-            <p className="text-5xl font-black">{finalScore}/{total}</p>
-            <p className="text-lg font-semibold opacity-90 mt-1">{pct}% · {activeMat()}</p>
+      <main className="w-full min-h-screen text-slate-900 flex flex-col bg-[#f8fafc]">
+        <PageHeader
+          title={t("prep.generer.quizResult.headerTitle", { matiere: activeMat() })}
+          onBack={() => setPhase("home")}
+          action={<SoundToggle />}
+        />
+        <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
+          <div
+            className="rounded-3xl p-6 sm:p-8 text-center text-white shadow-lg space-y-2 relative overflow-hidden"
+            style={{ backgroundColor: pct >= 60 ? "#16a34a" : pct >= 40 ? "#ea580c" : "#dc2626" }}
+          >
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-black uppercase tracking-wider text-white">
+              <span className="material-symbols-outlined text-[16px]">military_tech</span>
+              <span>{pct >= 60 ? "Très bon travail !" : pct >= 40 ? "Encourageant !" : "À réviser !"}</span>
+            </div>
+            <p className="text-5xl sm:text-6xl font-black tracking-tight">{finalScore}/{total}</p>
+            <p className="text-base sm:text-lg font-bold opacity-90">{pct}% de réussite · {activeMat()}</p>
           </div>
 
           {isRedaction && redactionFeedback.length > 0 && (
             <div className="space-y-3">
               {redactionFeedback.map((f, i) => (
-                <div key={i} className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-4 shadow-sm">
-                  <p className="font-bold text-slate-900 text-sm">Q{i + 1} · {f.score}/10</p>
-                  <p className="text-slate-500 text-sm mt-1">{f.feedback}</p>
+                <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <p className="font-extrabold text-slate-900 text-sm">Question {i + 1}</p>
+                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-blue-50 text-[#005bbf]">
+                      {f.score}/10
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-1">{f.feedback}</p>
                 </div>
               ))}
             </div>
           )}
 
           <button
+            type="button"
             onClick={() => shareWhatsApp(t("prep.generer.share.quiz", { score: finalScore, total, matiere: activeMat(), examType }))}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
+            className="w-full min-h-[48px] flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-sm text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-emerald-500/20 active:scale-[0.97] transition-all"
+          >
+            <span className="text-lg">📱</span>
+            <span>{t("prep.generer.shareWhatsApp")}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setPhase("home")}
-            className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: "#FF6B00" }}>
-            {t("prep.generer.newGeneration")}
+            className="w-full min-h-[50px] py-4 font-black text-white rounded-2xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+            style={{ backgroundColor: "#FF6B00" }}
+          >
+            <span>{t("prep.generer.newGeneration")}</span>
+            <span className="material-symbols-outlined text-[18px]">replay</span>
           </button>
         </div>
 
@@ -1002,36 +1168,45 @@ function GenererPageInner() {
   if (phase === "resume_result" && resume) {
     const texte = (resume as { texte?: string }).texte ?? "";
     return (
-      <main className="w-full min-h-screen text-slate-900 flex flex-col">
-        <PageHeader title={t("prep.generer.resumeResult.headerTitle", { matiere: activeMat() })} onBack={() => setPhase("home")} />
-        <div className="flex-1 px-6 py-4 space-y-4">
-
+      <main className="w-full min-h-screen text-slate-900 flex flex-col bg-[#f8fafc]">
+        <PageHeader
+          title={t("prep.generer.resumeResult.headerTitle", { matiere: activeMat() })}
+          onBack={() => setPhase("home")}
+          action={<SoundToggle />}
+        />
+        <div className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
           {resumeSaved && (
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-green-50 border border-green-200">
-              <span className="material-symbols-outlined text-green-600 text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-              <p className="text-sm font-semibold text-green-700">{t("prep.generer.resumeResult.saved")}</p>
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-2xs">
+              <span className="material-symbols-outlined text-emerald-600 text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <p className="text-xs sm:text-sm font-bold text-emerald-800">{t("prep.generer.resumeResult.saved")}</p>
             </div>
           )}
 
           {error && (
-            <div className="px-4 py-2.5 rounded-xl bg-red-50 border border-red-200">
-              <p className="text-sm font-semibold text-red-700">{error}</p>
+            <div className="px-4 py-3 rounded-2xl bg-rose-50 border border-rose-200">
+              <p className="text-xs sm:text-sm font-semibold text-rose-700">{error}</p>
             </div>
           )}
 
           <ResumeDisplay texte={texte} matiere={activeMat()} />
 
           <button
+            type="button"
             onClick={() => shareWhatsApp(t("prep.generer.share.resume", { matiere: activeMat(), examType }))}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white bg-[#25D366] active:scale-[0.97] transition-transform">
-            <span className="text-lg">📱</span> {t("prep.generer.shareWhatsApp")}
+            className="w-full min-h-[48px] flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-sm text-white bg-[#25D366] hover:bg-[#20ba59] shadow-md shadow-emerald-500/20 active:scale-[0.97] transition-all"
+          >
+            <span className="text-lg">📱</span>
+            <span>{t("prep.generer.shareWhatsApp")}</span>
           </button>
 
           <button
+            type="button"
             onClick={() => setPhase("home")}
-            className="w-full py-4 font-black text-white rounded-2xl active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: "#FF6B00" }}>
-            {t("prep.generer.newGeneration")}
+            className="w-full min-h-[50px] py-4 font-black text-white rounded-2xl shadow-md active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
+            style={{ backgroundColor: "#FF6B00" }}
+          >
+            <span>{t("prep.generer.newGeneration")}</span>
+            <span className="material-symbols-outlined text-[18px]">replay</span>
           </button>
         </div>
 
@@ -1459,13 +1634,16 @@ function ResumeDisplay({ texte, matiere = "" }: { texte: string; matiere?: strin
   );
 }
 
-function PageHeader({ title, onBack }: { title: string; onBack: () => void }) {
+function PageHeader({ title, onBack, action }: { title: string; onBack: () => void; action?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center gap-3 shadow-xs">
-      <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95">
-        <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-      </button>
-      <h1 className="font-extrabold text-slate-900 truncate text-base sm:text-lg">{title}</h1>
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-3 flex items-center justify-between gap-3 shadow-xs">
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 shrink-0">
+          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+        </button>
+        <h1 className="font-extrabold text-slate-900 truncate text-base sm:text-lg">{title}</h1>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </header>
   );
 }

@@ -467,6 +467,23 @@ export default function PrepDashboardPage() {
             <p className="text-[11px] text-slate-500">Compare-toi aux autres élèves</p>
           </div>
         </Link>
+
+        {/* Espace Parents (Accessible sur mobile et web) */}
+        <Link
+          href="/prep/parent"
+          className="bg-white rounded-2xl p-4 border border-slate-200/80 flex items-center gap-3 hover:bg-slate-50 transition-colors group"
+        >
+          <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+            <span className="material-symbols-outlined text-[22px]">family_restroom</span>
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <p className="font-bold text-slate-900 text-sm">Espace Parents</p>
+              <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-purple-100 text-purple-700">Code 6 car.</span>
+            </div>
+            <p className="text-[11px] text-slate-500 truncate">Suivi de progression pour tes parents</p>
+          </div>
+        </Link>
       </section>
 
       {/* Action Strip: Feedback & WhatsApp */}

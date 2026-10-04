@@ -88,7 +88,7 @@ export default function PrepLandingPage() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto lg:mx-0">
                   <Link
-                    href="/prep/dashboard"
+                    href="/signup?source=prep&exam=BAC"
                     className="p-4 rounded-2xl border-2 border-orange-300 bg-white hover:border-[#FF6B00] shadow-sm hover:shadow-md transition-all text-left group flex items-start gap-3.5"
                   >
                     <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-[#FF6B00] shrink-0 group-hover:scale-105 transition-transform">
@@ -107,7 +107,7 @@ export default function PrepLandingPage() {
                   </Link>
 
                   <Link
-                    href="/prep/dashboard"
+                    href="/signup?source=prep&exam=BFEM"
                     className="p-4 rounded-2xl border-2 border-blue-200 bg-white hover:border-[#005bbf] shadow-sm hover:shadow-md transition-all text-left group flex items-start gap-3.5"
                   >
                     <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-[#005bbf] shrink-0 group-hover:scale-105 transition-transform">
@@ -126,6 +126,16 @@ export default function PrepLandingPage() {
                   </Link>
                 </div>
 
+                {/* Discreet existing account link */}
+                <div className="mt-2.5 text-center sm:text-left">
+                  <p className="text-xs text-slate-500 font-medium">
+                    Tu as déjà un compte élève ?{" "}
+                    <Link href="/login" className="font-bold text-[#005bbf] hover:underline">
+                      J&apos;ai déjà un compte
+                    </Link>
+                  </p>
+                </div>
+
                 {/* Direct Action Button */}
                 <div className="mt-4 flex flex-col sm:flex-row items-center gap-3 max-w-lg mx-auto lg:mx-0">
                   <Link
@@ -133,7 +143,7 @@ export default function PrepLandingPage() {
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#005bbf] hover:bg-[#004ba0] text-white text-sm font-extrabold shadow-lg shadow-blue-500/25 active:scale-95 transition-all"
                   >
                     <span className="material-symbols-outlined text-[20px]">dashboard</span>
-                    <span>Accéder au Tableau de bord élève</span>
+                    <span>Accéder au Tableau de bord</span>
                   </Link>
                   <Link
                     href="/prep/epreuves"
@@ -176,14 +186,14 @@ export default function PrepLandingPage() {
                     referrerPolicy="no-referrer"
                   />
                   {/* Subtle Gradient Scrim */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/10" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
 
-                  {/* Overlaid Banner at Bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                  {/* Overlaid Banner at Bottom - fully visible without obstruction */}
+                  <div className="absolute bottom-0 left-0 right-0 p-5 text-white z-10">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-orange-300">Session 2027</p>
-                        <p className="font-extrabold text-base sm:text-lg">Prépare ton avenir dès aujourd&apos;hui</p>
+                        <p className="font-extrabold text-base sm:text-lg">Prépare ton avenir dès maintenant</p>
                       </div>
                       <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
                         <span className="material-symbols-outlined text-[20px] text-white">bolt</span>
@@ -192,25 +202,14 @@ export default function PrepLandingPage() {
                   </div>
                 </div>
 
-                {/* Floating Stat Card 1 */}
-                <div className="absolute -top-4 -right-4 sm:-right-6 bg-white rounded-2xl p-3.5 shadow-xl border border-slate-100 flex items-center gap-3">
+                {/* Floating Stat Card (Annales complètes - updated to +1000) */}
+                <div className="absolute -top-4 -right-4 sm:-right-6 bg-white rounded-2xl p-3.5 shadow-xl border border-slate-100 flex items-center gap-3 z-20">
                   <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
                     <span className="material-symbols-outlined text-[22px]">auto_stories</span>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
-                    <p className="text-sm font-extrabold text-slate-900">+150 épreuves</p>
-                  </div>
-                </div>
-
-                {/* Floating Stat Card 2 */}
-                <div className="absolute -bottom-5 -left-4 sm:-left-6 bg-white rounded-2xl p-3.5 shadow-xl border border-slate-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center font-bold">
-                    <span className="material-symbols-outlined text-[22px]">timer</span>
-                  </div>
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400">Compte à rebours</p>
-                    <p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>J-{countdownBac.days} avant le BAC</p>
+                    <p className="text-sm font-extrabold text-slate-900">+1000 épreuves</p>
                   </div>
                 </div>
               </div>
@@ -229,33 +228,61 @@ export default function PrepLandingPage() {
               <p className="text-xs text-slate-400">Reste informé pour organiser tes révisions sereinement.</p>
             </div>
 
-            {/* BAC Counter Box */}
-            <div className="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/80 flex items-center justify-between">
-              <div>
-                <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 mb-1">
-                  Baccalauréat
+            {/* BAC Aesthetic Timer */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/80 shadow-lg relative overflow-hidden flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-orange-500/20 text-[#FF8533] border border-orange-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B00] animate-pulse" />
+                  Baccalauréat 2027
                 </span>
-                <p className="text-sm font-bold text-white">{countdownBac.displayDate}</p>
-                <p className="text-xs text-slate-400">Session Normale 2027</p>
+                <span className="text-xs text-slate-400 font-semibold">{countdownBac.displayDate}</span>
               </div>
-              <div className="text-right">
-                <span className="text-3xl font-black text-[#FF6B00] tabular-nums" suppressHydrationWarning>J-{countdownBac.days}</span>
-                <p className="text-[10px] text-slate-400 font-semibold uppercase">jours</p>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="flex-1 bg-slate-950/60 rounded-2xl p-3 border border-slate-700/60 text-center">
+                  <span className="block text-3xl sm:text-4xl font-black text-[#FF6B00] tabular-nums" suppressHydrationWarning>
+                    {countdownBac.days}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Jours restants</span>
+                </div>
+                <div className="flex flex-col gap-1.5 text-xs text-slate-300">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#FF6B00]">event_available</span>
+                    <span className="font-semibold">Session Normale</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#FF6B00]">verified</span>
+                    <span className="text-slate-400">Toutes séries</span>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* BFEM Counter Box */}
-            <div className="bg-slate-800/80 rounded-2xl p-4 border border-slate-700/80 flex items-center justify-between">
-              <div>
-                <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 mb-1">
-                  BFEM
+            {/* BFEM Aesthetic Timer */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/80 shadow-lg relative overflow-hidden flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-blue-500/20 text-[#5ba2ff] border border-blue-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#005bbf] animate-pulse" />
+                  BFEM 2027
                 </span>
-                <p className="text-sm font-bold text-white">{countdownBfem.displayDate}</p>
-                <p className="text-xs text-slate-400">Session Normale 2027</p>
+                <span className="text-xs text-slate-400 font-semibold">{countdownBfem.displayDate}</span>
               </div>
-              <div className="text-right">
-                <span className="text-3xl font-black text-emerald-400 tabular-nums" suppressHydrationWarning>J-{countdownBfem.days}</span>
-                <p className="text-[10px] text-slate-400 font-semibold uppercase">jours</p>
+              <div className="mt-4 flex items-center gap-3">
+                <div className="flex-1 bg-slate-950/60 rounded-2xl p-3 border border-slate-700/60 text-center">
+                  <span className="block text-3xl sm:text-4xl font-black text-[#5ba2ff] tabular-nums" suppressHydrationWarning>
+                    {countdownBfem.days}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">Jours restants</span>
+                </div>
+                <div className="flex flex-col gap-1.5 text-xs text-slate-300">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#5ba2ff]">event_available</span>
+                    <span className="font-semibold">Collège · 3ème</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-[#5ba2ff]">school</span>
+                    <span className="text-slate-400">Brevet national</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -302,7 +329,7 @@ export default function PrepLandingPage() {
                 </div>
                 <h3 className="text-xl font-extrabold text-slate-900">Annales 2023, 2024, 2025</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">
-                  Plus de 150 épreuves réelles du 1er groupe, 2ème groupe et sessions de remplacement avec corrigés officiels numérisés haute définition.
+                  Plus de 1000 épreuves réelles du 1er groupe, 2ème groupe et sessions de remplacement avec corrigés officiels numérisés haute définition.
                 </p>
               </div>
               <div className="pt-2">

@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
+import { sounds } from "@/lib/soundEffects";
+import { SoundToggle } from "@/components/SoundToggle";
 
 type Tab = "stress" | "pomodoro" | "methodes" | "motivation";
 
@@ -32,6 +34,14 @@ const QUOTES = [
   t("prep.softSkills.quotes.q5"),
 ];
 
+const STRESS_LEVELS = [
+  { level: 1, emoji: "😌", label: "Zen absolu", color: "bg-emerald-500 text-white" },
+  { level: 2, emoji: "😊", label: "Calme & serein", color: "bg-teal-500 text-white" },
+  { level: 3, emoji: "😐", label: "Neutre / équilibré", color: "bg-amber-500 text-white" },
+  { level: 4, emoji: "😰", label: "Tension passagère", color: "bg-orange-500 text-white" },
+  { level: 5, emoji: "🤯", label: "Stress intense", color: "bg-rose-500 text-white" },
+];
+
 export default function SoftSkillsPage() {
   const [tab, setTab] = useState<Tab>("stress");
   const [breathPhase, setBreathPhase] = useState<"inspire" | "retiens" | "expire" | "idle">("idle");
@@ -54,7 +64,7 @@ export default function SoftSkillsPage() {
   // Motivation
   const [quoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
 
-  // Breathing
+  // Breathing loop with gentle audio
   function startBreathing() {
     setBreathCount(0);
     runBreath();
@@ -62,10 +72,14 @@ export default function SoftSkillsPage() {
 
   function runBreath() {
     setBreathPhase("inspire");
+    sounds.playBreathIn();
+
     breathRef.current = setTimeout(() => {
       setBreathPhase("retiens");
       breathRef.current = setTimeout(() => {
         setBreathPhase("expire");
+        sounds.playBreathOut();
+
         breathRef.current = setTimeout(() => {
           setBreathCount(c => c + 1);
           setBreathPhase("idle");
@@ -87,6 +101,7 @@ export default function SoftSkillsPage() {
           if (t <= 1) {
             const nextPhase = pomodoroPhase === "travail" ? "pause" : "travail";
             setPomodoroPhase(nextPhase);
+            sounds.playPomodoroBell();
             return nextPhase === "travail" ? 25 * 60 : 5 * 60;
           }
           return t - 1;
@@ -97,6 +112,13 @@ export default function SoftSkillsPage() {
     }
     return () => { if (pomodoroRef.current) clearInterval(pomodoroRef.current); };
   }, [pomodoroRunning, pomodoroPhase]);
+
+  function handleTogglePomodoro() {
+    if (!pomodoroRunning) {
+      sounds.playPomodoroStart();
+    }
+    setPomodoroRunning(r => !r);
+  }
 
   function resetPomodoro() {
     setPomodoroRunning(false);
@@ -129,72 +151,81 @@ export default function SoftSkillsPage() {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
       {/* Header Banner */}
       <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
-        <div className="max-w-2xl relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold mb-3">
-            <span className="material-symbols-outlined text-[16px]">psychology</span>
-            <span>Préparation mentale, sommeil & efficacité</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+          <div className="max-w-2xl space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+              <span className="material-symbols-outlined text-[16px]">psychology</span>
+              <span>Préparation mentale, sommeil & efficacité</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              {t("prep.softSkills.title")}
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              {t("prep.softSkills.subtitle")}
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            {t("prep.softSkills.headerTitle")}
-          </h1>
-          <p className="text-sm text-slate-600 mt-1 leading-relaxed">
-            Maîtrisez la gestion du stress, le rythme Pomodoro et les méthodes validées par les majors.
-          </p>
+          <div className="self-start sm:self-center">
+            <SoundToggle />
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-1.5 shadow-xs flex gap-1 overflow-x-auto scrollbar-hide">
-        {TABS.map(tabItem => (
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-1.5 shadow-xs flex gap-1">
+        {TABS.map(tItem => (
           <button
-            key={tabItem.id}
-            onClick={() => setTab(tabItem.id)}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap ${
-              tab === tabItem.id
+            key={tItem.id}
+            type="button"
+            onClick={() => setTab(tItem.id)}
+            className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+              tab === tItem.id
                 ? "bg-[#005bbf] text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">{tabItem.icon}</span>
-            <span>{tabItem.label}</span>
+            <span className="material-symbols-outlined text-[18px]">{tItem.icon}</span>
+            <span className="hidden sm:inline">{tItem.label}</span>
           </button>
         ))}
       </div>
 
+      {/* Tab Contents */}
       <div className="space-y-6">
-        {/* ── STRESS & RESPIRATION ── */}
+
+        {/* ── GESTION DU STRESS & RESPIRATION ── */}
         {tab === "stress" && (
-          <div className="space-y-5">
-            {/* Breathing exercise */}
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 text-center shadow-xs space-y-6">
+          <div className="space-y-6">
+            {/* Box Breathing */}
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs text-center space-y-6">
               <div>
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
+                <h2 className="font-extrabold text-lg sm:text-xl text-slate-900">
                   {t("prep.softSkills.stress.breathingTitle")}
                 </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Technique 4-4-4 pour faire baisser le rythme cardiaque et la tension avant l&apos;épreuve
+                <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                  {t("prep.softSkills.stress.breathingDesc")}
                 </p>
               </div>
 
-              <div className="flex items-center justify-center py-4">
+              {/* Animated Circle */}
+              <div className="flex items-center justify-center py-6">
                 <div
-                  className={`w-32 h-32 rounded-full border-4 flex items-center justify-center transition-all duration-4000 shadow-sm ${breathSize}`}
+                  className={`w-40 h-40 rounded-full border-4 flex flex-col items-center justify-center transition-all duration-1000 ${breathSize}`}
                 >
-                  <p className="font-black text-[#005bbf] text-sm sm:text-base text-center px-2">
-                    {breathLabel[breathPhase]}
-                  </p>
+                  <p className="font-black text-slate-800 text-sm tracking-wide">{breathLabel[breathPhase]}</p>
+                  {breathCount > 0 && (
+                    <span className="text-[11px] font-bold text-slate-400 mt-1">
+                      Cycle {breathCount} terminé
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <p className="text-xs font-bold text-slate-500">
-                {t("prep.softSkills.stress.cyclesLabel")} : <strong className="text-slate-900">{breathCount}</strong> cycles
-              </p>
-
               <div className="flex gap-3 justify-center">
                 <button
+                  type="button"
                   onClick={startBreathing}
                   disabled={breathPhase !== "idle"}
                   className="px-6 py-3 font-extrabold text-white text-xs rounded-xl shadow-xs disabled:opacity-40 active:scale-95 transition-all"
@@ -203,6 +234,7 @@ export default function SoftSkillsPage() {
                   {t("prep.softSkills.stress.startBreathing")}
                 </button>
                 <button
+                  type="button"
                   onClick={stopBreathing}
                   className="px-5 py-3 font-bold text-slate-700 text-xs rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors"
                 >
@@ -211,49 +243,67 @@ export default function SoftSkillsPage() {
               </div>
             </div>
 
-            {/* Stress journal */}
+            {/* Stress Journal with Expressive Emojis */}
             <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-4">
-              <h3 className="font-extrabold text-slate-900 text-sm">{t("prep.softSkills.stress.journalTitle")}</h3>
-              <div className="flex items-center gap-2">
-                {[1, 2, 3, 4, 5].map(n => (
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">Journal d&apos;évaluation du stress</h3>
+                  <p className="text-xs text-slate-500">Comment te sens-tu face à tes révisions aujourd&apos;hui ?</p>
+                </div>
+                <span className="text-2xl">{STRESS_LEVELS[stressLevel - 1].emoji}</span>
+              </div>
+
+              <div className="grid grid-cols-5 gap-2">
+                {STRESS_LEVELS.map(item => (
                   <button
-                    key={n}
-                    onClick={() => { setStressLevel(n); setStressSaved(false); }}
-                    className={`flex-1 h-11 rounded-xl font-black text-sm transition-all active:scale-95 ${
-                      stressLevel === n ? "text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    key={item.level}
+                    type="button"
+                    onClick={() => { setStressLevel(item.level); setStressSaved(false); }}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border-2 transition-all active:scale-95 ${
+                      stressLevel === item.level
+                        ? "border-[#005bbf] bg-blue-50/70 shadow-xs"
+                        : "border-slate-200 bg-slate-50/50 hover:bg-slate-100"
                     }`}
-                    style={stressLevel === n ? { backgroundColor: n <= 2 ? "#10b981" : n === 3 ? "#f59e0b" : "#ef4444" } : {}}
                   >
-                    {n}
+                    <span className="text-2xl sm:text-3xl mb-1">{item.emoji}</span>
+                    <span className="font-black text-xs text-slate-900">{item.level}</span>
+                    <span className="text-[10px] text-slate-500 hidden sm:block text-center mt-0.5 truncate w-full">
+                      {item.label}
+                    </span>
                   </button>
                 ))}
               </div>
-              <p className="text-xs font-bold text-slate-500 text-center">
-                Niveau : {stressLevel <= 2 ? t("prep.softSkills.stress.veryCalm") : stressLevel === 3 ? t("prep.softSkills.stress.neutral") : stressLevel === 4 ? t("prep.softSkills.stress.bitStressed") : t("prep.softSkills.stress.veryStressed")}
-              </p>
+
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-center">
+                <p className="text-xs font-bold text-slate-700">
+                  Ressenti actuel : <strong className="text-[#005bbf]">{STRESS_LEVELS[stressLevel - 1].label}</strong> ({STRESS_LEVELS[stressLevel - 1].emoji})
+                </p>
+              </div>
+
               <button
-                onClick={() => setStressSaved(true)}
-                className="w-full py-3 font-extrabold text-white text-xs rounded-xl shadow-xs transition-colors"
+                type="button"
+                onClick={() => { setStressSaved(true); sounds.playMastery(); }}
+                className="w-full py-3.5 font-extrabold text-white text-xs rounded-xl shadow-xs transition-colors"
                 style={{ backgroundColor: "#FF6B00" }}
               >
-                {stressSaved ? t("prep.softSkills.stress.saved") : t("prep.softSkills.stress.saveButton")}
+                {stressSaved ? "✓ Ressenti enregistré pour la journée !" : t("prep.softSkills.stress.saveButton")}
               </button>
             </div>
 
-            {/* Tips */}
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
-              <h3 className="font-extrabold text-slate-900 text-sm">{t("prep.softSkills.stress.tipsTitle")}</h3>
-              <div className="space-y-2">
+            {/* Anti-Stress Tips with Expressive Emojis */}
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-4">
+              <h3 className="font-extrabold text-slate-900 text-base">{t("prep.softSkills.stress.tipsTitle")}</h3>
+              <div className="space-y-2.5">
                 {[
-                  t("prep.softSkills.stress.tip1"),
-                  t("prep.softSkills.stress.tip2"),
-                  t("prep.softSkills.stress.tip3"),
-                  t("prep.softSkills.stress.tip4"),
-                  t("prep.softSkills.stress.tip5"),
-                ].map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="text-xl shrink-0">{["🧘", "⏰", "🚶", "📵", "🎒"][i]}</span>
-                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">{tip}</p>
+                  { emoji: "🧘‍♀️", text: t("prep.softSkills.stress.tip1") },
+                  { emoji: "⏰", text: t("prep.softSkills.stress.tip2") },
+                  { emoji: "🚶‍♂️", text: t("prep.softSkills.stress.tip3") },
+                  { emoji: "📴", text: t("prep.softSkills.stress.tip4") },
+                  { emoji: "🎒", text: t("prep.softSkills.stress.tip5") },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3.5 rounded-2xl bg-slate-50/70 border border-slate-200/80">
+                    <span className="text-2xl shrink-0 leading-none">{item.emoji}</span>
+                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{item.text}</p>
                   </div>
                 ))}
               </div>
@@ -280,13 +330,15 @@ export default function SoftSkillsPage() {
 
               <div className="flex gap-3 justify-center">
                 <button
-                  onClick={() => setPomodoroRunning(r => !r)}
+                  type="button"
+                  onClick={handleTogglePomodoro}
                   className="px-8 py-3.5 font-extrabold text-white rounded-xl text-xs shadow-xs active:scale-95 transition-all"
                   style={{ backgroundColor: pomodoroRunning ? "#64748b" : "#FF6B00" }}
                 >
                   {pomodoroRunning ? t("prep.softSkills.pomodoro.pauseButton") : t("prep.softSkills.pomodoro.startButton")}
                 </button>
                 <button
+                  type="button"
                   onClick={resetPomodoro}
                   className="px-5 py-3.5 font-bold text-slate-600 rounded-xl border border-slate-200 hover:bg-slate-100 text-xs transition-colors"
                 >
@@ -348,6 +400,7 @@ export default function SoftSkillsPage() {
                 {CHECKLIST.map((item) => (
                   <button
                     key={item}
+                    type="button"
                     onClick={() => setChecked(p => { const n = new Set(p); n.has(item) ? n.delete(item) : n.add(item); return n; })}
                     className={`w-full flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                       checked.has(item)
@@ -370,12 +423,12 @@ export default function SoftSkillsPage() {
           </div>
         )}
 
-        {/* ── MOTIVATION ── */}
+        {/* ── MOTIVATION with expressive emojis ── */}
         {tab === "motivation" && (
           <div className="space-y-5">
             {/* Random Quote Hero */}
-            <div className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-center text-white shadow-xs space-y-3">
-              <span className="material-symbols-outlined text-[36px] text-white/70">format_quote</span>
+            <div className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-center text-white shadow-lg space-y-3">
+              <span className="text-3xl">✨</span>
               <p className="text-base sm:text-lg font-bold leading-relaxed max-w-lg mx-auto">
                 &ldquo;{QUOTES[quoteIdx]}&rdquo;
               </p>
@@ -384,13 +437,13 @@ export default function SoftSkillsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {[
-                { icon: "🎓", title: t("prep.softSkills.motivation.card1.title"), desc: t("prep.softSkills.motivation.card1.desc") },
-                { icon: "💪", title: t("prep.softSkills.motivation.card2.title"), desc: t("prep.softSkills.motivation.card2.desc") },
-                { icon: "🌟", title: t("prep.softSkills.motivation.card3.title"), desc: t("prep.softSkills.motivation.card3.desc") },
-                { icon: "🚀", title: t("prep.softSkills.motivation.card4.title"), desc: t("prep.softSkills.motivation.card4.desc") },
+                { emoji: "🏆", title: t("prep.softSkills.motivation.card1.title"), desc: t("prep.softSkills.motivation.card1.desc") },
+                { emoji: "🔥", title: t("prep.softSkills.motivation.card2.title"), desc: t("prep.softSkills.motivation.card2.desc") },
+                { emoji: "🌟", title: t("prep.softSkills.motivation.card3.title"), desc: t("prep.softSkills.motivation.card3.desc") },
+                { emoji: "🚀", title: t("prep.softSkills.motivation.card4.title"), desc: t("prep.softSkills.motivation.card4.desc") },
               ].map((m, i) => (
                 <div key={i} className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs flex items-start gap-3.5">
-                  <span className="text-3xl shrink-0">{m.icon}</span>
+                  <span className="text-3xl shrink-0">{m.emoji}</span>
                   <div>
                     <h3 className="font-extrabold text-slate-900 text-sm">{m.title}</h3>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">{m.desc}</p>

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { t } from "@/lib/i18n";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
-import { PreviewBanner } from "@/components/PreviewBanner";
 
 const BAC_SERIES = [
   { code: "L",  label: t("prep.onboarding.series.L.label"),  desc: t("prep.onboarding.series.L.desc"), icon: "auto_stories", color: "text-purple-600 bg-purple-50" },
@@ -27,17 +26,40 @@ function PrepOnboardingInner() {
 
   const [step, setStep]       = useState(0);
   const [prenom, setPrenom]   = useState("");
-  const [examType, setExamType] = useState(preselectedExam ?? "");
-  const [serie, setSerie]     = useState("");
+  const [examType, setExamType] = useState(preselectedExam ?? "BAC");
+  const [serie, setSerie]     = useState(preselectedExam === "BFEM" ? "" : "S2");
   const [ecole, setEcole]     = useState("");
   const [classe, setClasse]   = useState("");
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState("");
 
   useEffect(() => {
-    if (preselectedExam === "BFEM" || preselectedExam === "BAC") setExamType(preselectedExam);
+    if (preselectedExam === "BFEM") {
+      setExamType("BFEM");
+      setSerie("");
+    } else if (preselectedExam === "BAC") {
+      setExamType("BAC");
+    }
+
+    // Préremplir le prénom si l'utilisateur est connecté et qu'un nom existe
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        supabase
+          .from("users")
+          .select("name")
+          .eq("id", user.id)
+          .maybeSingle()
+          .then(({ data }) => {
+            if (data?.name) {
+              const firstName = data.name.trim().split(/\s+/)[0];
+              if (firstName) setPrenom(firstName);
+            }
+          });
+      }
+    });
   }, [preselectedExam]);
 
+  const stepLabels = ["Examen & Série", "Établissement", "Confirmation"];
   const progress = ((step + 1) / 3) * 100;
   const step0Valid = prenom.trim().length >= 2 && examType !== "" && (examType === "BFEM" || serie !== "");
 
@@ -59,7 +81,7 @@ function PrepOnboardingInner() {
         user_id: user.id,
         prenom: prenom.trim(),
         exam_type: examType,
-        serie: serie || null,
+        serie: examType === "BFEM" ? null : serie || null,
         ecole: ecole.trim() || null,
         classe: classe.trim() || null,
       };
@@ -84,34 +106,36 @@ function PrepOnboardingInner() {
     <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-4 p-6 text-center">
       <div className="w-12 h-12 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
       <p className="font-extrabold text-base text-slate-900">{t("prep.onboarding.creatingProfile")}</p>
-      <p className="text-xs text-slate-500">Personnalisation de votre programme d&apos;examen...</p>
+      <p className="text-xs text-slate-500">Personnalisation de ton programme d&apos;examen...</p>
     </div>
   );
 
   return (
-    <div className="max-w-xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+    <div className="max-w-xl mx-auto px-4 sm:px-6 py-8 space-y-6">
       {/* Onboarding Progress Top Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex items-center gap-3">
-        <button
-          onClick={() => step > 0 ? setStep(s => s - 1) : router.push("/prep")}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 shrink-0"
-          title="Retour"
-        >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-1.5">
-            <span className="uppercase tracking-wider text-[#005bbf]">
-              {t("prep.onboarding.stepIndicator", { step: step + 1, total: 3 })}
+      <div className="bg-white border border-slate-200/80 rounded-3xl p-4 sm:p-5 shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => step > 0 ? setStep(s => s - 1) : router.push("/prep")}
+              className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors active:scale-95 shrink-0"
+              title="Retour"
+            >
+              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+            </button>
+            <span className="text-xs font-black uppercase tracking-wider text-[#005bbf]">
+              Étape {step + 1} sur 3 : {stepLabels[step]}
             </span>
-            <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-500"
-              style={{ width: `${progress}%`, backgroundColor: "#FF6B00" }}
-            />
-          </div>
+          <span className="text-xs font-extrabold text-slate-500">{Math.round(progress)}%</span>
+        </div>
+
+        {/* Progress Bar */}
+        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${progress}%`, backgroundColor: "#FF6B00" }}
+          />
         </div>
       </div>
 
@@ -120,10 +144,12 @@ function PrepOnboardingInner() {
         <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              {t("prep.onboarding.step0.title")}
+              {examType === "BFEM" ? "Bienvenue ! Prépare ton BFEM 2027" : t("prep.onboarding.step0.title")}
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {t("prep.onboarding.step0.subtitle")}
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              {examType === "BFEM"
+                ? "Configure ton prénom pour personnaliser tes annales et quiz du brevet."
+                : t("prep.onboarding.step0.subtitle")}
             </p>
           </div>
 
@@ -136,15 +162,15 @@ function PrepOnboardingInner() {
               type="text"
               value={prenom}
               onChange={e => setPrenom(e.target.value)}
-              placeholder={t("prep.onboarding.step0.firstNamePlaceholder")}
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+              placeholder="Ex: Awa, Cheikh, Fatou..."
+              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
             />
           </div>
 
-          {/* Examen */}
+          {/* Choix de l'examen */}
           <div className="space-y-2">
             <label className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-              {t("prep.onboarding.step0.examLabel")}
+              Examen préparé :
             </label>
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -154,7 +180,7 @@ function PrepOnboardingInner() {
                 <button
                   key={e.code}
                   type="button"
-                  onClick={() => { setExamType(e.code); setSerie(""); }}
+                  onClick={() => { setExamType(e.code); if (e.code === "BFEM") setSerie(""); else if (!serie) setSerie("S2"); }}
                   className={`flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all active:scale-[0.98] ${
                     examType === e.code
                       ? "border-[#005bbf] bg-blue-50/50 shadow-xs"
@@ -168,18 +194,26 @@ function PrepOnboardingInner() {
                   </div>
                   <p className="font-extrabold text-slate-900 text-sm">{e.label}</p>
                   <p className="text-[11px] text-slate-500 mt-0.5">{e.sub}</p>
+                  {examType === e.code && (
+                    <span className="mt-2 text-[10px] font-black uppercase text-[#005bbf] bg-blue-100/80 px-2 py-0.5 rounded-full">
+                      Sélectionné
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Série BAC */}
+          {/* Série BAC (Affichée uniquement si BAC sélectionné) */}
           {examType === "BAC" && (
-            <div className="space-y-2 pt-2">
-              <label className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
-                {t("prep.onboarding.step0.serieLabel")}
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <label className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
+                  {t("prep.onboarding.step0.serieLabel")}
+                </label>
+                <span className="text-[11px] text-slate-400 font-semibold">Choisis ta section</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
                 {BAC_SERIES.map(s => (
                   <button
                     key={s.code}
@@ -206,11 +240,20 @@ function PrepOnboardingInner() {
             </div>
           )}
 
+          {examType === "BFEM" && (
+            <div className="p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/80 flex items-start gap-3">
+              <span className="material-symbols-outlined text-[#005bbf] text-[20px] shrink-0 mt-0.5">info</span>
+              <p className="text-xs text-blue-900 leading-relaxed font-medium">
+                Pour le BFEM, le programme comprend l&apos;ensemble des matières officielles de 3ème (Mathématiques, Français, PC, SVT, HG, Anglais).
+              </p>
+            </div>
+          )}
+
           <button
             type="button"
             disabled={!step0Valid}
             onClick={() => setStep(1)}
-            className="w-full py-3.5 font-extrabold text-white rounded-xl shadow-xs disabled:opacity-40 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            className="w-full py-4 font-extrabold text-white rounded-xl shadow-xs disabled:opacity-40 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
             style={{ backgroundColor: "#FF6B00" }}
           >
             <span>{t("prep.onboarding.next")}</span>
@@ -226,7 +269,7 @@ function PrepOnboardingInner() {
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
               {t("prep.onboarding.step1.title")}
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               {t("prep.onboarding.step1.subtitle")}
             </p>
           </div>
@@ -240,8 +283,8 @@ function PrepOnboardingInner() {
                 type="text"
                 value={ecole}
                 onChange={e => setEcole(e.target.value)}
-                placeholder={t("prep.onboarding.step1.schoolPlaceholder")}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                placeholder="Ex: Lycée Lamine Guèye, Collège Martin Luther King..."
+                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
               />
             </div>
 
@@ -253,8 +296,8 @@ function PrepOnboardingInner() {
                 type="text"
                 value={classe}
                 onChange={e => setClasse(e.target.value)}
-                placeholder={t("prep.onboarding.step1.classPlaceholder")}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                placeholder={examType === "BFEM" ? "Ex: 3ème B" : "Ex: Terminale S2A"}
+                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
               />
             </div>
           </div>
@@ -263,7 +306,7 @@ function PrepOnboardingInner() {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="w-full py-3.5 font-extrabold text-white rounded-xl shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              className="w-full py-4 font-extrabold text-white rounded-xl shadow-xs transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-sm"
               style={{ backgroundColor: "#FF6B00" }}
             >
               <span>{t("prep.onboarding.next")}</span>
@@ -285,26 +328,26 @@ function PrepOnboardingInner() {
         <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-              {t("prep.onboarding.step2.title", { prenom })}
+              Tout est prêt, {prenom || "Élève"} !
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {t("prep.onboarding.step2.subtitle")}
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
+              Vérifie ton profil d&apos;examen avant d&apos;accéder à ton espace personnel.
             </p>
           </div>
 
-          <div className="bg-slate-50/70 border border-slate-200/80 rounded-2xl p-5 space-y-4">
-            <Row icon="person" label={t("prep.onboarding.step2.rowFirstName")} value={prenom} />
+          <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-5 space-y-3.5">
+            <Row icon="person" label="Prénom" value={prenom || "Élève"} />
             <Row
               icon="workspace_premium"
-              label={t("prep.onboarding.step2.rowExam")}
-              value={`${examType}${serie ? " " + t("prep.onboarding.step2.serieSuffix", { serie }) : ""}`}
+              label="Objectif d'examen"
+              value={examType === "BFEM" ? "BFEM 2027 (Collège · 3ème)" : `Baccalauréat 2027 ${serie ? `— Série ${serie}` : ""}`}
             />
-            {ecole && <Row icon="school" label={t("prep.onboarding.step2.rowSchool")} value={ecole} />}
-            {classe && <Row icon="class" label={t("prep.onboarding.step2.rowClass")} value={classe} />}
+            {ecole && <Row icon="school" label="Établissement" value={ecole} />}
+            {classe && <Row icon="class" label="Classe" value={classe} />}
           </div>
 
           {error && (
-            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold text-center">
+            <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold text-center">
               {error}
             </div>
           )}
@@ -317,7 +360,7 @@ function PrepOnboardingInner() {
             style={{ backgroundColor: "#FF6B00" }}
           >
             <span className="material-symbols-outlined text-[20px]">rocket_launch</span>
-            <span>{t("prep.onboarding.step2.submit")}</span>
+            <span>Accéder à mon espace de révision</span>
           </button>
         </div>
       )}
@@ -332,7 +375,7 @@ function Row({ icon, label, value }: { icon: string; label: string; value: strin
         <span className="material-symbols-outlined text-[18px]">{icon}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
         <p className="font-extrabold text-slate-900 text-sm truncate">{value}</p>
       </div>
     </div>
