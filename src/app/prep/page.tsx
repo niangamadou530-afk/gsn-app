@@ -305,29 +305,6 @@ export default function PrepLandingPage() {
               </div>
             </div>
           </div>
-
-          {/* Live Real-Time Countdowns for BAC & BFEM (Days, Hours, Minutes, Seconds) */}
-          <div className="pt-2 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-800 pt-6">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#FF6B00]">
-                  Direct Synchro Sénégal (UTC)
-                </span>
-                <h3 className="text-lg sm:text-xl font-extrabold text-white">
-                  Compte à rebours en temps réel
-                </h3>
-              </div>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700 text-slate-300 text-xs font-semibold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span>Heure de Dakar (GMT+0) · Mise à jour à la seconde</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <LiveExamCountdownCard examId="BAC" themeColor="orange" />
-              <LiveExamCountdownCard examId="BFEM" themeColor="blue" />
-            </div>
-          </div>
         </div>
       </section>
 
@@ -503,6 +480,34 @@ export default function PrepLandingPage() {
               </div>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Live Real-Time Countdowns (Direct Synchro UTC Sénégal) - Juste après Programmes officiels */}
+      <section className="py-12 sm:py-16 bg-slate-950 text-white border-t border-b border-slate-800">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#FF6B00]">
+                Direct Synchro Sénégal (UTC)
+              </span>
+              <h3 className="text-xl sm:text-2xl font-extrabold text-white">
+                Compte à rebours officiel en direct
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Suis le temps restant à la seconde près (jours, heures, minutes, secondes) pour chaque examen national.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold self-start sm:self-auto">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Heure de Dakar (GMT+0) · Mise à jour à la seconde</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <LiveExamCountdownCard examId="BAC" themeColor="orange" />
+            <LiveExamCountdownCard examId="BFEM" themeColor="blue" />
+          </div>
         </div>
       </section>
 
