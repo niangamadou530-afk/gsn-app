@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { getExamCountdown } from "@/lib/prep-config";
+import { getExamCountdown, PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 import { LiveExamCountdownCard } from "@/components/LiveExamCountdown";
 
 export default function PrepLandingPage() {
@@ -230,7 +230,7 @@ export default function PrepLandingPage() {
               <div className="pt-4 flex flex-wrap items-center justify-center lg:justify-start gap-6 text-xs text-slate-500 font-medium">
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Sujets réels 2023-2025</span>
+                  <span>Sujets réels 2023-2026</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -273,14 +273,14 @@ export default function PrepLandingPage() {
                   </div>
                 </div>
 
-                {/* Floating Stat Card (Annales complètes - updated to +1000) */}
+                {/* Floating Stat Card (Annales complètes - updated to +600) */}
                 <div className="absolute -top-3 right-2 sm:-top-4 sm:-right-4 bg-white rounded-2xl p-2.5 sm:p-3.5 shadow-xl border border-slate-100 flex items-center gap-2 sm:gap-3 z-20 max-w-[calc(100%-1rem)]">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
                     <span className="material-symbols-outlined text-[18px] sm:text-[22px]">auto_stories</span>
                   </div>
                   <div>
                     <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
-                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">+1000 épreuves</p>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">+600 épreuves et corrigés</p>
                   </div>
                 </div>
               </div>
@@ -446,10 +446,10 @@ export default function PrepLandingPage() {
                   <span className="material-symbols-outlined text-[26px]">description</span>
                 </div>
                 <h3 className="text-xl font-extrabold text-slate-900 min-h-[3.25rem] flex items-center">
-                  Annales BAC & BFEM
+                  Annales 2023-2026
                 </h3>
                 <p className="text-sm text-slate-700 font-medium leading-relaxed flex-1">
-                  Plus de 1000 épreuves réelles du 1er groupe, 2ème groupe et sessions de remplacement avec corrigés officiels numérisés haute définition.
+                  Plus de 600 épreuves et corrigés réels du 1er groupe, 2ème groupe et sessions de remplacement numérisés haute définition.
                 </p>
               </div>
               <div className="mt-4 pt-4 border-t border-slate-200/70">
@@ -628,7 +628,7 @@ export default function PrepLandingPage() {
 
           <div className="flex items-center gap-6">
             <Link href="/prep/parent" className="hover:text-white transition-colors">Espace Parents</Link>
-            <a href="https://wa.me/221781246504" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support WhatsApp</a>
+            <a href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support WhatsApp</a>
             <Link href="/login" className="hover:text-white transition-colors">Espace Élève</Link>
           </div>
         </div>

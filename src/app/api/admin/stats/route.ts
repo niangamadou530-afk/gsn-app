@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { isUserAdmin } from "@/lib/adminAuth";
 
-const ADMIN_EMAIL = "niangamadou530@gmail.com";
 const LAUNCH_DATE = "2026-07-01T00:00:00Z";
 
 function sb(token?: string) {
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   if (!token) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
   const { data: { user } } = await sb(token).auth.getUser();
-  if (user?.email !== ADMIN_EMAIL) {
+  if (!user || !isUserAdmin(user.email)) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 

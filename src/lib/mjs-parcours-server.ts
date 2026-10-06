@@ -1,4 +1,5 @@
 import Groq from "groq-sdk";
+import { GROQ_MODELS } from "@/lib/groqModels";
 import { createSupabaseAdmin } from "@/lib/supabase-admin";
 import type { ModuleContenu } from "@/app/mjs/beneficiaire/parcours/types";
 import { buildParcoursPrompt, parseModulesJson } from "@/lib/mjs-parcours-utils";
@@ -109,7 +110,7 @@ export async function generateModulesForParcours(parcours: {
       { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans texte, sans markdown." },
       { role: "user", content: prompt },
     ],
-    model: "llama-3.3-70b-versatile",
+    model: GROQ_MODELS.MJS_PARCOURS,
     max_tokens: 8000,
     temperature: 0.2,
   });

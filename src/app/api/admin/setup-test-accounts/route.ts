@@ -1,7 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
-
-const ADMIN_EMAIL = "niangamadou530@gmail.com";
+import { isUserAdmin } from "@/lib/adminAuth";
 
 const ACCOUNTS = [
   {
@@ -33,7 +32,7 @@ export async function POST(req: Request) {
     { global: { headers: { Authorization: `Bearer ${token}` } } }
   );
   const { data: { user } } = await sbAnon.auth.getUser();
-  if (user?.email !== ADMIN_EMAIL) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  if (!user || !isUserAdmin(user.email)) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
   const sbAdmin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

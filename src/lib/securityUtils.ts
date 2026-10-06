@@ -87,7 +87,7 @@ export function checkClientRateLimit(
 
   try {
     const raw = window.localStorage.getItem(storageKey);
-    let record: { timestamps: number[] } = raw ? JSON.parse(raw) : { timestamps: [] };
+    const record: { timestamps: number[] } = raw ? JSON.parse(raw) : { timestamps: [] };
 
     // Filtrer les tentatives expirées
     const validTimestamps = record.timestamps.filter((ts) => now - ts < windowMs);
@@ -119,7 +119,7 @@ export function recordClientAttempt(actionKey: "signup" | "login"): void {
 
   try {
     const raw = window.localStorage.getItem(storageKey);
-    let record: { timestamps: number[] } = raw ? JSON.parse(raw) : { timestamps: [] };
+    const record: { timestamps: number[] } = raw ? JSON.parse(raw) : { timestamps: [] };
     record.timestamps = record.timestamps.filter((ts) => now - ts < windowMs);
     record.timestamps.push(now);
     window.localStorage.setItem(storageKey, JSON.stringify(record));

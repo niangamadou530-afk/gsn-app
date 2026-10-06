@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 
 export default function PrivacyPage() {
   return (
@@ -82,7 +83,7 @@ export default function PrivacyPage() {
               <strong>Consentement parental :</strong> Pour les élèves âgés de moins de 18 ans, l&apos;utilisation de la plateforme doit être effectuée avec l&apos;accord préalable ou sous la supervision d&apos;un parent ou tuteur légal.
             </li>
             <li>
-              <strong>Espace Parents sécurisé :</strong> L&apos;accès parental s&apos;effectue exclusivement au moyen d&apos;un code temporaire à 6 caractères généré par l&apos;élève. Les parents ne créent pas de mot de passe et n&apos;ont accès qu&apos;aux indicateurs pédagogiques (assiduité, moyennes par matière).
+              <strong>Espace Parents sécurisé :</strong> L&apos;accès parental s&apos;effectue au moyen d&apos;un code à 6 caractères généré par l&apos;élève. Lors de la création ou du renouvellement de ce code, l&apos;élève peut facultativement renseigner l&apos;adresse électronique de son parent ou tuteur (champ <code>parent_email</code> dans la table <code>prep_parent_links</code>). Cette adresse est enregistrée pour identifier le parent ou tuteur légal et l&apos;associer au suivi pédagogique de l&apos;élève. Aucun email automatique n&apos;est émis par la plateforme : le code d&apos;accès est transmis directement par l&apos;élève à ses parents.
             </li>
             <li>
               <strong>Zéro profilage publicitaire :</strong> Aucune donnée d&apos;élève n&apos;est vendue, louée ou cédée à des tiers pour des finalités commerciales ou de ciblage publicitaire.
@@ -123,18 +124,94 @@ export default function PrivacyPage() {
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#005bbf]" />
-            4. Traitement des requêtes par l&apos;Intelligence Artificielle
+            4. Traitement des requêtes par l&apos;Intelligence Artificielle (Groq)
           </h2>
-          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Les questions posées au Coach IA et les requêtes de génération de quiz sont traitées de manière éphémère par nos modèles d&apos;inférence pédagogique. Nous ne transmettons aucune donnée nominative (numéro de téléphone, nom complet) dans les instructions envoyées aux processeurs de langage.
-          </p>
+          <div className="space-y-3 text-xs sm:text-sm text-slate-700 leading-relaxed">
+            <p>
+              Pour générer les explications pédagogiques, les quiz d&apos;entraînement, les flashcards et les corrigés détaillés, la plateforme utilise l&apos;API d&apos;inférence fournie par le prestataire <strong>Groq Inc.</strong>
+            </p>
+            <p>
+              <strong>Ce qui est effectivement transmis au prestataire IA :</strong>
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5">
+              <li>
+                <strong>Instructions et contexte pédagogique :</strong> Matière sélectionnée, série d&apos;examen, chapitre du programme officiel sénégalais et type d&apos;exercice demandé.
+              </li>
+              <li>
+                <strong>Messages libres dans le chat Coach IA :</strong> L&apos;intégralité des messages rédigés par l&apos;élève dans la fenêtre de discussion avec le Coach IA est transmise pour permettre la formulation de la réponse. Si l&apos;élève mentionne librement son nom, son établissement ou des situations personnelles dans son texte, ces éléments font partie du contenu envoyé au modèle.
+              </li>
+              <li>
+                <strong>Documents et devoirs soumis pour évaluation :</strong> Lorsqu&apos;un élève utilise les fonctions d&apos;évaluation ou de correction (rédaction de dissertation, commentaire de texte, ou transcription de notes/bulletins scolaires), le texte ou le document extrait est transmis au modèle pour analyse et notation.
+              </li>
+              <li>
+                <strong>Photos, PDF et textes envoyés dans « Générer » :</strong> Les photos de devoirs ou de cahiers, les documents PDF et les textes collés envoyés dans l&apos;outil « Générer » (Mode A) sont transmis à Groq Inc. pour produire le résultat demandé (résumé, quiz ou flashcards). Ces fichiers, photos et textes bruts ne sont pas conservés par GSN (aucun enregistrement sur les serveurs ou en base de données). Seuls les quiz, résumés ou flashcards produits sont conservés sur le compte de l&apos;élève s&apos;il choisit de les sauvegarder.
+              </li>
+            </ul>
+            <p className="text-slate-600 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <strong>Région d&apos;hébergement des serveurs d&apos;inférence Groq :</strong> [À COMPLÉTER : Région des datacenters Groq, ex: États-Unis / Union Européenne].
+            </p>
+          </div>
         </section>
 
-        {/* Section 5 : Droits des utilisateurs (Loi n° 2008-12) */}
+        {/* Section 5 : Sous-traitants et prestataires techniques */}
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#005bbf]" />
-            5. Vos droits (Accès, Rectification, Suppression)
+            5. Sous-traitants techniques et flux réels de données
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
+            Pour assurer l&apos;hébergement, la sécurité et la haute disponibilité de la plateforme, les données transitent auprès des prestataires suivants :
+          </p>
+          <div className="space-y-3 pt-1 text-xs sm:text-sm">
+            {/* Vercel */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900">Vercel Inc.</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase">Hébergement Applicatif & Serverless</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>Données traitées :</strong> Adresses IP publiques de connexion des utilisateurs, en-têtes HTTP (navigateur, terminal, horodatage), requêtes web et données en transit transitant par les fonctions d&apos;API Next.js (/api/*) faisant l&apos;intermédiaire avec Supabase et Groq.
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Région des serveurs Vercel : [À COMPLÉTER : Région de déploiement des fonctions serverless, ex: cdg1 Paris / fra1 Francfort / iad1 Washington]
+              </p>
+            </div>
+
+            {/* Supabase */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900">Supabase Inc.</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase">Base de données, Auth & Stockage</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>Données stockées :</strong> Comptes utilisateurs (numéro de téléphone portable sénégalais, adresse email optionnelle, mot de passe chiffré par Supabase Auth, identifiant UUID), profil scolaire (prénom, examen, série, lycée), progression (scores de quiz, flashcards maîtrisées, historique des conversations du Coach, date d&apos;examen personnalisée), sécurité (compteur de tentatives de connexion anti-bruteforce, compteurs de quotas quotidiens, codes de liaison parent-élève) et documents d&apos;annales officielles (PDF).
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Région des serveurs Supabase : [À COMPLÉTER : Région du projet de base de données Supabase, ex: eu-west-3 Paris / eu-central-1 Francfort / us-east-1]
+              </p>
+            </div>
+
+            {/* Groq */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-900">Groq Inc.</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase">Modèles de Langage & Inférence IA</span>
+              </div>
+              <p className="text-slate-600 leading-relaxed">
+                <strong>Données traitées :</strong> Prompts pédagogiques (matière, niveau, série), messages saisis librement par l&apos;élève au Coach IA, ainsi que les photos, documents PDF et textes transmis dans l&apos;outil « Générer » (traitement éphémère d&apos;inférence, non conservés par GSN).
+              </p>
+              <p className="text-[11px] text-slate-500 font-mono">
+                Région des serveurs Groq : [À COMPLÉTER : Région des clusters de calcul Groq, ex: États-Unis / Union Européenne]
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 6 : Droits des utilisateurs (Loi n° 2008-12) */}
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
+          <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#005bbf]" />
+            6. Vos droits (Accès, Rectification, Suppression)
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
             Conformément à la Loi sénégalaise n° 2008-12 du 25 janvier 2008 sur la protection des données à caractère personnel, chaque élève et tuteur légal dispose des droits suivants :
@@ -145,7 +222,7 @@ export default function PrivacyPage() {
             <li><strong>Droit de suppression définitive :</strong> Supprimer son compte et l&apos;ensemble des données associées en un clic via le bouton dédié dans l&apos;espace profil.</li>
           </ul>
           <p className="text-xs text-slate-600 pt-2">
-            Pour exercer ces droits ou pour toute question relative à vos données, vous pouvez contacter notre assistance par WhatsApp au <strong>+221 78 124 65 04</strong> ou par courriel à <strong>[À COMPLÉTER : contact@domaine.sn]</strong>.
+            Pour exercer ces droits ou pour toute question relative à vos données, vous pouvez contacter notre assistance par WhatsApp au <strong>{PREP_WHATSAPP_SUPPORT.phoneFormatted}</strong> ou par courriel à <strong>[À COMPLÉTER : contact@domaine.sn]</strong>.
           </p>
         </section>
       </main>

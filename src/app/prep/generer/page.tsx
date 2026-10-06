@@ -10,6 +10,7 @@ import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { sounds } from "@/lib/soundEffects";
 import { SoundToggle } from "@/components/SoundToggle";
+import { compressImageClient } from "@/lib/imageCompress";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -55,9 +56,13 @@ function GenererPageInner() {
   const [authToken, setAuthToken] = useState("");
 
   // Mode A
-  const [fileA, setFileA]         = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState("");
-  const [matiereA, setMatiereA]   = useState("");
+  const [fileA, setFileA]                         = useState<File | null>(null);
+  const [filePreview, setFilePreview]             = useState("");
+  const [fileCompressedB64, setFileCompressedB64] = useState("");
+  const [compressedInfo, setCompressedInfo]       = useState("");
+  const [textDirectA, setTextDirectA]             = useState("");
+  const [inputModeA, setInputModeA]               = useState<"file" | "text">("file");
+  const [matiereA, setMatiereA]                   = useState("");
 
   // Mode B
   const [matiereB, setMatiereB]   = useState("");
@@ -295,16 +300,31 @@ function GenererPageInner() {
     return chapitreB === "Autre" || chapitreB === "" ? themeLibre : chapitreB;
   }
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFileA(f);
+    setError("");
     if (f.type.startsWith("image/")) {
-      const url = URL.createObjectURL(f);
-      setFilePreview(url);
+      const res = await compressImageClient(f);
+      setFilePreview(res.previewUrl);
+      setFileCompressedB64(res.base64);
+      const origKb = Math.round(res.originalSizeBytes / 1024);
+      const compKb = Math.round(res.compressedSizeBytes / 1024);
+      setCompressedInfo(`Photo optimisée : ${compKb} Ko (au lieu de ${origKb} Ko) pour un envoi fluide`);
     } else {
       setFilePreview("");
+      setFileCompressedB64("");
+      setCompressedInfo("");
     }
+  }
+
+  function handleRemoveFileA() {
+    setFileA(null);
+    setFilePreview("");
+    setFileCompressedB64("");
+    setCompressedInfo("");
+    if (fileRef.current) fileRef.current.value = "";
   }
 
   async function fetchVideos(matiere: string, chapitre: string) {
@@ -331,20 +351,55 @@ function GenererPageInner() {
     try {
       let body: Record<string, unknown>;
 
-      if (mode === "A" && fileA) {
-        // Convert file to base64
-        const ab = await fileA.arrayBuffer();
-        const b64 = Buffer.from(ab).toString("base64");
-        body = {
-          mode: "document",
-          type: genType,
-          quizMode,
-          matiere: mat,
-          fileBase64: b64,
-          fileType: fileA.type,
-          examType,
-          serie,
-        };
+      if (mode === "A") {
+        if (inputModeA === "text" && textDirectA.trim()) {
+          body = {
+            mode: "document",
+            type: genType,
+            quizMode,
+            matiere: mat,
+            text: textDirectA.trim(),
+            examType,
+            serie,
+          };
+        } else if (fileA) {
+          if (fileA.type.startsWith("image/")) {
+            let b64 = fileCompressedB64;
+            if (!b64) {
+              const comp = await compressImageClient(fileA);
+              b64 = comp.base64;
+            }
+            body = {
+              mode: "document",
+              type: genType,
+              quizMode,
+              matiere: mat,
+              fileBase64: b64,
+              fileType: "image/jpeg",
+              fileName: fileA.name,
+              examType,
+              serie,
+            };
+          } else {
+            const ab = await fileA.arrayBuffer();
+            const b64 = Buffer.from(ab).toString("base64");
+            body = {
+              mode: "document",
+              type: genType,
+              quizMode,
+              matiere: mat,
+              fileBase64: b64,
+              fileType: fileA.type,
+              fileName: fileA.name,
+              examType,
+              serie,
+            };
+          }
+        } else {
+          setError("Veuillez sélectionner un fichier ou coller le texte de votre cours.");
+          setPhase("setup_a");
+          return;
+        }
       } else {
         body = {
           mode: "knowledge",
@@ -415,7 +470,10 @@ function GenererPageInner() {
       }
     } catch (err: unknown) {
       console.error("[prep/generer error]", err);
-      setError("Oups ! Nous n'avons pas pu générer ton contenu pour le moment. Ne t'inquiète pas, ta session et tes crédits sont préservés !");
+      const msg = err instanceof Error && err.message
+        ? err.message
+        : "Oups ! Nous n'avons pas pu générer ton contenu pour le moment. Ne t'inquiète pas, ta session et tes crédits sont préservés !";
+      setError(msg);
       setPhase(mode === "A" ? "setup_a" : "setup_b");
     }
   }
@@ -617,67 +675,183 @@ function GenererPageInner() {
   );
 
   // ── SETUP A ──
-  if (phase === "setup_a") return (
-    <main className="w-full min-h-screen text-slate-900">
-      <PageHeader title={t("prep.generer.setupA.headerTitle")} onBack={() => setPhase("home")} />
-      <div className="px-6 py-4 space-y-5">
+  if (phase === "setup_a") {
+    const isSetupAValid =
+      !!matiereA &&
+      ((inputModeA === "file" && !!fileA) ||
+        (inputModeA === "text" && textDirectA.trim().length >= 25)) &&
+      retrySeconds === 0;
 
-        {/* Upload */}
-        <div>
-          <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.step1")}</p>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="w-full h-36 rounded-2xl border-2 border-dashed border-[#005bbf]/40 bg-blue-50/50 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-            {filePreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={filePreview} alt="preview" className="h-28 object-contain rounded-xl" />
-            ) : fileA ? (
-              <>
-                <span className="material-symbols-outlined text-[36px] text-[#005bbf]">description</span>
-                <p className="text-sm font-semibold text-[#005bbf]">{fileA.name}</p>
-              </>
-            ) : (
-              <>
-                <span className="material-symbols-outlined text-[36px] text-[#005bbf]">add_photo_alternate</span>
-                <p className="text-sm text-slate-500">{t("prep.generer.setupA.uploadHint")}</p>
-              </>
-            )}
-          </button>
-          <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-        </div>
+    return (
+      <main className="w-full min-h-screen text-slate-900">
+        <PageHeader title={t("prep.generer.setupA.headerTitle")} onBack={() => setPhase("home")} />
+        <div className="px-6 py-4 space-y-5">
 
-        {/* Matière */}
-        <div>
-          <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.matiereLabel")}</p>
-          <div className="flex flex-wrap gap-2">
-            {(matieres().length > 0 ? matieres() : ["Mathématiques", "Français", "SVT", "Anglais", "Histoire", "Philosophie"]).map(m => (
-              <button key={m}
-                onClick={() => setMatiereA(m)}
-                className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${matiereA === m ? "border-[#005bbf] bg-blue-50 text-[#005bbf]" : "border-slate-200 text-slate-500"}`}>
-                {m}
-              </button>
-            ))}
+          {/* Onglets Type de saisie (Fichier vs Texte collé) */}
+          <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 border border-slate-200/80 gap-1">
+            <button
+              type="button"
+              onClick={() => { setInputModeA("file"); setError(""); }}
+              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                inputModeA === "file" ? "bg-white text-slate-900 shadow-xs shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+              <span>Photo ou PDF</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setInputModeA("text"); setError(""); }}
+              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                inputModeA === "text" ? "bg-white text-slate-900 shadow-xs shadow-sm" : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">edit_note</span>
+              <span>Coller du texte</span>
+            </button>
           </div>
+
+          {/* Saisie par Fichier / Photo */}
+          {inputModeA === "file" ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm text-slate-900">{t("prep.generer.setupA.step1")}</p>
+                <span className="text-[11px] text-slate-500 font-medium">Image (JPEG, PNG) ou PDF</span>
+              </div>
+
+              {/* Boîte de conseils pour la photo */}
+              <div className="p-3 bg-blue-50/70 border border-blue-200/70 rounded-2xl flex items-start gap-2.5 text-xs text-blue-950">
+                <span className="material-symbols-outlined text-[18px] text-[#005bbf] shrink-0 mt-0.5">lightbulb</span>
+                <div className="space-y-0.5">
+                  <p className="font-bold">Conseils pour une analyse précise :</p>
+                  <p className="text-blue-900 leading-relaxed">
+                    Photo bien cadrée, nette et lisible, bien éclairée à plat sans ombre ni reflet. Pour un PDF, privilégie 1 à 2 pages de cours ciblées. <strong>Évite de photographier ton nom ou tes informations personnelles.</strong>
+                  </p>
+                </div>
+              </div>
+
+              {fileA ? (
+                <div className="p-4 bg-white rounded-2xl border-2 border-[#005bbf]/30 space-y-3 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {filePreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={filePreview} alt="Aperçu" className="w-16 h-16 object-cover rounded-xl border border-slate-200" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-xl bg-blue-50 text-[#005bbf] flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-[32px]">picture_as_pdf</span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-900 truncate">{fileA.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {fileA.type.startsWith("image/") ? "Photo de cours" : "Document PDF"}
+                        </p>
+                        {compressedInfo && (
+                          <p className="text-[11px] text-emerald-700 font-semibold mt-0.5">{compressedInfo}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">sync</span>
+                      <span>Changer / Reprendre</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFileA}
+                      className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold flex items-center justify-center gap-1 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                      <span>Supprimer</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full h-36 rounded-2xl border-2 border-dashed border-[#005bbf]/40 bg-blue-50/40 flex flex-col items-center justify-center gap-2 hover:bg-blue-50/70 active:scale-[0.98] transition-all"
+                >
+                  <span className="material-symbols-outlined text-[36px] text-[#005bbf]">add_photo_alternate</span>
+                  <p className="text-sm font-semibold text-slate-800">{t("prep.generer.setupA.uploadHint")}</p>
+                  <p className="text-xs text-slate-500">Clique pour choisir une photo ou un document PDF</p>
+                  <p className="text-[11px] text-slate-400 font-medium">Évite de photographier ton nom ou tes informations personnelles</p>
+                </button>
+              )}
+              <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
+            </div>
+          ) : (
+            /* Saisie de texte collé directement */
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-sm text-slate-900">Colle le contenu de ton cours</p>
+                <span className={`text-[11px] font-semibold ${textDirectA.length > 6000 ? "text-amber-600 font-bold" : "text-slate-500"}`}>
+                  {textDirectA.length.toLocaleString("fr-FR")} / 6 000 car. conseillés
+                </span>
+              </div>
+              <textarea
+                rows={6}
+                value={textDirectA}
+                onChange={(e) => { setTextDirectA(e.target.value); setError(""); }}
+                placeholder="Colle ici le texte de ton cours, tes notes ou l'énoncé d'un chapitre (1 à 2 pages conseillées)..."
+                className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#005bbf] focus:ring-1 focus:ring-[#005bbf]/20 outline-none leading-relaxed"
+              />
+              {textDirectA.length > 6000 && (
+                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[16px] text-amber-600 shrink-0 mt-0.5">warning</span>
+                  <p>
+                    Ce texte dépasse 6 000 caractères. Deux options s&apos;offrent à toi sans consommer de crédit : <strong>choisir une partie précise</strong> (un seul chapitre) ou <strong>découper ton cours</strong> en plusieurs fiches distinctes.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Matière */}
+          <div>
+            <p className="font-bold text-sm mb-2">{t("prep.generer.setupA.matiereLabel")}</p>
+            <div className="flex flex-wrap gap-2">
+              {(matieres().length > 0 ? matieres() : ["Mathématiques", "Français", "SVT", "Anglais", "Histoire", "Philosophie"]).map(m => (
+                <button
+                  key={m}
+                  onClick={() => setMatiereA(m)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${
+                    matiereA === m ? "border-[#005bbf] bg-blue-50 text-[#005bbf]" : "border-slate-200 text-slate-500"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
+
+          <FriendlyErrorBanner
+            error={error}
+            onRetry={generate}
+            disabled={!isSetupAValid}
+          />
+
+          <button
+            disabled={!isSetupAValid}
+            onClick={generate}
+            className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
+            style={{ backgroundColor: "#FF6B00" }}
+          >
+            {retrySeconds > 0 ? t("prep.generer.generateButtonRetry", { seconds: retrySeconds }) : t("prep.generer.generateButton", { genLabel })}
+          </button>
         </div>
-
-        <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
-
-        <FriendlyErrorBanner
-          error={error}
-          onRetry={generate}
-          disabled={!fileA || !matiereA || retrySeconds > 0}
-        />
-
-        <button
-          disabled={!fileA || !matiereA || retrySeconds > 0}
-          onClick={generate}
-          className="w-full py-4 font-black text-white rounded-2xl disabled:opacity-40 transition-all active:scale-[0.98]"
-          style={{ backgroundColor: "#FF6B00" }}>
-          {retrySeconds > 0 ? t("prep.generer.generateButtonRetry", { seconds: retrySeconds }) : t("prep.generer.generateButton", { genLabel })}
-        </button>
-      </div>
-    </main>
-  );
+      </main>
+    );
+  }
 
   // ── SETUP B ──
   if (phase === "setup_b") {

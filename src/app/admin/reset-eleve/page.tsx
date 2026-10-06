@@ -23,11 +23,33 @@ export default function AdminResetElevePage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCheckingAuth(false);
-      if (session?.user) {
-        setAdminUser(session.user.email ?? null);
-        setToken(session.access_token);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        setCheckingAuth(false);
+        setAdminUser(null);
+        setToken(null);
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/admin/verify", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          setAdminUser(data.email || session.user.email || "Admin");
+          setToken(accessToken);
+        } else {
+          setAdminUser(null);
+          setToken(null);
+        }
+      } catch {
+        setAdminUser(null);
+        setToken(null);
+      } finally {
+        setCheckingAuth(false);
       }
     });
   }, []);

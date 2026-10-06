@@ -1,16 +1,43 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import { phoneToFakeEmail, normalizePhone, isValidPhone } from "@/lib/phoneUtils";
-
-const ADMIN_EMAIL = "niangamadou530@gmail.com";
+import { isUserAdmin } from "@/lib/adminAuth";
+import crypto from "crypto";
 
 // Limiteur de réinitialisations par jour et par compte (en mémoire)
 const dailyResetsByAccount = new Map<string, { date: string; count: number }>();
 const MAX_RESETS_PER_DAY = 3;
 
+/**
+ * Génère un mot de passe temporaire aléatoire cryptographiquement sécurisé
+ * d'au moins 10 caractères (12 caractères), sans modèle fixe.
+ */
 function generateTempPassword(): string {
-  const digits = Math.floor(1000 + Math.random() * 9000); // 4 chiffres aléatoires
-  return `Prep2027-${digits}`;
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghjkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const special = "!@#$%*";
+  const allChars = upper + lower + digits + special;
+
+  const bytes = crypto.randomBytes(12);
+  const pwdChars = [
+    upper[bytes[0] % upper.length],
+    lower[bytes[1] % lower.length],
+    digits[bytes[2] % digits.length],
+    special[bytes[3] % special.length],
+  ];
+
+  for (let i = 4; i < 12; i++) {
+    pwdChars.push(allChars[bytes[i] % allChars.length]);
+  }
+
+  // Mélange aléatoire avec crypto
+  for (let i = pwdChars.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [pwdChars[i], pwdChars[j]] = [pwdChars[j], pwdChars[i]];
+  }
+
+  return pwdChars.join("");
 }
 
 export async function POST(req: NextRequest) {
@@ -27,7 +54,7 @@ export async function POST(req: NextRequest) {
   );
 
   const { data: { user } } = await sbAnon.auth.getUser();
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user || !isUserAdmin(user.email)) {
     return NextResponse.json({ error: "Accès refusé. Réservé à l'administrateur." }, { status: 403 });
   }
 

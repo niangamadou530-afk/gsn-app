@@ -7,6 +7,10 @@ import { checkUsage, incrementUsage, limitMessage, type UsageField } from "@/lib
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
 import { createGroqChatCompletionWithRetry } from "@/lib/groqRetry";
+import { getDocMaxChars, GROQ_MODELS, PHOTO_ANALYSIS_UNAVAILABLE_MESSAGE } from "@/lib/groqModels";
+import { extractTextFromPdfBuffer } from "@/lib/pdfTextExtractor";
+
+export const maxDuration = 60;
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -77,12 +81,12 @@ function buildProgCtx(matiere: string, chapitre: string, examType: string, serie
 }
 
 function flashcardsPrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = ""): string {
-  const src = fromDoc
-    ? "based ONLY on the content of the provided document"
-    : `based on the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
   const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
 
   if (isAnglais(matiere)) {
+    const src = fromDoc
+      ? "based EXCLUSIVELY on the provided document text without adding any external facts"
+      : `based on the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
     const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
     return `You are an English teacher for the Senegalese ${examType}.
 Generate 12 flashcards for English${ctx} ${src}.
@@ -99,9 +103,27 @@ CRITICAL: The verso value must be a single-line string with no line breaks. Use 
 Exactly 12 flashcards. Recto in English only. Focus on what is evaluated in the exam.`;
   }
 
+  if (fromDoc) {
+    return `Tu es un professeur expert du ${examType} sénégalais (${examType === "BFEM" ? "classe de 3e" : "classe de Terminale"}).
+Génère 12 flashcards de révision basées EXCLUSIVEMENT sur le document fourni pour ${matiere}.
+CONSIGNES STRICTES :
+1. Chaque flashcard doit porter UNIQUEMENT sur une notion, définition, règle ou formule explicitement présente dans le document.
+2. N'invente AUCUNE information extérieure, n'extrapole pas au-delà des notions traitées.
+3. Rédige en français clair, précis et rigoureux, parfaitement adapté au niveau ${examType} de l'élève.
+Recto : notion ou question clé courte.
+Verso : explication claire, rigoureuse et complète.
+Retourne UNIQUEMENT ce JSON :
+{
+  "flashcards": [
+    { "recto": "Question ou notion clé ?", "verso": "Explication claire et complète basée sur le document." }
+  ]
+}
+Exactement 12 flashcards. Tout en français.`;
+  }
+
   const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
   return `Tu es un professeur expert du ${examType} sénégalais.
-Génère 12 flashcards pour ${matiere}${ctx} ${src}.
+Génère 12 flashcards pour ${matiere}${ctx} d'après le programme officiel sénégalais.
 Recto : notion ou question clé courte.
 Verso : explication claire et complète.
 Contenu fidèle au programme officiel sénégalais.
@@ -116,12 +138,12 @@ Exactement 12 flashcards. Tout en français. Privilégie les notions souvent év
 }
 
 function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean, contenuCtx = ""): string {
-  const src = fromDoc
-    ? "based ONLY on the content of the provided document"
-    : `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
   const progCtx = fromDoc ? "" : buildProgCtx(matiere, chapitre, examType, serie);
 
   if (isAnglais(matiere)) {
+    const src = fromDoc
+      ? "based EXCLUSIVELY on the content of the provided document"
+      : `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
     const ctx = chapitre ? ` on the exact topic: "${chapitre}"` : "";
     if (quizMode === "redaction") {
       return `You are an English teacher for the Senegalese ${examType}.
@@ -160,7 +182,50 @@ Return ONLY this JSON:
 Exactly 10 QCM questions with 4 choices each. ALL in English only.`;
   }
 
+  if (fromDoc) {
+    if (quizMode === "redaction") {
+      return `Tu es un professeur expert du ${examType} sénégalais (${examType === "BFEM" ? "classe de 3e" : "classe de Terminale"}).
+Génère 5 questions de développement pour ${matiere} basées EXCLUSIVEMENT sur le contenu du document fourni.
+CONSIGNES STRICTES :
+1. Les questions doivent porter UNIQUEMENT sur les notions et raisonnements figurant dans le document.
+2. N'invente aucun sujet extérieur au document.
+3. Questions adaptées au niveau ${examType} sénégalais demandant une rédaction argumentée.
+Retourne UNIQUEMENT ce JSON :
+{
+  "questions": [
+    { "id": 1, "question": "Question de réflexion basée sur le document ?" }
+  ]
+}
+Exactement 5 questions. Tout en français.`;
+    }
+
+    return `Tu es un professeur expert du ${examType} sénégalais (${examType === "BFEM" ? "classe de 3e" : "classe de Terminale"}).
+Génère 10 questions QCM pour ${matiere} basées EXCLUSIVEMENT sur le contenu du document fourni.
+CONSIGNES STRICTES :
+1. Chaque question et sa réponse exacte doivent être DIRECTEMENT vérifiables dans le texte du document. N'invente AUCUNE notion extérieure.
+2. Difficulté progressive adaptée au ${examType} sénégalais : 30% facile, 40% moyen, 30% difficile.
+3. RÈGLE ABSOLUE : dans "choices", chaque élément doit être le TEXTE COMPLET de l'option, jamais une lettre seule.
+4. RÈGLE ABSOLUE : "correct_answer" doit être le TEXTE COMPLET identique à l'un des éléments de "choices".
+5. L'explication doit se référer au contenu du document.
+
+Retourne UNIQUEMENT ce JSON :
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "Question précise sur le document ?",
+      "choices": ["Option 1 complète", "Option 2 complète", "Option 3 complète", "Option 4 complète"],
+      "correct_answer": "Option 1 complète",
+      "explanation": "D'après le document, ...",
+      "difficulty": "facile"
+    }
+  ]
+}
+Exactement 10 questions QCM avec 4 choix chacune. Tout en français.`;
+  }
+
   const ctx = chapitre ? `, sur le thème exact : "${chapitre}"` : "";
+  const src = `from the official Senegalese ${examType}${serie ? " " + serie : ""} curriculum`;
   if (quizMode === "redaction") {
     return `Tu es un professeur expert du ${examType} sénégalais.
 Génère 5 questions de développement pour ${matiere}${ctx} ${src}.
@@ -354,14 +419,17 @@ function getInstructionsMatiere(matiere: string): string {
 function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = "", sujetsBlock = ""): string {
   const formatStr = getFormatResume(matiere);
 
-  // Mode document : prompt minimal basé uniquement sur le document fourni
+  // Mode document : prompt fidèle et exhaustif basé uniquement sur le document fourni
   if (fromDoc) {
     const topicLine = chapitre
       ? `SUJET EXACT ET OBLIGATOIRE : "${chapitre}". Tu dois traiter UNIQUEMENT ce sujet précis.`
       : `Matière : ${matiere}`;
-    return `Tu es un professeur expert du ${examType} sénégalais.
+    return `Tu es un professeur expert du ${examType} sénégalais (${examType === "BFEM" ? "classe de 3e" : "classe de Terminale"}).
 ${topicLine}
-Génère un résumé complet et structuré en te basant UNIQUEMENT sur le contenu du document fourni.
+CONSIGNES STRICTES :
+1. Rédige un résumé fidèle, rigoureux et structuré basé EXCLUSIVEMENT sur les notions, théorèmes, définitions et explications présents dans le document fourni.
+2. N'invente AUCUN élément extérieur au document et n'extrapole pas au-delà des notions traitées.
+3. Adapte le niveau et le vocabulaire aux exigences du ${examType} sénégalais, avec un français impeccable.
 ${formatStr}
 Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)." : ""}
 Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`;
@@ -511,7 +579,7 @@ export async function POST(req: Request) {
       const prompt = evaluatePrompt(questions, answers, matiere, chapitre, examType, serie);
       const completion = await createGroqChatCompletionWithRetry(groq, {
         messages: [sysJson(), { role: "user", content: prompt }],
-        model: "openai/gpt-oss-20b",
+        model: GROQ_MODELS.DEFAULT,
         max_tokens: 2000,
         temperature: 0.3,
       });
@@ -519,45 +587,89 @@ export async function POST(req: Request) {
     }
 
     /* ── Document mode (Mode A) ── */
-    if (mode === "document" && fileBase64 && fileType) {
+    if (mode === "document") {
       const isResume = type === "resume";
       let prompt: string;
-      if (type === "flashcards")      prompt = flashcardsPrompt(matiere, "", examType, serie, true);
-      else if (type === "quiz")       prompt = quizPrompt(matiere, "", examType, serie, quizMode, true);
-      else                            prompt = resumePrompt(matiere, chapitre, examType, serie, true);
+      if (type === "flashcards") prompt = flashcardsPrompt(matiere, "", examType, serie, true);
+      else if (type === "quiz")  prompt = quizPrompt(matiere, "", examType, serie, quizMode, true);
+      else                       prompt = resumePrompt(matiere, chapitre, examType, serie, true);
 
       let content: string;
 
-      if (fileType.startsWith("image/")) {
+      if (fileType && fileType.startsWith("image/") && fileBase64) {
         const mimeType = fileType as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-        const completion = await createGroqChatCompletionWithRetry(groq, {
-          messages: [{
-            role: "user",
-            content: [
-              { type: "image_url", image_url: { url: `data:${mimeType};base64,${fileBase64}` } },
-              { type: "text", text: prompt },
-            ],
-          }],
-          model: "qwen/qwen3.6-27b",
-          max_tokens: 3000,
-          temperature: 0.3,
-        });
-        content = completion.choices[0]?.message?.content ?? "";
+        try {
+          const completion = await createGroqChatCompletionWithRetry(groq, {
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: `data:${mimeType};base64,${fileBase64}` } },
+                { type: "text", text: prompt },
+              ],
+            }],
+            model: GROQ_MODELS.VISION,
+            max_tokens: 3000,
+            temperature: 0.3,
+          });
+          content = completion.choices[0]?.message?.content ?? "";
+        } catch (imgErr) {
+          console.error("Document image analysis error with vision model:", imgErr);
+          return NextResponse.json(
+            { error: PHOTO_ANALYSIS_UNAVAILABLE_MESSAGE },
+            { status: 400 }
+          );
+        }
       } else {
-        const buf  = Buffer.from(fileBase64, "base64");
-        const text = buf.toString("utf-8")
-          .replace(/[^\x20-\x7E\n]/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 3000);
+        // PDF, texte brut extrait ou texte saisi directement
+        let docText = (body.text as string | undefined)?.trim() || "";
+
+        if (!docText && fileBase64) {
+          const buf = Buffer.from(fileBase64, "base64");
+          const fileName = (body.fileName as string || "").toLowerCase();
+          const isPdf = fileType === "application/pdf" || fileName.endsWith(".pdf");
+
+          if (isPdf) {
+            const pdfResult = await extractTextFromPdfBuffer(buf);
+            if (!pdfResult.success) {
+              return NextResponse.json({ error: pdfResult.error, isScanned: pdfResult.isScanned }, { status: 400 });
+            }
+            docText = pdfResult.text;
+          } else {
+            // Fichier texte ou notes
+            docText = buf.toString("utf-8")
+              .replace(/[^\x20-\x7E\náàâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ-]/g, " ")
+              .trim();
+          }
+        }
+
+        if (!docText || docText.length < 25) {
+          return NextResponse.json(
+            { error: "Le document ne contient pas assez de texte lisible pour analyser le cours. Vérifie le fichier ou colle directement le texte." },
+            { status: 400 }
+          );
+        }
+
+        const maxChars = getDocMaxChars();
+        if (docText.length > maxChars) {
+          const pageEst = Math.ceil(docText.length / 3000);
+          return NextResponse.json(
+            {
+              error: `Ce document est trop long (${docText.length.toLocaleString("fr-FR")} caractères, environ ${pageEst} pages). La taille maximale recommandée est de ${maxChars.toLocaleString("fr-FR")} caractères (~1 à 2 pages). Deux options s'offrent à toi sans consommer de crédit : choisir une partie précise de ton texte (un seul chapitre) ou découper ton cours en plusieurs fiches distinctes.`,
+              isTooLong: true,
+              charCount: docText.length,
+              maxChars,
+            },
+            { status: 400 }
+          );
+        }
 
         const msgs = isResume
-          ? [{ role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }]
-          : [sysJson(), { role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }];
+          ? [{ role: "user" as const, content: `${prompt}\n\nContenu exact du document de cours :\n${docText}` }]
+          : [sysJson(), { role: "user" as const, content: `${prompt}\n\nContenu exact du document de cours :\n${docText}` }];
 
         const completion = await createGroqChatCompletionWithRetry(groq, {
           messages: msgs,
-          model: "openai/gpt-oss-20b",
+          model: GROQ_MODELS.DOCUMENT,
           max_tokens: 3000,
           temperature: 0.3,
         });
@@ -565,11 +677,18 @@ export async function POST(req: Request) {
       }
 
       if (isResume) {
+        const texte = content.trim();
+        if (!texte) {
+          return NextResponse.json({ error: "La génération du résumé a échoué. Aucun crédit n'a été décompté." }, { status: 502 });
+        }
         await bump();
-        return NextResponse.json({ texte: content.trim() });
+        return NextResponse.json({ texte });
       }
+
+      // Quiz ou flashcards : validation JSON AVANT de consommer le quota
+      const parsed = parseJson(content);
       await bump();
-      return NextResponse.json(parseJson(content));
+      return NextResponse.json(parsed);
     }
 
     /* ── Knowledge mode (Mode B) — fullCtx injecté ── */
@@ -599,11 +718,14 @@ export async function POST(req: Request) {
       const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx, sujetsBlock);
       const completion = await createGroqChatCompletionWithRetry(groq, {
         messages: [{ role: "user", content: prompt }],
-        model: "openai/gpt-oss-120b",
+        model: GROQ_MODELS.EVALUATE,
         max_tokens: 4000,
         temperature: 0.4,
       });
       const texte = (completion.choices[0]?.message?.content ?? "").trim();
+      if (!texte) {
+        return NextResponse.json({ error: "La génération du résumé a échoué. Aucun crédit n'a été décompté." }, { status: 502 });
+      }
       await bump();
       if (generateCacheKey) await setCached(generateCacheKey, { texte });
       return NextResponse.json({ texte });
@@ -615,7 +737,7 @@ export async function POST(req: Request) {
 
     const completion = await createGroqChatCompletionWithRetry(groq, {
       messages: [sysJson(), { role: "user", content: prompt }],
-      model: "openai/gpt-oss-20b",
+      model: GROQ_MODELS.DEFAULT,
       max_tokens: 3000,
       temperature: 0.4,
     });

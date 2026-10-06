@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const ADMIN_EMAIL = "niangamadou530@gmail.com";
 const MAX_PLACES  = 500;
 const REFRESH_MS  = 30_000;
 
@@ -55,10 +54,23 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email !== ADMIN_EMAIL) { router.replace("/"); return; }
       const { data: { session } } = await supabase.auth.getSession();
-      setToken(session?.access_token ?? null);
+      if (!session?.access_token) {
+        router.replace("/");
+        return;
+      }
+      try {
+        const verifyRes = await fetch("/api/admin/verify", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!verifyRes.ok) {
+          router.replace("/");
+          return;
+        }
+        setToken(session.access_token);
+      } catch {
+        router.replace("/");
+      }
     })();
   }, [router]);
 

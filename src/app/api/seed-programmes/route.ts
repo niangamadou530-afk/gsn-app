@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { createClient } from "@supabase/supabase-js";
 import { PROGRAMMES } from "@/data/programmes";
+import { GROQ_MODELS } from "@/lib/groqModels";
 
 const SEED_KEY = "gsn-prep-seed-2024";
 
@@ -149,7 +150,7 @@ Exactement 5 points_cles. Tout en français. N'utilise pas de backslash dans le 
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown ni backticks ni backslash dans les valeurs." },
           { role: "user", content: makePrompt(attempt === 2) },
         ],
-        model: "openai/gpt-oss-20b",
+        model: GROQ_MODELS.DEFAULT,
         max_tokens: attempt === 2 ? 800 : 1200,
         temperature: attempt === 0 ? 0.3 : 0.1,
       });

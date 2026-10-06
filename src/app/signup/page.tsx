@@ -448,7 +448,7 @@ function SignupPageContent() {
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#005bbf] focus:ring-1 focus:ring-[#005bbf]/15 transition-all outline-none"
                       />
                       <p className="text-[10px] text-slate-500 leading-tight px-0.5">
-                        Pour recevoir tes bilans de révision et synthèses de cours (facultatif).
+                        Facultatif : cette adresse est enregistrée sur ton profil pour identifier ton compte.
                       </p>
                     </div>
                   )}

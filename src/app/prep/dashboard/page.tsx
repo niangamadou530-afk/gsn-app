@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getExamCountdown, loadStoredCustomExamDate, CustomExamDateRecord, PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
+import {
+  getExamCountdown,
+  loadStoredCustomExamDate,
+  CustomExamDateRecord,
+  PREP_WHATSAPP_SUPPORT,
+  PREP_DAILY_QUOTAS,
+  PREP_QUOTA_DETAILS,
+  PrepUsageField,
+} from "@/lib/prep-config";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { SlowConnectionNotice, DashboardSkeleton } from "@/components/SlowConnectionNotice";
@@ -34,6 +42,12 @@ export default function PrepDashboardPage() {
   const [quizScore, setQuizScore] = useState<number | null>(null);
   const [flashCount, setFlashCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [dailyUsage, setDailyUsage] = useState<Record<PrepUsageField, number>>({
+    coach_count: 0,
+    quiz_count: 0,
+    flashcards_count: 0,
+    resume_count: 0,
+  });
 
   // Custom exam date state (localStorage)
   const [customExamRecord, setCustomExamRecord] = useState<CustomExamDateRecord | null>(null);
@@ -185,6 +199,24 @@ export default function PrepDashboardPage() {
             .eq("maitrisee", true);
 
           setFlashCount(count ?? 0);
+
+          // Quotas quotidiens d'IA
+          const today = new Date().toISOString().slice(0, 10);
+          const { data: usageRow } = await supabase
+            .from("prep_usage_quotidien")
+            .select("coach_count, quiz_count, flashcards_count, resume_count")
+            .eq("user_id", user.id)
+            .eq("date", today)
+            .maybeSingle();
+
+          if (usageRow) {
+            setDailyUsage({
+              coach_count: Number(usageRow.coach_count) || 0,
+              quiz_count: Number(usageRow.quiz_count) || 0,
+              flashcards_count: Number(usageRow.flashcards_count) || 0,
+              resume_count: Number(usageRow.resume_count) || 0,
+            });
+          }
         }
       } catch (err) {
         console.error("Error loading student dashboard:", err);
@@ -422,6 +454,54 @@ export default function PrepDashboardPage() {
         </div>
       </section>
 
+      {/* Daily Quota Tracking */}
+      <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#005bbf] text-[22px]">tune</span>
+            <h2 className="text-base font-extrabold text-slate-900">Quotas quotidiens d&apos;assistance IA</h2>
+          </div>
+          <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full w-fit">
+            Recharge chaque nuit à 00h00 · Annales illimitées
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {(["coach_count", "quiz_count", "flashcards_count", "resume_count"] as PrepUsageField[]).map((field) => {
+            const detail = PREP_QUOTA_DETAILS[field];
+            const current = dailyUsage[field] || 0;
+            const max = detail.limit;
+            const pct = Math.min(100, Math.round((current / max) * 100));
+            const isFull = current >= max;
+
+            return (
+              <div
+                key={field}
+                className={`p-3.5 sm:p-4 rounded-2xl border transition-all ${
+                  isFull ? "bg-amber-50/60 border-amber-200" : "bg-slate-50 border-slate-200/80"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="material-symbols-outlined text-slate-600 text-[20px]">{detail.icon}</span>
+                  <span className={`text-xs font-black tabular-nums ${isFull ? "text-amber-700 font-extrabold" : "text-slate-800"}`}>
+                    {current} / {max}
+                  </span>
+                </div>
+                <p className="font-extrabold text-xs text-slate-900 truncate">{detail.label}</p>
+                <div className="w-full bg-slate-200 h-1.5 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      isFull ? "bg-amber-500" : "bg-[#005bbf]"
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Main Tools Bento Grid */}
       <section className="space-y-4">
         <h2 className="text-lg font-bold text-slate-900">Outils essentiels de révision</h2>
@@ -458,7 +538,7 @@ export default function PrepDashboardPage() {
               </div>
               <h3 className="font-extrabold text-lg text-slate-900">Annales Officielles</h3>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                Consulte les sujets 2023, 2024 et 2025 avec corrigés types conformes aux barèmes sénégalais.
+                Consulte les sujets 2023 à 2026 avec corrigés types conformes aux barèmes sénégalais.
               </p>
             </div>
             <div className="pt-4 flex items-center gap-1 text-xs font-bold text-[#FF6B00]">

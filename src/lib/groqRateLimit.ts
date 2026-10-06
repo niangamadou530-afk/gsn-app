@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const RATE_LIMIT_ERROR =
-  "Beaucoup d'élèves génèrent du contenu en ce moment, réessaie dans quelques secondes.";
+  "Beaucoup d'élèves génèrent du contenu en ce moment. Merci de patienter quelques instants avant de réessayer.";
 
 function sbClient() {
   return createClient(
@@ -11,22 +11,45 @@ function sbClient() {
   );
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Tente d'acquérir un slot Groq dans la fenêtre d'une minute.
- * Retourne true si autorisé, false si la limite de 28 req/min est atteinte.
- * En cas d'erreur Supabase, laisse passer pour ne pas bloquer l'app.
+ * En cas de saturation du quota (~28 req/min), patiente jusqu'à 5 secondes max
+ * pour obtenir un créneau disponible sans dépasser le budget global.
+ * Retourne true si un slot est obtenu, false si la limite reste saturée.
  */
-export async function acquireGroqSlot(): Promise<boolean> {
-  try {
-    const { data, error } = await sbClient().rpc("check_groq_rate_limit");
-    if (error) {
-      console.error("groq_rate_limit rpc error:", error.message);
+export async function acquireGroqSlot(maxWaitMs: number = 5000): Promise<boolean> {
+  const startTime = Date.now();
+  const retryIntervalMs = 1500;
+
+  while (Date.now() - startTime <= maxWaitMs) {
+    try {
+      const { data, error } = await sbClient().rpc("check_groq_rate_limit");
+      if (error) {
+        console.error("groq_rate_limit rpc error:", error.message);
+        return true; // En cas d'erreur RPC, on laisse passer pour ne pas bloquer
+      }
+
+      if (data === true) {
+        return true;
+      }
+    } catch {
       return true;
     }
-    return data === true;
-  } catch {
-    return true;
+
+    // Si le délai max de 5s est bientôt atteint, ne pas attendre au-delà
+    const elapsed = Date.now() - startTime;
+    const remaining = maxWaitMs - elapsed;
+    if (remaining <= 200) {
+      break;
+    }
+
+    const wait = Math.min(retryIntervalMs, remaining);
+    await sleep(wait);
   }
+
+  return false;
 }
 
 /** Retourne directement une NextResponse 503 avec le message standard. */

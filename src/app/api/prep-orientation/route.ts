@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { GROQ_MODELS, PHOTO_ANALYSIS_UNAVAILABLE_MESSAGE } from "@/lib/groqModels";
+
+export const maxDuration = 60;
 
 const LYCEES_SN = `
 MEILLEURS LYCÉES PUBLICS DU SÉNÉGAL :
@@ -167,19 +170,27 @@ Règles :
     if (fileType.startsWith("image/")) {
       const base64 = buffer.toString("base64");
       const mimeType = fileType as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-      const completion = await groq.chat.completions.create({
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
-            { type: "text", text: orientationPrompt("(voir image du relevé ci-dessus)") },
-          ],
-        }],
-        model: "qwen/qwen3.6-27b",
-        max_tokens: 2000,
-        temperature: 0.2,
-      });
-      content = completion.choices[0]?.message?.content ?? "";
+      try {
+        const completion = await groq.chat.completions.create({
+          messages: [{
+            role: "user",
+            content: [
+              { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+              { type: "text", text: orientationPrompt("(voir image du relevé ci-dessus)") },
+            ],
+          }],
+          model: GROQ_MODELS.VISION,
+          max_tokens: 2000,
+          temperature: 0.2,
+        });
+        content = completion.choices[0]?.message?.content ?? "";
+      } catch (imgErr) {
+        console.error("Orientation image analysis error:", imgErr);
+        return NextResponse.json(
+          { error: PHOTO_ANALYSIS_UNAVAILABLE_MESSAGE },
+          { status: 400 }
+        );
+      }
     } else {
       // PDF or text file
       const text = buffer.toString("utf-8")
@@ -193,7 +204,7 @@ Règles :
           { role: "system", content: "Tu es une API JSON. Réponds uniquement avec du JSON valide, sans markdown." },
           { role: "user", content: orientationPrompt(text || "Document PDF — extrait les informations visibles.") },
         ],
-        model: "openai/gpt-oss-20b",
+        model: GROQ_MODELS.DEFAULT,
         max_tokens: 2000,
         temperature: 0.2,
       });

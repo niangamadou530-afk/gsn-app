@@ -4,29 +4,31 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const ADMIN_EMAIL = "niangamadou530@gmail.com";
-
 export default function AdminAuthPage() {
   const router = useRouter();
 
   useEffect(() => {
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user?.email !== ADMIN_EMAIL) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
         router.replace("/");
         return;
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        await fetch("/api/admin/verify", {
+      try {
+        const res = await fetch("/api/admin/verify", {
           method: "POST",
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
-      }
 
-      router.replace("/admin/dashboard");
+        if (res.ok) {
+          router.replace("/admin/dashboard");
+        } else {
+          router.replace("/");
+        }
+      } catch {
+        router.replace("/");
+      }
     })();
   }, [router]);
 

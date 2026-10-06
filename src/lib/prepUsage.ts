@@ -1,13 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+import { PREP_DAILY_QUOTAS, PrepUsageField } from "./prep-config";
 
-export type UsageField = "quiz_count" | "flashcards_count" | "resume_count" | "coach_count";
+export type UsageField = PrepUsageField;
 
-const DAILY_LIMITS: Record<UsageField, number> = {
-  quiz_count: 10,
-  flashcards_count: 8,
-  resume_count: 5,
-  coach_count: 20,
-};
+export const DAILY_LIMITS = PREP_DAILY_QUOTAS;
 
 export function limitMessage(field: UsageField): string {
   const lim = DAILY_LIMITS[field];

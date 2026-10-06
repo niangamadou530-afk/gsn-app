@@ -402,3 +402,46 @@ export const PREP_WHATSAPP_SUPPORT = {
     return `https://wa.me/221781246504?text=${encodeURIComponent(text)}`;
   },
 };
+
+/**
+ * Quotas quotidiens d'utilisation IA par élève
+ * Centralisés en un point unique pour :
+ * 1. Les vérifications serveur (/api/prep-generate, /api/prep-coach)
+ * 2. Les messages envoyés à l'élève (« 10/10 », etc.)
+ * 3. L'affichage en direct sur le Dashboard (/prep/dashboard)
+ */
+export type PrepUsageField = "coach_count" | "quiz_count" | "flashcards_count" | "resume_count";
+
+export const PREP_DAILY_QUOTAS: Record<PrepUsageField, number> = {
+  coach_count: 10,
+  quiz_count: 5,
+  flashcards_count: 4,
+  resume_count: 3,
+};
+
+export const PREP_QUOTA_DETAILS: Record<PrepUsageField, { label: string; limit: number; icon: string; description: string }> = {
+  coach_count: {
+    label: "Coach IA Personnel",
+    limit: PREP_DAILY_QUOTAS.coach_count,
+    icon: "smart_toy",
+    description: "Questions pédagogiques et méthodologie",
+  },
+  quiz_count: {
+    label: "Génération de Quiz",
+    limit: PREP_DAILY_QUOTAS.quiz_count,
+    icon: "quiz",
+    description: "Séries de QCM avec explications",
+  },
+  flashcards_count: {
+    label: "Fiches Flashcards",
+    limit: PREP_DAILY_QUOTAS.flashcards_count,
+    icon: "style",
+    description: "Mémorisation active par chapitre",
+  },
+  resume_count: {
+    label: "Résumés de cours",
+    limit: PREP_DAILY_QUOTAS.resume_count,
+    icon: "auto_stories",
+    description: "Synthèses ciblées par matière",
+  },
+};

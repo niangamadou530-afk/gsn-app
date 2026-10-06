@@ -5,6 +5,10 @@ import { getMatieres, getChapitres } from "@/data/programmes";
 import { getCompetences } from "@/data/competences";
 import { checkUsage, incrementUsage, limitMessage } from "@/lib/prepUsage";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
+import { GROQ_MODELS } from "@/lib/groqModels";
+import { createGroqChatCompletionWithRetry } from "@/lib/groqRetry";
+
+export const maxDuration = 60;
 
 /* ── Supabase + contenu officiel ───────────────────────── */
 
@@ -131,21 +135,30 @@ export async function POST(req: Request) {
 
   try {
     const groq = new Groq({ apiKey });
-    const completion = await groq.chat.completions.create({
+    const completion = await createGroqChatCompletionWithRetry(groq, {
       messages: [
         { role: "system", content: enrichedSystemPrompt },
         ...history.map(h => ({ role: h.role as "user" | "assistant", content: h.content })),
         { role: "user", content: message },
       ],
-      model: "openai/gpt-oss-20b",
+      model: GROQ_MODELS.DEFAULT,
       max_tokens: 500,
       temperature: 0.7,
     });
-    const text = completion.choices[0]?.message?.content ?? "Désolé, je n'ai pas pu répondre.";
+    const text = completion.choices[0]?.message?.content?.trim();
+    if (!text) {
+      return NextResponse.json(
+        { error: "Le Coach IA n'a pas pu formuler sa réponse. Aucun crédit n'a été décompté." },
+        { status: 502 }
+      );
+    }
     await incrementUsage(token, check.userId, "coach_count", check.current, check.rowExists);
     return NextResponse.json({ message: text });
   } catch (error: unknown) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: detail }, { status: 502 });
+    console.error("[prep-coach error]", error);
+    return NextResponse.json(
+      { error: "Le Coach IA prend une courte pause pour recharger ses fiches. Réessaie dans quelques instants !" },
+      { status: 502 }
+    );
   }
 }

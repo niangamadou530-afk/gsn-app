@@ -36,21 +36,44 @@ export async function POST(req: NextRequest) {
   const userId = user.id;
 
   try {
-    // 2. Suppression de toutes les données associées à l'élève dans les tables applicatives
-    await Promise.allSettled([
-      sbAdmin.from("prep_students").delete().eq("user_id", userId),
-      sbAdmin.from("prep_quiz_results").delete().eq("user_id", userId),
-      sbAdmin.from("prep_flashcards_progress").delete().eq("user_id", userId),
-      sbAdmin.from("prep_parent_links").delete().eq("student_user_id", userId),
-      sbAdmin.from("prep_usage_quotidien").delete().eq("user_id", userId),
-      sbAdmin.from("prep_feedback").delete().eq("user_id", userId),
-      sbAdmin.from("users").delete().eq("id", userId),
-    ]);
+    const failedSteps: string[] = [];
+
+    // 2. Suppression de toutes les données associées à l'élève dans les tables applicatives existantes
+    const tablesToDelete = [
+      { table: "prep_students", col: "user_id" },
+      { table: "prep_quiz_results", col: "user_id" },
+      { table: "prep_flashcards_progress", col: "user_id" },
+      { table: "prep_parent_links", col: "student_user_id" },
+      { table: "prep_usage_quotidien", col: "user_id" },
+      { table: "prep_feedback", col: "user_id" },
+      { table: "users", col: "id" },
+    ];
+
+    for (const { table, col } of tablesToDelete) {
+      const { error } = await sbAdmin.from(table).delete().eq(col, userId);
+      if (error && error.code !== "42P01") { // Ignore if table does not exist
+        console.warn(`[delete-account] Échec suppression dans ${table}:`, error.message);
+        failedSteps.push(`Table ${table} : ${error.message}`);
+      }
+    }
 
     // 3. Suppression définitive du compte dans auth.users
     const { error: deleteAuthError } = await sbAdmin.auth.admin.deleteUser(userId);
     if (deleteAuthError) {
-      console.warn("Notice deleteAuthUser:", deleteAuthError.message);
+      console.error("[delete-account] Échec suppression compte auth:", deleteAuthError.message);
+      failedSteps.push(`Compte d'authentification : ${deleteAuthError.message}`);
+    }
+
+    // 4. Si une étape essentielle a échoué, le signaler explicitement
+    if (failedSteps.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "La suppression complète du compte a échoué sur certaines étapes.",
+          details: failedSteps,
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -59,7 +82,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     return NextResponse.json(
-      { error: err?.message || "Erreur lors de la suppression du compte" },
+      { error: err?.message || "Erreur inattendue lors de la suppression du compte" },
       { status: 500 }
     );
   }
