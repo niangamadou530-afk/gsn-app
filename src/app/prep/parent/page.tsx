@@ -33,23 +33,54 @@ export default function ParentPage() {
   const [isStudent, setIsStudent] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user;
       if (!user) return;
       supabase.from("prep_students").select("exam_type").eq("user_id", user.id).limit(1)
         .then(({ data }) => { if (data?.[0]) setIsStudent(true); });
+
+      // Load existing code if already created
+      if (session?.access_token) {
+        fetch("/api/prep/parent-code", {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.found && data.code) {
+              setMyCode(data.code);
+              if (data.parentEmail && data.parentEmail !== "Non renseigné") {
+                setMyEmail(data.parentEmail);
+              }
+              setCodeSaved(true);
+            }
+          })
+          .catch(() => {});
+      }
     });
   }, []);
 
   async function generateCode() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
-    const { error } = await supabase.from("prep_parent_links").upsert({
-      student_user_id: user.id,
-      parent_email: myEmail || t("prep.parent.emailNotProvided"),
-      access_code: code,
-    }, { onConflict: "student_user_id" });
-    if (!error) { setMyCode(code); setCodeSaved(true); }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return;
+    try {
+      const res = await fetch("/api/prep/parent-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ parentEmail: myEmail }),
+      });
+      const data = await res.json();
+      if (res.ok && data.code) {
+        setMyCode(data.code);
+        setCodeSaved(true);
+      } else {
+        setError(data.error || "Erreur lors de la génération du code.");
+      }
+    } catch {
+      setError("Impossible de contacter le serveur pour générer le code.");
+    }
   }
 
   async function lookupCode() {
@@ -57,58 +88,33 @@ export default function ParentPage() {
     setLoading(true);
     setError("");
     try {
-      const { data: link } = await supabase
-        .from("prep_parent_links")
-        .select("student_user_id")
-        .eq("access_code", accessCode.toUpperCase().trim())
-        .limit(1);
+      const res = await fetch("/api/prep/parent-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: accessCode.toUpperCase().trim() }),
+      });
 
-      if (!link?.[0]) {
-        if (isPreviewEnvironment() && accessCode.toUpperCase().trim() === "DEMO12") {
-          setStudentName("Amadou Niang (Démo)");
-          setStudentData({
-            exam_type: "BAC",
-            serie: "S2",
-            country: "Sénégal",
-            level_per_subject: {
-              "Mathématiques": { level: "Fort", score: 85 },
-              "Sciences Physiques": { level: "Fort", score: 88 },
-              "SVT": { level: "Moyen", score: 72 },
-              "Philosophie": { level: "Moyen", score: 65 },
-              "Français": { level: "Fort", score: 78 }
-            }
-          });
-          setExamDate("2026-07-02");
-          setResults([
-            { subject: "Mathématiques", score: 17, created_at: new Date().toISOString() },
-            { subject: "Sciences Physiques", score: 16, created_at: new Date(Date.now() - 86400000).toISOString() },
-            { subject: "SVT", score: 14, created_at: new Date(Date.now() - 172800000).toISOString() }
-          ]);
-          setMode("student_view");
-          setLoading(false);
-          return;
-        }
+      const data = await res.json();
+
+      if (res.status === 429) {
+        setError(data.error || "Trop de tentatives pour ce code. Patiente 15 minutes.");
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok || !data.found) {
         setMode("not_found");
         setLoading(false);
         return;
       }
 
-      const studentId = link[0].student_user_id;
-
-      const [{ data: profile }, { data: stu }, { data: prog }, { data: res }] = await Promise.all([
-        supabase.from("users").select("name").eq("id", studentId).single(),
-        supabase.from("prep_students").select("*").eq("user_id", studentId).limit(1),
-        supabase.from("prep_programs").select("exam_date").eq("user_id", studentId).limit(1),
-        supabase.from("prep_results").select("subject, score, created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
-      ]);
-
-      setStudentName(profile?.name ?? t("prep.parent.studentFallback"));
-      setStudentData((stu?.[0] as StudentData) ?? null);
-      setExamDate(prog?.[0]?.exam_date ?? "");
-      setResults((res ?? []) as typeof results);
+      setStudentName(data.studentName || t("prep.parent.studentFallback"));
+      setStudentData((data.studentData as StudentData) ?? null);
+      setExamDate(data.examDate || "");
+      setResults(data.results || []);
       setMode("student_view");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : t("prep.parent.error.generic"));
+      setError(e instanceof Error ? e.message : t("prep.parent.errorLookup"));
     } finally {
       setLoading(false);
     }

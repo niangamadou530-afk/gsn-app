@@ -363,17 +363,19 @@ function GenererPageInner() {
         body: JSON.stringify(body),
       });
 
-      if (res.status === 503) {
-        const e = await res.json();
-        setError(e.error ?? t("prep.generer.error.rateLimited"));
+      if (res.status === 503 || res.status === 429) {
+        setError("Beaucoup d'élèves révisent en ce moment ! Patiente quelques secondes et réessaie.");
         setRetrySeconds(5);
         setPhase(mode === "A" ? "setup_a" : "setup_b");
         return;
       }
 
       if (!res.ok) {
-        const e = await res.json();
-        throw new Error(e.error ?? t("prep.generer.error.server"));
+        const e = await res.json().catch(() => ({}));
+        const safeMsg = typeof e.error === "string" && !e.error.includes("Groq") && !e.error.includes("502") && !e.error.includes("JSON")
+          ? e.error
+          : "Oups ! La génération a rencontré un petit contretemps. Réessaie dans un instant.";
+        throw new Error(safeMsg);
       }
 
       const data = await res.json();
@@ -412,7 +414,8 @@ function GenererPageInner() {
         setPhase("resume_result");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : t("prep.generer.error.unknown"));
+      console.error("[prep/generer error]", err);
+      setError("Oups ! Nous n'avons pas pu générer ton contenu pour le moment. Ne t'inquiète pas, ta session et tes crédits sont préservés !");
       setPhase(mode === "A" ? "setup_a" : "setup_b");
     }
   }
@@ -447,8 +450,10 @@ function GenererPageInner() {
     const { error } = await supabase.from("prep_resumes").insert({
       user_id: userId, matiere: mat, chapitre: chap, contenu: texte,
     });
-    if (error) setError(t("prep.generer.error.saveResumeError", { message: error.message, code: error.code }));
-    else setResumeSaved(true);
+    if (error) {
+      console.warn("prep_resumes save warning:", error.message);
+      setError("Ton résumé est prêt ! La sauvegarde automatique a rencontré un léger contretemps.");
+    } else setResumeSaved(true);
   }
 
   /* ── QCM logic ── */
@@ -657,7 +662,11 @@ function GenererPageInner() {
 
         <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <FriendlyErrorBanner
+          error={error}
+          onRetry={generate}
+          disabled={!fileA || !matiereA || retrySeconds > 0}
+        />
 
         <button
           disabled={!fileA || !matiereA || retrySeconds > 0}
@@ -769,7 +778,11 @@ function GenererPageInner() {
 
           <GenTypeSelector genType={genType} setGenType={setGenType} quizMode={quizMode} setQuizMode={setQuizMode} />
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <FriendlyErrorBanner
+            error={error}
+            onRetry={generate}
+            disabled={!matiereB || retrySeconds > 0}
+          />
 
           <button
             disabled={!matiereB || retrySeconds > 0}
@@ -1645,6 +1658,38 @@ function PageHeader({ title, onBack, action }: { title: string; onBack: () => vo
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </header>
+  );
+}
+
+function FriendlyErrorBanner({
+  error,
+  onRetry,
+  disabled,
+}: {
+  error: string;
+  onRetry: () => void;
+  disabled?: boolean;
+}) {
+  if (!error) return null;
+  return (
+    <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 space-y-3 shadow-xs">
+      <div className="flex items-start gap-3">
+        <span className="text-xl select-none">💛</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-extrabold text-sm text-amber-950">Génération en pause</p>
+          <p className="text-xs sm:text-sm text-amber-800 mt-0.5 leading-relaxed">{error}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={disabled}
+        className="w-full py-2.5 px-4 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white font-extrabold text-xs sm:text-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+      >
+        <span className="material-symbols-outlined text-[18px]">refresh</span>
+        <span>Réessayer</span>
+      </button>
+    </div>
   );
 }
 

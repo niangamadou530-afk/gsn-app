@@ -20,8 +20,6 @@ interface Epreuve {
   nom_fichier: string | null;
 }
 
-const ANNEES = [2025, 2024, 2023];
-
 function detectGroupe(e: Epreuve): "1er" | "2eme" | "remplacement" {
   if (/2eGr/i.test(e.matiere)) return "2eme";
   if (/\/uploads\/\d{4}\/(09|10|11|12)\//.test(e.url_originale)) return "remplacement";
@@ -46,12 +44,32 @@ export default function EpreuvesPage() {
 
   const [all, setAll]           = useState<Epreuve[]>([]);
   const [loading, setLoading]   = useState(true);
-  const [annee, setAnnee]       = useState<number>(2025);
+  const [annees, setAnnees]     = useState<number[]>([2026, 2025, 2024, 2023]);
+  const [annee, setAnnee]       = useState<number>(2026);
   const [docType, setDocType]   = useState<DocType>("tous");
   const [groupe, setGroupe]     = useState<Groupe>("tous");
   const [matiere, setMatiere]   = useState("Toutes");
   const [searchQuery, setSearchQuery] = useState("");
   const [selected, setSelected] = useState<Epreuve | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(true);
+
+  // Charger dynamiquement les années disponibles depuis la table epreuves_bac
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from("epreuves_bac")
+        .select("annee")
+        .eq("examen", "BAC");
+      if (!error && data && data.length > 0) {
+        const unique = Array.from(new Set(data.map((d: { annee: number }) => Number(d.annee)).filter((y: number) => !isNaN(y) && y > 2000)))
+          .sort((a, b) => b - a);
+        if (unique.length > 0) {
+          setAnnees(unique);
+          setAnnee(unique[0]);
+        }
+      }
+    })();
+  }, []);
 
   // Guard: redirect BFEM students to their dedicated page
   useEffect(() => {
@@ -103,6 +121,7 @@ export default function EpreuvesPage() {
   }), [all, docType, groupe, matiere, searchQuery]);
 
   const pdfUrl = (e: Epreuve) => e.url_storage ?? e.url_originale;
+  const pdfProxyUrl = (e: Epreuve) => e.id ? `/api/prep-pdf-proxy?id=${e.id}` : pdfUrl(e);
 
   return (
     <div className="w-full">
@@ -138,21 +157,44 @@ export default function EpreuvesPage() {
 
             <div className="flex items-center gap-2 ml-auto">
               <a
-                href={pdfUrl(selected)}
+                href={pdfProxyUrl(selected)}
+                download={selected.nom_fichier || `${selected.matiere}_${selected.annee}.pdf`}
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs shadow-xs transition-all active:scale-95 border border-slate-200"
+                title="Télécharger pour réviser hors-ligne"
+              >
+                <span className="material-symbols-outlined text-[16px]">download</span>
+                <span className="hidden sm:inline">Télécharger (PDF)</span>
+              </a>
+              <a
+                href={pdfProxyUrl(selected)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-all active:scale-95"
               >
                 <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                <span>Ouvrir en plein écran</span>
+                <span>Plein écran</span>
               </a>
             </div>
           </div>
 
-          {/* Embedded Viewer Container */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
+          {/* Embedded Viewer Container with Instant Loading State */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden relative">
+            {pdfLoading && (
+              <div className="absolute inset-0 z-10 bg-slate-50/95 flex flex-col items-center justify-center p-6 space-y-3">
+                <div className="w-9 h-9 border-3 border-blue-200 border-t-[#005bbf] rounded-full animate-spin" />
+                <div className="text-center space-y-1">
+                  <p className="text-xs sm:text-sm font-extrabold text-slate-800">
+                    Chargement rapide du document...
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    Optimisé pour réseaux mobiles (mise en cache 7 jours)
+                  </p>
+                </div>
+              </div>
+            )}
             <iframe
-              src={pdfUrl(selected)}
+              src={pdfProxyUrl(selected)}
+              onLoad={() => setPdfLoading(false)}
               className="w-full bg-slate-50"
               style={{ height: "calc(100vh - 220px)", minHeight: "560px", border: "none" }}
               title={selected.nom_fichier ?? selected.matiere}
@@ -173,7 +215,7 @@ export default function EpreuvesPage() {
                 Annales Officielles du <span className="text-[#005bbf]">BAC</span>
               </h1>
               <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                Consulte les épreuves réelles des sessions 2023 à 2025 avec leurs corrigés détaillés pour toutes les séries (S1, S2, L1, L2, STEG, T).
+                Consulte les épreuves réelles des sessions {annees.length > 1 ? `${annees[annees.length - 1]} à ${annees[0]}` : annees[0]} avec leurs corrigés détaillés pour toutes les séries (S1, S2, L1, L2, STEG, T).
               </p>
             </div>
 
@@ -207,9 +249,9 @@ export default function EpreuvesPage() {
             {/* Year Selector & Document Type */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               {/* Year Pills */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1">Session :</span>
-                {ANNEES.map((a) => (
+                {annees.map((a) => (
                   <button
                     key={a}
                     onClick={() => setAnnee(a)}

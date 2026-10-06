@@ -6,6 +6,7 @@ import { getCompetences } from "@/data/competences";
 import { checkUsage, incrementUsage, limitMessage, type UsageField } from "@/lib/prepUsage";
 import { acquireGroqSlot, rateLimitResponse } from "@/lib/groqRateLimit";
 import { buildCacheKey, getCached, setCached } from "@/lib/groqCache";
+import { createGroqChatCompletionWithRetry } from "@/lib/groqRetry";
 
 const groqClient = () => {
   const apiKey = process.env.GROQ_API_KEY;
@@ -246,6 +247,110 @@ function getFormatResume(matiere: string): string {
 <section id="examen"><h2>Ce qui tombe aux examens</h2>...</section>`;
 }
 
+function getInstructionsMatiere(matiere: string): string {
+  const m = (matiere || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const blocks: string[] = [];
+
+  const isMathPhys = m.includes("math") || m.includes("physiq") || m.includes("chim");
+  const isSvt = m.includes("svt") || m.includes("biol") || m.includes("naturell");
+  const isPhilo = m.includes("philo");
+  const isFrancais = m.includes("franc") || m.includes("litt");
+  const isHist = m.includes("hist");
+  const isGeo = m.includes("geo");
+  const isAnglais = m.includes("anglais");
+  const isEco = m.includes("eco") || m.includes("gest") || m.includes("compt");
+
+  if (isMathPhys) {
+    blocks.push(`Pour chaque notion du chapitre tu dois obligatoirement écrire :
+- L'énoncé complet de la notion, loi ou théorème avec toutes ses conditions
+- La formule exacte avec chaque variable expliquée et son unité
+- Les conditions d'application de la formule
+- Un exemple numérique résolu étape par étape avec tous les calculs détaillés, de préférence tiré d'un vrai sujet BAC sénégalais. Si aucun sujet disponible créer un exemple cohérent et pertinent avec le niveau BAC
+- Un deuxième exemple plus difficile également résolu complètement, de préférence tiré d'un vrai sujet BAC. Mentionner l'année et le groupe si disponible
+- Les erreurs fréquentes que font les élèves sénégalais sur cette notion
+- Ce qui est demandé exactement au BAC sur cette notion avec les formulations types des sujets`);
+  }
+
+  if (isSvt) {
+    blocks.push(`- L'explication détaillée de chaque mécanisme biologique avec tous les acteurs cellulaires et moléculaires nommés
+- Les schémas décrits complètement en texte avec toutes les structures nommées et leurs rôles
+- Les expériences classiques à connaître avec protocole complet, résultats attendus et conclusions
+- Les définitions précises de chaque terme scientifique
+- Les tableaux comparatifs quand c'est pertinent : par exemple immunité humorale vs cellulaire
+- Les sujets types qui tombent au BAC avec exemples réels si disponibles`);
+  }
+
+  if (isPhilo) {
+    blocks.push(`- La problématique centrale du chapitre formulée clairement
+- La biographie courte de chaque auteur au programme : dates, nationalité, œuvres principales, contexte historique
+- La thèse de chaque auteur avec ses arguments principaux développés en paragraphes explicatifs détaillés
+- Les concepts clés définis et expliqués avec des exemples concrets de la vie quotidienne
+- Les distinctions philosophiques importantes : par exemple liberté positive vs liberté négative
+- Les citations courtes et exactes des auteurs clés avec leur source
+- Un plan de dissertation type complet sur ce chapitre avec introduction développement et conclusion
+- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes`);
+  }
+
+  if (isFrancais) {
+    blocks.push(`- La présentation complète du mouvement littéraire avec contexte historique, social et culturel
+- Les caractéristiques stylistiques avec exemples tirés des œuvres au programme
+- La biographie de chaque auteur au programme : vie, œuvres, style, place dans l'histoire littéraire
+- L'analyse détaillée des œuvres principales avec thèmes, personnages, procédés narratifs et stylistiques
+- Les figures de style à identifier avec définition et exemples tirés des textes au programme
+- La méthodologie complète du type d'exercice : dissertation, commentaire composé ou résumé de texte avec exemple rédigé
+- Les sujets types qui tombent au BAC avec exemples de sujets réels si disponibles`);
+  }
+
+  if (isHist) {
+    blocks.push(`- La chronologie détaillée avec toutes les dates importantes et leur signification
+- Les causes approfondies avec distinction claire entre causes profondes à long terme et causes immédiates
+- La biographie détaillée de chaque acteur historique important : origine, rôle exact, actions décisives, héritage
+- Les faits et événements développés en paragraphes explicatifs complets avec contexte
+- Les conséquences analysées à court terme, moyen terme et long terme
+- Les documents et sources historiques classiques utilisés dans les épreuves sénégalaises
+- La méthodologie de la dissertation historique et du commentaire de document
+- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes des sujets réels si disponibles`);
+  }
+
+  if (isGeo) {
+    blocks.push(`- Les données statistiques importantes avec chiffres précis, pourcentages, rangs mondiaux et années de référence
+- Les cartes décrites complètement en texte avec localisation précise des éléments : pays, villes, fleuves, reliefs
+- Les mécanismes géographiques expliqués en détail avec causes et conséquences
+- Les exemples concrets avec noms précis de pays, villes, régions, organisations
+- Les notions et concepts géographiques définis avec précision
+- La méthodologie du commentaire de carte et du commentaire de document géographique avec exemple
+- Les sujets types qui tombent au BAC au Sénégal`);
+  }
+
+  if (isAnglais) {
+    blocks.push(`- Le vocabulaire thématique complet avec traduction française et exemple d'utilisation dans une phrase en contexte
+- Les structures grammaticales importantes avec exemples en anglais et traduction
+- Deux ou trois paragraphes en anglais sur le thème avec traduction complète en français
+- Les expressions idiomatiques et phrasal verbs utiles pour l'épreuve avec traduction et exemple
+- Un exemple complet de réponse à une question de compréhension en anglais
+- Un exemple de production écrite courte sur le thème : lettre ou essai de 150 mots minimum`);
+  }
+
+  if (isEco) {
+    blocks.push(`- Les définitions précises et complètes de tous les concepts économiques du chapitre
+- Les mécanismes économiques expliqués avec schémas décrits en texte et exemples chiffrés
+- Les données statistiques importantes avec sources : Banque Mondiale, FMI, ANSD Sénégal
+- Les exemples concrets tirés de l'économie sénégalaise et de l'économie mondiale avec noms précis
+- Les théories économiques avec leurs auteurs, dates et thèses principales
+- Les sujets types qui tombent au BAC avec formulations exactes si disponibles`);
+  }
+
+  if (blocks.length === 0) {
+    blocks.push(`- Les définitions précises et complètes de tous les concepts essentiels du chapitre
+- Les mécanismes et principes clés expliqués de manière claire et détaillée
+- Les méthodologies d'épreuve et types de questions fréquentes au BAC ou BFEM
+- Des exemples concrets et résolus étape par étape adaptés au programme sénégalais
+- Les erreurs courantes à éviter lors des examens`);
+  }
+
+  return `INSTRUCTIONS DE CONTENU POUR CETTE MATIÈRE (${matiere}) :\n\n` + blocks.join("\n\n");
+}
+
 function resumePrompt(matiere: string, chapitre: string, examType: string, serie: string, fromDoc: boolean, contenuCtx = "", sujetsBlock = ""): string {
   const formatStr = getFormatResume(matiere);
 
@@ -272,6 +377,8 @@ Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`
     ? `\nSUJETS ET CORRIGÉS RÉELS :\n${sujetsBlock.replace(/^\n+/, "")}`
     : "";
 
+  const instructionsMatiere = getInstructionsMatiere(matiere);
+
   return `Tu es un professeur expert du BAC et BFEM sénégalais. Tu génères un résumé complet et exhaustif sur ${matiere}${serie ? ` série ${serie}` : ""}${chapitre ? ` chapitre ${chapitre}` : ""}.
 
 ══════════════════════════════════════════
@@ -290,79 +397,7 @@ RÈGLES DE FORMAT ABSOLUES (violations = réponse invalide) :
 COMPÉTENCES EXIGIBLES OFFICIELLES :
 ${competencesBlock}
 ${sujetsSection}
-INSTRUCTIONS DE CONTENU PAR MATIÈRE :
-
-Si la matière est Mathématiques ou Sciences Physiques :
-Pour chaque notion du chapitre tu dois obligatoirement écrire :
-- L'énoncé complet de la notion, loi ou théorème avec toutes ses conditions
-- La formule exacte avec chaque variable expliquée et son unité
-- Les conditions d'application de la formule
-- Un exemple numérique résolu étape par étape avec tous les calculs détaillés, de préférence tiré d'un vrai sujet BAC sénégalais. Si aucun sujet disponible créer un exemple cohérent et pertinent avec le niveau BAC
-- Un deuxième exemple plus difficile également résolu complètement, de préférence tiré d'un vrai sujet BAC. Mentionner l'année et le groupe si disponible
-- Les erreurs fréquentes que font les élèves sénégalais sur cette notion
-- Ce qui est demandé exactement au BAC sur cette notion avec les formulations types des sujets
-
-Si la matière est SVT :
-- L'explication détaillée de chaque mécanisme biologique avec tous les acteurs cellulaires et moléculaires nommés
-- Les schémas décrits complètement en texte avec toutes les structures nommées et leurs rôles
-- Les expériences classiques à connaître avec protocole complet, résultats attendus et conclusions
-- Les définitions précises de chaque terme scientifique
-- Les tableaux comparatifs quand c'est pertinent : par exemple immunité humorale vs cellulaire
-- Les sujets types qui tombent au BAC avec exemples réels si disponibles
-
-Si la matière est Philosophie :
-- La problématique centrale du chapitre formulée clairement
-- La biographie courte de chaque auteur au programme : dates, nationalité, œuvres principales, contexte historique
-- La thèse de chaque auteur avec ses arguments principaux développés en paragraphes explicatifs détaillés
-- Les concepts clés définis et expliqués avec des exemples concrets de la vie quotidienne
-- Les distinctions philosophiques importantes : par exemple liberté positive vs liberté négative
-- Les citations courtes et exactes des auteurs clés avec leur source
-- Un plan de dissertation type complet sur ce chapitre avec introduction développement et conclusion
-- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes
-
-Si la matière est Français :
-- La présentation complète du mouvement littéraire avec contexte historique, social et culturel
-- Les caractéristiques stylistiques avec exemples tirés des œuvres au programme
-- La biographie de chaque auteur au programme : vie, œuvres, style, place dans l'histoire littéraire
-- L'analyse détaillée des œuvres principales avec thèmes, personnages, procédés narratifs et stylistiques
-- Les figures de style à identifier avec définition et exemples tirés des textes au programme
-- La méthodologie complète du type d'exercice : dissertation, commentaire composé ou résumé de texte avec exemple rédigé
-- Les sujets types qui tombent au BAC avec exemples de sujets réels si disponibles
-
-Si la matière est Histoire :
-- La chronologie détaillée avec toutes les dates importantes et leur signification
-- Les causes approfondies avec distinction claire entre causes profondes à long terme et causes immédiates
-- La biographie détaillée de chaque acteur historique important : origine, rôle exact, actions décisives, héritage
-- Les faits et événements développés en paragraphes explicatifs complets avec contexte
-- Les conséquences analysées à court terme, moyen terme et long terme
-- Les documents et sources historiques classiques utilisés dans les épreuves sénégalaises
-- La méthodologie de la dissertation historique et du commentaire de document
-- Les sujets types qui tombent au BAC au Sénégal avec formulations exactes des sujets réels si disponibles
-
-Si la matière est Géographie :
-- Les données statistiques importantes avec chiffres précis, pourcentages, rangs mondiaux et années de référence
-- Les cartes décrites complètement en texte avec localisation précise des éléments : pays, villes, fleuves, reliefs
-- Les mécanismes géographiques expliqués en détail avec causes et conséquences
-- Les exemples concrets avec noms précis de pays, villes, régions, organisations
-- Les notions et concepts géographiques définis avec précision
-- La méthodologie du commentaire de carte et du commentaire de document géographique avec exemple
-- Les sujets types qui tombent au BAC au Sénégal
-
-Si la matière est Anglais :
-- Le vocabulaire thématique complet avec traduction française et exemple d'utilisation dans une phrase en contexte
-- Les structures grammaticales importantes avec exemples en anglais et traduction
-- Deux ou trois paragraphes en anglais sur le thème avec traduction complète en français
-- Les expressions idiomatiques et phrasal verbs utiles pour l'épreuve avec traduction et exemple
-- Un exemple complet de réponse à une question de compréhension en anglais
-- Un exemple de production écrite courte sur le thème : lettre ou essai de 150 mots minimum
-
-Si la matière est Économie Générale :
-- Les définitions précises et complètes de tous les concepts économiques du chapitre
-- Les mécanismes économiques expliqués avec schémas décrits en texte et exemples chiffrés
-- Les données statistiques importantes avec sources : Banque Mondiale, FMI, ANSD Sénégal
-- Les exemples concrets tirés de l'économie sénégalaise et de l'économie mondiale avec noms précis
-- Les théories économiques avec leurs auteurs, dates et thèses principales
-- Les sujets types qui tombent au BAC avec formulations exactes si disponibles
+${instructionsMatiere}
 
 RÈGLE ABSOLUE DE CONTENU :
 Ce résumé doit être suffisamment complet pour qu'un élève puisse réviser uniquement avec lui sans avoir besoin d'aucun autre document.
@@ -474,7 +509,7 @@ export async function POST(req: Request) {
       const questions = body.questions as Array<{ id: number; question: string }>;
       const answers   = body.answers as Record<number, string>;
       const prompt = evaluatePrompt(questions, answers, matiere, chapitre, examType, serie);
-      const completion = await groq.chat.completions.create({
+      const completion = await createGroqChatCompletionWithRetry(groq, {
         messages: [sysJson(), { role: "user", content: prompt }],
         model: "openai/gpt-oss-20b",
         max_tokens: 2000,
@@ -495,7 +530,7 @@ export async function POST(req: Request) {
 
       if (fileType.startsWith("image/")) {
         const mimeType = fileType as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-        const completion = await groq.chat.completions.create({
+        const completion = await createGroqChatCompletionWithRetry(groq, {
           messages: [{
             role: "user",
             content: [
@@ -520,7 +555,7 @@ export async function POST(req: Request) {
           ? [{ role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }]
           : [sysJson(), { role: "user" as const, content: `${prompt}\n\nContenu du document :\n${text}` }];
 
-        const completion = await groq.chat.completions.create({
+        const completion = await createGroqChatCompletionWithRetry(groq, {
           messages: msgs,
           model: "openai/gpt-oss-20b",
           max_tokens: 3000,
@@ -562,7 +597,7 @@ export async function POST(req: Request) {
       }
 
       const prompt = resumePrompt(matiere, chapitre, examType, serie, false, fullCtx, sujetsBlock);
-      const completion = await groq.chat.completions.create({
+      const completion = await createGroqChatCompletionWithRetry(groq, {
         messages: [{ role: "user", content: prompt }],
         model: "openai/gpt-oss-120b",
         max_tokens: 4000,
@@ -578,7 +613,7 @@ export async function POST(req: Request) {
     if (type === "flashcards") prompt = flashcardsPrompt(matiere, chapitre, examType, serie, false, fullCtx);
     else                       prompt = quizPrompt(matiere, chapitre, examType, serie, quizMode, false, fullCtx);
 
-    const completion = await groq.chat.completions.create({
+    const completion = await createGroqChatCompletionWithRetry(groq, {
       messages: [sysJson(), { role: "user", content: prompt }],
       model: "openai/gpt-oss-20b",
       max_tokens: 3000,
@@ -593,6 +628,6 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const detail = error instanceof Error ? error.message : String(error);
     console.error("prep-generate error:", detail);
-    return NextResponse.json({ error: `Erreur IA: ${detail}` }, { status: 502 });
+    return NextResponse.json({ error: "Le service d'intelligence artificielle est temporairement indisponible. Veuillez réessayer dans un instant." }, { status: 502 });
   }
 }

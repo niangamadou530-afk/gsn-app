@@ -378,3 +378,27 @@ export function getExamCountdown(examType: string = "BAC", customDate?: string |
     urgencyLevel,
   };
 }
+
+/**
+ * Configuration du support officiel WhatsApp pour GSN PREP
+ * Centralisée ici pour modification globale en un seul endroit.
+ */
+export const PREP_WHATSAPP_SUPPORT = {
+  /** Numéro au format international sans signe + ni espaces (ex: 221781246504) */
+  phoneRaw: "221781246504",
+  /** Numéro lisible pour affichage (ex: +221 78 124 65 04) */
+  phoneFormatted: "+221 78 124 65 04",
+  /** Indicatif pays */
+  countryCode: "+221",
+  /** Lien direct vers WhatsApp avec message d'assistance générale */
+  getGeneralHelpUrl: (customMessage?: string) => {
+    const text = customMessage || "Bonjour GSN PREP, j'ai besoin d'aide pour mon compte ou mes révisions.";
+    return `https://wa.me/221781246504?text=${encodeURIComponent(text)}`;
+  },
+  /** Lien direct vers WhatsApp pour mot de passe oublié avec identifiant prérempli */
+  getPasswordResetUrl: (identifier?: string) => {
+    const id = identifier && identifier.trim() ? identifier.trim() : "[Mon numéro d'inscription]";
+    const text = `Bonjour GSN PREP, j'ai oublié mon mot de passe. Mon numéro d'inscription est : ${id}`;
+    return `https://wa.me/221781246504?text=${encodeURIComponent(text)}`;
+  },
+};

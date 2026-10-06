@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { getExamCountdown, loadStoredCustomExamDate, CustomExamDateRecord } from "@/lib/prep-config";
+import { getExamCountdown, loadStoredCustomExamDate, CustomExamDateRecord, PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { SlowConnectionNotice, DashboardSkeleton } from "@/components/SlowConnectionNotice";
@@ -80,6 +80,16 @@ export default function PrepDashboardPage() {
   const [isPreview, setIsPreview] = useState(false);
   const [isSlowConnection, setIsSlowConnection] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [showSecurityReminder, setShowSecurityReminder] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem("gsn_sec_reminder_dismissed");
+      if (!dismissed) {
+        setShowSecurityReminder(true);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -230,6 +240,44 @@ export default function PrepDashboardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
       {isPreview && <PreviewBanner />}
+
+      {/* Non-blocking security reminder banner */}
+      {showSecurityReminder && (
+        <div className="bg-sky-50 border border-sky-200/90 rounded-2xl p-3.5 sm:p-4 flex items-center justify-between gap-3 text-sky-950 text-xs sm:text-sm animate-in fade-in shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="material-symbols-outlined text-[20px] text-sky-600 shrink-0">
+              verified_user
+            </span>
+            <p className="leading-snug">
+              <strong className="font-bold">Besoin d&apos;aide ou mot de passe oublié ?</strong> Contacte notre{" "}
+              <a
+                href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai oublié mon mot de passe et je souhaite réinitialiser mes accès.")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline font-bold text-sky-800 hover:text-sky-950"
+              >
+                support WhatsApp ({PREP_WHATSAPP_SUPPORT.phoneFormatted})
+              </a>{" "}
+              pour réinitialiser tes identifiants.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowSecurityReminder(false);
+              try {
+                localStorage.setItem("gsn_sec_reminder_dismissed", "1");
+              } catch {}
+            }}
+            className="text-sky-500 hover:text-sky-800 p-1 rounded-lg shrink-0 transition-colors"
+            title="Masquer"
+            aria-label="Masquer ce rappel"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner / Student Greeting Header */}
       <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
@@ -247,9 +295,19 @@ export default function PrepDashboardPage() {
             )}
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Bonjour, <span className="text-[#005bbf]">{prenom}</span> 👋
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Bonjour, <span className="text-[#005bbf]">{prenom}</span> 👋
+            </h1>
+            <Link
+              href="/prep/profil"
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
+              title="Gérer mon profil et mes données"
+            >
+              <span className="material-symbols-outlined text-[15px]">manage_accounts</span>
+              <span>Mon profil</span>
+            </Link>
+          </div>
           <p className="text-xs sm:text-sm text-slate-500">
             Objectif session 2027 : révise méthodiquement chaque jour pour décrocher la mention.
           </p>
@@ -506,13 +564,13 @@ export default function PrepDashboardPage() {
         </button>
 
         <a
-          href="https://wa.me/221781246504?text=Bonjour%20GSN%20Prep%2C%20j%27ai%20besoin%20d%27aide"
+          href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai besoin d'aide pour mon compte ou mes révisions.")}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
         >
           <span className="material-symbols-outlined text-[16px]">support_agent</span>
-          <span>Besoin d&apos;assistance ? Contacte l&apos;équipe GSN sur WhatsApp</span>
+          <span>Besoin d&apos;assistance ? Contacte l&apos;équipe GSN sur WhatsApp ({PREP_WHATSAPP_SUPPORT.phoneFormatted})</span>
         </a>
       </section>
 

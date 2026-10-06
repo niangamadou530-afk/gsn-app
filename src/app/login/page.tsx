@@ -1,16 +1,24 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { phoneToFakeEmail, isValidPhone } from "@/lib/phoneUtils";
+import { phoneToFakeEmail, isValidPhone, normalizePhone } from "@/lib/phoneUtils";
+import { checkClientRateLimit, recordClientAttempt, resetClientRateLimit, getFriendlyAuthErrorMessage } from "@/lib/securityUtils";
+import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 import { t } from "@/lib/i18n";
 
 type AuthMethod = "email" | "phone";
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const sourceParam = searchParams.get("source");
+  const examParam = searchParams.get("exam");
+  const isFromPrep = sourceParam === "prep" || Boolean(examParam);
+
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
   const [email, setEmail]           = useState("");
   const [phone, setPhone]           = useState("");
@@ -23,180 +31,306 @@ export default function LoginPage() {
     event.preventDefault();
     setErrorMessage("");
 
+    const targetIdentifier = authMethod === "phone" ? normalizePhone(phone) : email.trim().toLowerCase();
+
+    // 1. Contrôle de débit côté serveur (persistant sur Vercel/multi-instance)
+    try {
+      const rlRes = await fetch("/api/auth/rate-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", identifier: targetIdentifier }),
+      });
+      const rlData = await rlRes.json();
+      if (!rlRes.ok || rlData.allowed === false) {
+        setErrorMessage(
+          rlData.error || `Trop de tentatives pour ce compte. Patiente ${rlData.waitMinutes || 15} minute(s).`
+        );
+        return;
+      }
+    } catch {
+      // Ignorer si réseau temporairement inaccessible
+    }
+
     if (authMethod === "phone" && !isValidPhone(phone)) {
-      setErrorMessage(t("auth.login.invalidPhone"));
+      setErrorMessage("Numéro de téléphone sénégalais invalide (ex : 77 123 45 67 ou +221 77 123 45 67).");
       return;
     }
 
     setLoading(true);
-    const authEmail = authMethod === "phone" ? phoneToFakeEmail(phone) : email;
-    const { data: authData, error } = await supabase.auth.signInWithPassword({ email: authEmail, password });
+    recordClientAttempt("login");
+
+    const authEmail = authMethod === "phone" ? phoneToFakeEmail(phone) : email.trim();
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
+      email: authEmail,
+      password,
+    });
 
     if (error) {
       setLoading(false);
-      setErrorMessage(
-        error.message === "Invalid login credentials"
-          ? authMethod === "phone"
-            ? t("auth.login.invalidPhoneCreds")
-            : t("auth.login.invalidEmailCreds")
-          : error.message
-      );
+      const friendly = getFriendlyAuthErrorMessage(error.message, authMethod);
+      setErrorMessage(friendly.message);
       return;
     }
 
+    // Réinitialisation du compteur de tentatives en cas de succès (local et serveur)
+    resetClientRateLimit("login");
+    try {
+      await fetch("/api/auth/rate-limit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "login", identifier: targetIdentifier, success: true }),
+      });
+    } catch {}
+
     const userId = authData.user?.id;
     if (userId) {
-      const { data: profile } = await supabase.from("users").select("profile_type").eq("id", userId).single();
+      const { data: profile } = await supabase
+        .from("users")
+        .select("profile_type")
+        .eq("id", userId)
+        .maybeSingle();
+
       setLoading(false);
-      router.push(profile?.profile_type === "eleve" ? "/prep/dashboard" : "/dashboard");
+      // Redirection selon le profil
+      if (profile?.profile_type === "eleve" || isFromPrep) {
+        router.push("/prep/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } else {
       setLoading(false);
       router.push("/dashboard");
     }
   }
 
+  // Lien WhatsApp d'assistance pour mot de passe
+  const enteredIdentifier = authMethod === "phone" ? (phone.trim() || "[Indiquer mon numéro]") : (email.trim() || "[Indiquer mon email]");
+  const whatsappHelpUrl = PREP_WHATSAPP_SUPPORT.getPasswordResetUrl(enteredIdentifier);
+
   return (
-    <main className="min-h-screen bg-surface text-on-background flex flex-col items-center justify-center p-6">
-      {/* Ambient glows */}
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary-fixed/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-secondary-fixed/20 blur-[120px] rounded-full" />
+    <main className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col justify-between p-3 sm:p-6 relative overflow-x-hidden selection:bg-[#005bbf]/15 selection:text-[#005bbf]">
+      {/* Decorative ambient gradients */}
+      <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-100/60 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-100/50 rounded-full blur-[100px]" />
       </div>
 
-      <div className="w-full max-w-md flex flex-col items-center space-y-8">
-
-        {/* Header */}
-        <header className="flex flex-col items-center space-y-4">
-          <div className="text-center">
-            <h1 className="text-5xl font-extrabold tracking-tight text-primary leading-none mb-2">GSN</h1>
-            <p className="text-on-surface-variant font-medium tracking-wide">{t("auth.tagline")}</p>
+      {/* Top Simple Nav */}
+      <header className="w-full max-w-md mx-auto flex items-center justify-between py-2 sm:py-3">
+        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2 group">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-xs shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+            GSN
           </div>
-        </header>
+          <span className="font-extrabold text-base tracking-tight text-slate-900">
+            {isFromPrep ? "PREP" : "GLOBAL SKILLS"}
+          </span>
+          {isFromPrep && (
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-[#FF6B00] border border-orange-200">
+              Sénégal 2027
+            </span>
+          )}
+        </Link>
 
-        {/* Card */}
-        <section className="w-full bg-surface-container-lowest rounded-xl p-8 shadow-[0_8px_24px_rgba(25,28,35,0.06)] space-y-6">
-          <form onSubmit={handleLogin} className="space-y-5">
+        <Link
+          href={isFromPrep ? "/signup?source=prep" : "/signup"}
+          className="text-xs sm:text-sm font-bold text-[#005bbf] hover:underline"
+        >
+          Créer un compte
+        </Link>
+      </header>
 
-            {/* Toggle Email / Téléphone */}
-            <div className="flex rounded-xl overflow-hidden border-2 border-outline-variant/30">
-              <button
-                type="button"
-                onClick={() => { setAuthMethod("email"); setErrorMessage(""); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "email" ? "bg-primary text-on-primary" : "bg-surface-container-low text-on-surface-variant"}`}>
-                <span className="material-symbols-outlined text-[16px]">mail</span>
-                {t("auth.login.emailTab")}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAuthMethod("phone"); setErrorMessage(""); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-colors ${authMethod === "phone" ? "bg-primary text-on-primary" : "bg-surface-container-low text-on-surface-variant"}`}>
-                <span className="material-symbols-outlined text-[16px]">phone</span>
-                {t("auth.login.phoneTab")}
-              </button>
-            </div>
+      {/* Main Login Card */}
+      <div className="w-full max-w-md mx-auto my-auto py-2 sm:py-4">
+        <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-xl shadow-slate-900/5 space-y-5">
+          {/* Header Title */}
+          <div className="text-center space-y-1">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Connexion à ton espace
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-600">
+              {isFromPrep
+                ? "Retrouve tes quiz, cours et progression pour le BAC & BFEM"
+                : "Entre tes identifiants pour accéder à tes programmes"}
+            </p>
+          </div>
 
-            {/* Email ou numéro */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1">
-                {authMethod === "email" ? t("auth.login.emailLabel") : t("auth.login.phoneLabel")}
+          {/* Toggle Email / Téléphone */}
+          <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-100 border border-slate-200/80 gap-1">
+            <button
+              type="button"
+              onClick={() => { setAuthMethod("email"); setErrorMessage(""); }}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                authMethod === "email"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">mail</span>
+              <span>Email</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMethod("phone"); setErrorMessage(""); }}
+              className={`flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all ${
+                authMethod === "phone"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">phone_iphone</span>
+              <span>Téléphone (+221)</span>
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-3.5">
+            {/* Field: Email or Phone */}
+            <div className="space-y-1">
+              <label className="block text-xs font-bold text-slate-700 ml-0.5">
+                {authMethod === "email" ? "Adresse email" : "Numéro de téléphone sénégalais"}
               </label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">
-                  {authMethod === "email" ? "mail" : "phone"}
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+                  {authMethod === "email" ? "mail" : "call"}
                 </span>
                 {authMethod === "email" ? (
                   <input
                     id="email"
                     type="email"
                     value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder={t("auth.login.emailPlaceholder")}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="ex : eleve@exemple.sn"
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
+                    autoComplete="email"
+                    className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#005bbf] focus:ring-2 focus:ring-[#005bbf]/15 transition-all outline-none"
                   />
                 ) : (
                   <input
                     id="phone"
                     type="tel"
                     value={phone}
-                    onChange={e => setPhone(e.target.value)}
-                    placeholder="+221 77 123 45 67"
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="77 123 45 67 ou +221 77..."
                     required
-                    className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
+                    autoComplete="tel"
+                    className="w-full pl-10 pr-3.5 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#005bbf] focus:ring-2 focus:ring-[#005bbf]/15 transition-all outline-none font-medium"
                   />
                 )}
               </div>
             </div>
 
-            {/* Mot de passe */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-sm font-semibold text-on-surface" htmlFor="password">{t("auth.login.passwordLabel")}</label>
+            {/* Field: Password */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between ml-0.5">
+                <label className="text-xs font-bold text-slate-700" htmlFor="password">
+                  Mot de passe
+                </label>
                 <a
-                  href="https://wa.me/221781246504?text=Bonjour%2C%20j%27ai%20oubli%C3%A9%20mon%20mot%20de%20passe%20GSN%20Prep.%20Mon%20identifiant%20de%20connexion%20%28email%20ou%20num%C3%A9ro%20de%20t%C3%A9l%C3%A9phone%29%20est%20%3A%20%5B%C3%A0%20compl%C3%A9ter%5D"
+                  href={whatsappHelpUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs font-bold text-primary hover:underline">
-                  {t("auth.login.forgotPassword")}
+                  className="text-[11px] font-bold text-[#005bbf] hover:underline"
+                  title="Aide par WhatsApp"
+                >
+                  Mot de passe oublié ?
                 </a>
               </div>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">lock</span>
+              <div className="relative">
+                <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">
+                  lock
+                </span>
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-12 pr-12 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none"
+                  autoComplete="current-password"
+                  className="w-full pl-10 pr-10 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#005bbf] focus:ring-2 focus:ring-[#005bbf]/15 transition-all outline-none font-medium"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors">
-                  <span className="material-symbols-outlined text-[20px]">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors p-1"
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
                     {showPassword ? "visibility_off" : "visibility"}
                   </span>
                 </button>
               </div>
             </div>
 
+            {/* Error Message */}
             {errorMessage && (
-              <div className="flex items-center gap-2 bg-error-container text-error rounded-xl px-4 py-3 text-sm font-medium">
-                <span className="material-symbols-outlined text-[18px]">error</span>
-                {errorMessage}
+              <div className="flex items-start gap-2 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl p-3 text-xs font-medium animate-in fade-in">
+                <span className="material-symbols-outlined text-[16px] text-rose-600 shrink-0 mt-0.5">
+                  info
+                </span>
+                <span>{errorMessage}</span>
               </div>
             )}
 
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-primary-container text-on-primary-container font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.2)] hover:shadow-[0_8px_24px_rgba(0,91,191,0.3)] active:scale-[0.98] transition-all duration-200 disabled:opacity-60">
-              {loading ? t("auth.login.submitting") : t("auth.login.submit")}
+              className="w-full py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-[#005bbf] to-[#004799] hover:from-[#004fa8] hover:to-[#003b80] text-white font-extrabold text-sm shadow-md shadow-blue-500/20 active:scale-[0.99] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>Se connecter</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </>
+              )}
             </button>
           </form>
 
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-outline-variant/30" />
-            <span className="flex-shrink mx-4 text-outline-variant text-xs font-medium">{t("auth.login.or")}</span>
-            <div className="flex-grow border-t border-outline-variant/30" />
+          {/* Divider */}
+          <div className="relative flex items-center py-1">
+            <div className="flex-grow border-t border-slate-200" />
+            <span className="shrink mx-3 text-slate-400 text-xs font-semibold">ou</span>
+            <div className="flex-grow border-t border-slate-200" />
           </div>
 
+          {/* Sign up prompt */}
           <Link
-            href="/signup"
-            className="block w-full text-center py-3.5 bg-surface border border-outline-variant/20 rounded-xl font-semibold text-primary hover:bg-surface-container-low transition-colors active:scale-[0.98] duration-200">
-            {t("auth.login.createAccount")}
+            href={isFromPrep ? "/signup?source=prep" : "/signup"}
+            className="block w-full text-center py-2.5 sm:py-3 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 font-bold text-xs sm:text-sm transition-colors"
+          >
+            Pas encore de compte ? S&apos;inscrire
           </Link>
-
-        </section>
-
-        <footer className="flex items-center justify-center space-x-6 text-outline font-medium text-xs">
-          <a className="hover:text-on-surface transition-colors" href="#">{t("auth.footer.terms")}</a>
-          <span className="w-1 h-1 bg-outline-variant rounded-full" />
-          <a className="hover:text-on-surface transition-colors" href="#">{t("auth.footer.privacy")}</a>
-        </footer>
+        </div>
       </div>
+
+      {/* Footer */}
+      <footer className="w-full max-w-md mx-auto text-center py-3 text-[11px] text-slate-500 flex items-center justify-center gap-4">
+        <span>© 2026 GSN</span>
+        <span>·</span>
+        <Link href="/prep/parent" className="hover:text-slate-800 transition-colors">
+          Espace Parents
+        </Link>
+        <span>·</span>
+        <a
+          href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-slate-800 transition-colors"
+        >
+          Assistance WhatsApp
+        </a>
+      </footer>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f8fafc] flex items-center justify-center text-slate-400 text-sm">Chargement...</div>}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

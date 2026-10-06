@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { SoundToggle } from "@/components/SoundToggle";
+import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 
 interface StudentInfo {
   prenom: string | null;
@@ -157,7 +158,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
               <SoundToggle />
 
               <a
-                href="https://wa.me/221781246504?text=Bonjour%20GSN%20Prep%2C%20j%27ai%20une%20question"
+                href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai une question sur la plateforme.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Assistance WhatsApp"
