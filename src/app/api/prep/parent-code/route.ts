@@ -3,9 +3,14 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
 function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    return null;
+  }
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    serviceKey,
     { auth: { persistSession: false } }
   );
 }
@@ -55,6 +60,14 @@ export async function GET(req: NextRequest) {
     }
 
     const sbAdmin = getServiceSupabase();
+    if (!sbAdmin) {
+      console.error("[parent-code] configuration manquante");
+      return NextResponse.json(
+        { error: "Le service de code d'accès parent est momentanément indisponible. Réessaie dans quelques instants !" },
+        { status: 500 }
+      );
+    }
+
     const { data: link, error } = await sbAdmin
       .from("prep_parent_links")
       .select("access_code, parent_email, created_at")
@@ -62,8 +75,14 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error("[parent-code GET error]", error);
-      return NextResponse.json({ error: "Erreur de base de données" }, { status: 500 });
+      console.error(
+        "[parent-code GET error]",
+        `Code: ${error.code || "inconnu"}, Message: ${error.message || "erreur"}`
+      );
+      return NextResponse.json(
+        { error: "Impossible de charger ton code d'accès pour le moment. Réessaie dans un instant !" },
+        { status: 500 }
+      );
     }
 
     if (!link) {
@@ -77,8 +96,12 @@ export async function GET(req: NextRequest) {
       createdAt: link.created_at,
     });
   } catch (err: unknown) {
-    console.error("[parent-code GET exception]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[parent-code GET exception]", msg);
+    return NextResponse.json(
+      { error: "Une interruption temporaire est survenue. Réessaie dans quelques instants !" },
+      { status: 500 }
+    );
   }
 }
 
@@ -90,18 +113,32 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non autorisé. Veuillez vous connecter." }, { status: 401 });
     }
 
+    const sbAdmin = getServiceSupabase();
+    if (!sbAdmin) {
+      console.error("[parent-code] configuration manquante");
+      return NextResponse.json(
+        { error: "Le service de code d'accès parent est momentanément indisponible. Réessaie dans quelques instants !" },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const parentEmail = (body.parentEmail || "").trim();
     const forceRenew = Boolean(body.renew);
 
-    const sbAdmin = getServiceSupabase();
-
     // Check if code already exists for this student
-    const { data: existingLink } = await sbAdmin
+    const { data: existingLink, error: selectError } = await sbAdmin
       .from("prep_parent_links")
       .select("access_code, parent_email")
       .eq("student_user_id", user.id)
       .maybeSingle();
+
+    if (selectError) {
+      console.error(
+        "[parent-code select error]",
+        `Code: ${selectError.code || "inconnu"}, Message: ${selectError.message || "erreur"}`
+      );
+    }
 
     // If existing code exists and not explicitly renewing, preserve the existing code
     if (existingLink?.access_code && !forceRenew) {
@@ -139,7 +176,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (!isUnique) {
-      return NextResponse.json({ error: "Impossible de générer un code unique. Veuillez réessayer." }, { status: 500 });
+      return NextResponse.json(
+        { error: "Impossible de générer un code unique pour le moment. Réessaie dans quelques instants !" },
+        { status: 500 }
+      );
     }
 
     // Upsert into prep_parent_links via service_role client
@@ -152,8 +192,14 @@ export async function POST(req: NextRequest) {
       }, { onConflict: "student_user_id" });
 
     if (upsertError) {
-      console.error("[parent-code upsert error]", upsertError);
-      return NextResponse.json({ error: "Erreur lors de l'enregistrement du code." }, { status: 500 });
+      console.error(
+        "[parent-code upsert error]",
+        `Code: ${upsertError.code || "inconnu"}, Message: ${upsertError.message || "erreur"}`
+      );
+      return NextResponse.json(
+        { error: "Nous n'avons pas pu enregistrer ton code parent pour le moment. Réessaie dans un instant !" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
@@ -163,7 +209,11 @@ export async function POST(req: NextRequest) {
       existing: false,
     });
   } catch (err: unknown) {
-    console.error("[parent-code POST exception]", err);
-    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[parent-code POST exception]", msg);
+    return NextResponse.json(
+      { error: "Une interruption temporaire est survenue. Réessaie dans quelques instants !" },
+      { status: 500 }
+    );
   }
 }

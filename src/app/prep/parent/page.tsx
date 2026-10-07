@@ -27,10 +27,12 @@ export default function ParentPage() {
   const [error, setError] = useState("");
 
   // Student mode: generate access code
-  const [myCode, setMyCode] = useState("");
-  const [myEmail, setMyEmail] = useState("");
-  const [codeSaved, setCodeSaved] = useState(false);
-  const [isStudent, setIsStudent] = useState(false);
+  const [myCode, setMyCode]         = useState("");
+  const [myEmail, setMyEmail]       = useState("");
+  const [codeSaved, setCodeSaved]   = useState(false);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeError, setCodeError]   = useState("");
+  const [isStudent, setIsStudent]   = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -60,8 +62,13 @@ export default function ParentPage() {
   }, []);
 
   async function generateCode() {
+    setCodeError("");
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.access_token) return;
+    if (!session?.access_token) {
+      setCodeError("Reconnecte-toi puis réessaie");
+      return;
+    }
+    setCodeLoading(true);
     try {
       const res = await fetch("/api/prep/parent-code", {
         method: "POST",
@@ -71,15 +78,20 @@ export default function ParentPage() {
         },
         body: JSON.stringify({ parentEmail: myEmail }),
       });
-      const data = await res.json();
-      if (res.ok && data.code) {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        setCodeError("Reconnecte-toi puis réessaie");
+      } else if (res.ok && data.code) {
         setMyCode(data.code);
         setCodeSaved(true);
+        setCodeError("");
       } else {
-        setError(data.error || "Erreur lors de la génération du code.");
+        setCodeError(data.error || "Oups ! Le code parent n'a pas pu être généré. Rassure-toi, ton compte est intact !");
       }
     } catch {
-      setError("Impossible de contacter le serveur pour générer le code.");
+      setCodeError("Impossible de contacter le serveur pour générer le code. Vérifie ta connexion puis réessaie.");
+    } finally {
+      setCodeLoading(false);
     }
   }
 
@@ -174,11 +186,29 @@ export default function ParentPage() {
               <button
                 type="button"
                 onClick={generateCode}
-                className="px-5 py-3 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-colors shrink-0"
+                disabled={codeLoading}
+                className="px-5 py-3 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-colors shrink-0 disabled:opacity-50"
               >
-                {t("prep.parent.share.generateButton")}
+                {codeLoading ? "Création du code en cours…" : t("prep.parent.share.generateButton")}
               </button>
             </div>
+
+            {codeError && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center justify-between gap-3 text-xs text-rose-800">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0">error</span>
+                  <p className="leading-snug">{codeError}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateCode}
+                  disabled={codeLoading}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 transition-colors disabled:opacity-50"
+                >
+                  Réessayer
+                </button>
+              </div>
+            )}
 
             {codeSaved && myCode && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center space-y-1">
