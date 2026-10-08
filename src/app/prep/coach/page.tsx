@@ -277,30 +277,31 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
   const days = daysUntil(exam === "BFEM" ? BFEM_DATE : BAC_DATE);
 
   return (
-    <div className="max-w-4xl mx-auto w-full px-4 sm:px-6 py-4 flex flex-col h-[calc(100vh-140px)] min-h-[580px]">
+    <div className="max-w-4xl mx-auto w-full px-3 sm:px-6 py-2 sm:py-4 flex flex-col h-[calc(100dvh-130px)] md:h-[calc(100vh-140px)] min-h-[480px] md:min-h-[580px]">
       {isPreview && <PreviewBanner />}
       {/* Coach Header Bar */}
-      <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs flex items-center justify-between gap-3 mb-4 shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3 sm:p-4 shadow-xs flex items-center justify-between gap-3 mb-3 sm:mb-4 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3">
           <button
             onClick={() => router.push("/prep/dashboard")}
-            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors active:scale-95 shrink-0"
+            className="w-11 h-11 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors active:scale-95 shrink-0"
             title="Retour au tableau de bord"
+            aria-label="Retour au tableau de bord"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#005bbf] to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
-            <span className="material-symbols-outlined text-[24px]">smart_toy</span>
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#005bbf] to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+            <span className="material-symbols-outlined text-[22px] sm:text-[24px]">smart_toy</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-extrabold text-slate-900 text-base leading-tight">Coach IA PREP</h1>
+              <h1 className="font-extrabold text-slate-900 text-sm sm:text-base leading-tight">Coach IA PREP</h1>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Disponible 24/7
+                24/7
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
               Conseils personnalisés · Objectif {exam} {profile?.serie ? `(${profile.serie})` : ""} · J-{days}
             </p>
           </div>
@@ -407,13 +408,14 @@ IMPORTANT : Tu réponds toujours en texte simple sans aucun formatage markdown. 
             onChange={(e) => setInput(e.target.value)}
             placeholder={t("prep.coach.inputPlaceholder")}
             disabled={sending}
-            className="flex-1 px-3 py-2 bg-transparent text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none"
+            className="flex-1 px-3 py-2.5 bg-transparent text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none"
           />
           <button
             type="submit"
             disabled={!input.trim() || sending}
-            className="w-10 h-10 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white flex items-center justify-center disabled:opacity-40 transition-all shadow-xs active:scale-95 shrink-0"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white flex items-center justify-center disabled:opacity-40 transition-all shadow-xs active:scale-95 shrink-0"
             title="Envoyer"
+            aria-label="Envoyer"
           >
             <span className="material-symbols-outlined text-[20px]">send</span>
           </button>

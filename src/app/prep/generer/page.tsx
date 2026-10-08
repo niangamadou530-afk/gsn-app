@@ -600,7 +600,7 @@ function GenererPageInner() {
 
   // ── HOME ──
   if (phase === "home") return (
-    <main className="w-full min-h-screen text-slate-900">
+    <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900">
       <header className="px-6 pt-8 pb-4">
         {isPreview && <PreviewBanner />}
         <h1 className="text-2xl font-extrabold">{t("prep.generer.home.title")}</h1>
@@ -691,7 +691,7 @@ function GenererPageInner() {
       retrySeconds === 0;
 
     return (
-      <main className="w-full min-h-screen text-slate-900">
+      <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900">
         <PageHeader title={t("prep.generer.setupA.headerTitle")} onBack={() => setPhase("home")} />
         <div className="px-6 py-4 space-y-5">
 
@@ -700,7 +700,7 @@ function GenererPageInner() {
             <button
               type="button"
               onClick={() => { setInputModeA("file"); setError(""); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2 min-h-[44px] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                 inputModeA === "file" ? "bg-white text-slate-900 shadow-xs shadow-sm" : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -710,7 +710,7 @@ function GenererPageInner() {
             <button
               type="button"
               onClick={() => { setInputModeA("text"); setError(""); }}
-              className={`py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+              className={`py-2 min-h-[44px] text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
                 inputModeA === "text" ? "bg-white text-slate-900 shadow-xs shadow-sm" : "text-slate-500 hover:text-slate-800"
               }`}
             >
@@ -790,7 +790,7 @@ function GenererPageInner() {
                   <span className="material-symbols-outlined text-[36px] text-[#005bbf]">add_photo_alternate</span>
                   <p className="text-sm font-semibold text-slate-800">{t("prep.generer.setupA.uploadHint")}</p>
                   <p className="text-xs text-slate-500">Clique pour choisir une photo ou un document PDF</p>
-                  <p className="text-[11px] text-slate-400 font-medium">Évite de photographier ton nom ou tes informations personnelles</p>
+                  <p className="text-[11px] text-slate-500 font-medium">Évite de photographier ton nom ou tes informations personnelles</p>
                 </button>
               )}
               <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
@@ -809,7 +809,7 @@ function GenererPageInner() {
                 value={textDirectA}
                 onChange={(e) => { setTextDirectA(e.target.value); setError(""); }}
                 placeholder="Colle ici le texte de ton cours, tes notes ou l'énoncé d'un chapitre (1 à 2 pages conseillées)..."
-                className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#005bbf] focus:ring-1 focus:ring-[#005bbf]/20 outline-none leading-relaxed"
+                className="w-full p-3.5 bg-white border border-slate-200 rounded-2xl text-base sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#005bbf] focus:ring-1 focus:ring-[#005bbf]/20 outline-none leading-relaxed"
               />
               {textDirectA.length > 6000 && (
                 <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
@@ -866,7 +866,7 @@ function GenererPageInner() {
     const chaps = matiereB ? chapitres(matiereB) : [];
     const showFree = chapitreB === "Autre" || chaps.length <= 1;
     return (
-      <main className="w-full min-h-screen text-slate-900">
+      <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900">
         <PageHeader title={t("prep.generer.setupB.headerTitle")} onBack={() => setPhase("home")} />
         <div className="px-6 py-4 space-y-5">
 
@@ -1494,7 +1494,7 @@ function GenererPageInner() {
       grouped[key].push(f);
     }
     return (
-      <main className="w-full min-h-screen text-slate-900 pb-8">
+      <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myFlashcards")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -1530,7 +1530,7 @@ function GenererPageInner() {
   // ── MES QUIZ ──
   if (phase === "mes_quiz") {
     return (
-      <main className="w-full min-h-screen text-slate-900 pb-8">
+      <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myQuiz")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -1561,7 +1561,7 @@ function GenererPageInner() {
   // ── MES RÉSUMÉS ──
   if (phase === "mes_resumes") {
     return (
-      <main className="w-full min-h-screen text-slate-900 pb-8">
+      <main className="w-full max-w-4xl mx-auto min-h-screen text-slate-900 pb-8">
         <PageHeader title={t("prep.generer.home.myResumes")} onBack={() => setPhase("home")} />
         {libLoading ? <LibLoader /> : (
           <div className="px-4 py-4 space-y-3">
@@ -1980,7 +1980,7 @@ function VideoSection({
           </h2>
         </div>
         {videos.length > 0 && !loading && (
-          <span className="text-xs text-slate-400 font-semibold">
+          <span className="text-xs text-slate-500 font-semibold">
             {videos.length} recommandation{videos.length > 1 ? "s" : ""}
           </span>
         )}

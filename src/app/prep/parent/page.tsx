@@ -217,13 +217,13 @@ export default function ParentPage() {
                 value={myEmail}
                 onChange={e => setMyEmail(e.target.value)}
                 placeholder={t("prep.parent.share.emailPlaceholder")}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:border-[#005bbf]"
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:border-[#005bbf]"
               />
               <button
                 type="button"
                 onClick={() => generateCode(false)}
                 disabled={codeLoading}
-                className="px-5 py-3 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-colors shrink-0 disabled:opacity-50"
+                className="px-5 py-3 min-h-[44px] rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-xs shadow-xs transition-colors shrink-0 disabled:opacity-50"
               >
                 {codeLoading ? "Création du code en cours…" : t("prep.parent.share.generateButton")}
               </button>
@@ -388,7 +388,7 @@ export default function ParentPage() {
                 <p className="text-xl sm:text-2xl font-black text-[#005bbf]">
                   {parentData.averageScore !== null ? `${parentData.averageScore}%` : "Pas encore de quiz"}
                 </p>
-                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
                   Moyenne des quiz
                 </p>
               </div>
@@ -398,7 +398,7 @@ export default function ParentPage() {
                 <p className="text-xl sm:text-2xl font-black text-emerald-700">
                   {parentData.activeDaysThisWeek > 0 ? `${parentData.activeDaysThisWeek}/7` : "0 jour"}
                 </p>
-                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
                   Jours actifs cette semaine (sur 7)
                 </p>
               </div>
@@ -408,7 +408,7 @@ export default function ParentPage() {
                 <p className="text-xl sm:text-2xl font-black text-purple-700">
                   {parentData.quizzesThisWeek > 0 ? `${parentData.quizzesThisWeek}` : "0 quiz"}
                 </p>
-                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                <p className="text-[11px] font-bold text-slate-500 mt-1 uppercase tracking-wider">
                   Quiz terminés cette semaine
                 </p>
               </div>
@@ -422,13 +422,13 @@ export default function ParentPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Régularité & Assiduité</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Rythme de révision calculé sur les entraînements réels</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Rythme de révision calculé sur les entraînements réels</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-3.5 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                     Dernière activité
                   </span>
                   <p className="text-base sm:text-lg font-black text-slate-900">
@@ -437,7 +437,7 @@ export default function ParentPage() {
                 </div>
 
                 <div className="p-3.5 bg-slate-50 border border-slate-200/60 rounded-2xl space-y-1">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                     Série de jours consécutifs
                   </span>
                   <p className="text-base sm:text-lg font-black text-purple-700">
@@ -462,7 +462,7 @@ export default function ParentPage() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Comment l&apos;aider au quotidien</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Recommandations bienveillantes pour accompagner son travail</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Recommandations bienveillantes pour accompagner son travail</p>
                 </div>
               </div>
 
@@ -493,14 +493,14 @@ export default function ParentPage() {
               <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Résultats réels par matière</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Calculés sur les quiz complétés (minimum 3 quiz requis)</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Calculés sur les quiz complétés (minimum 3 quiz requis)</p>
                 </div>
                 <div className="space-y-2.5">
                   {Object.entries(parentData.realSubjectStats).map(([subj, info]) => (
                     <div key={subj} className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{subj}</p>
-                        <span className="text-[11px] text-slate-400">{info.count} quiz effectué{info.count > 1 ? "s" : ""}</span>
+                        <span className="text-[11px] text-slate-500">{info.count} quiz effectué{info.count > 1 ? "s" : ""}</span>
                       </div>
                       {info.hasEnoughData && info.score !== null ? (
                         <div className="flex items-center gap-2.5">
@@ -531,7 +531,7 @@ export default function ParentPage() {
               <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
                 <div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Auto-évaluation de l&apos;élève</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Niveau initial déclaré par l&apos;élève dans son profil</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Niveau initial déclaré par l&apos;élève dans son profil</p>
                 </div>
                 <div className="space-y-2.5">
                   {Object.entries(parentData.selfAssessment).map(([subj, info]) => (
@@ -563,7 +563,7 @@ export default function ParentPage() {
                         <span className={`text-xs font-black ${r.scoreSur20 >= 10 ? "text-emerald-700" : "text-rose-600"}`}>
                           {r.scoreSur20}/20
                         </span>
-                        <span className="text-[11px] text-slate-400">
+                        <span className="text-[11px] text-slate-500">
                           {r.date}
                         </span>
                       </div>
@@ -571,7 +571,7 @@ export default function ParentPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">Pas encore de quiz enregistré.</p>
+                <p className="text-xs text-slate-500 italic">Pas encore de quiz enregistré.</p>
               )}
             </div>
 
@@ -618,7 +618,7 @@ export default function ParentPage() {
               Assistance WhatsApp
             </a>
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-slate-500">
             GSN PREP · Portail de suivi pour les familles · Dakar, Sénégal
           </p>
         </footer>

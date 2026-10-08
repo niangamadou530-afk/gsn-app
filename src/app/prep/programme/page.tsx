@@ -225,7 +225,7 @@ export default function ProgrammePage() {
                     {t("prep.programme.generateButton")}
                   </button>
                   <span
-                    className="material-symbols-outlined text-slate-400 text-[20px] transition-transform duration-200"
+                    className="material-symbols-outlined text-slate-500 text-[20px] transition-transform duration-200"
                     style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0deg)" }}
                   >
                     expand_more

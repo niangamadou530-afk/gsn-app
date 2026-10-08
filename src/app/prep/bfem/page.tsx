@@ -216,7 +216,7 @@ export default function BfemPage() {
                 </div>
                 <p className="font-extrabold text-slate-900 text-base">{t("prep.bfem.contentUnavailable")}</p>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Le contenu numérique direct n&apos;est pas disponible, mais vous pouvez consulter la source Sunudaara originale.
+                  Le contenu numérique direct n&apos;est pas disponible, mais vous pouvez consulter le document officiel source.
                 </p>
                 <a
                   href={selected.url_originale}
@@ -224,7 +224,7 @@ export default function BfemPage() {
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#005bbf] text-white font-bold text-xs shadow-xs hover:bg-[#004899] transition-all"
                 >
-                  <span>{t("prep.bfem.viewOnSunudaara")}</span>
+                  <span>Consulter la source officielle</span>
                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               </div>
@@ -260,7 +260,7 @@ export default function BfemPage() {
                   placeholder="Rechercher une matière du BFEM (ex: Maths, Dictée)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -280,7 +280,7 @@ export default function BfemPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               {/* Year Pills */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">Session :</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1 shrink-0">Session :</span>
                 {annees.map((a) => (
                   <button
                     key={a}
@@ -320,7 +320,7 @@ export default function BfemPage() {
 
             {/* Subject Chips */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide pt-1">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Matière :</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Matière :</span>
               {matieres.map((m) => (
                 <button
                   key={m}
@@ -365,10 +365,10 @@ export default function BfemPage() {
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                <p className="text-xs font-bold text-slate-500">
+                <p className="text-xs font-bold text-slate-600">
                   {t(filtered.length > 1 ? "prep.bfem.documentCountPlural" : "prep.bfem.documentCountSingular", { count: filtered.length })} disponibles
                 </p>
-                <span className="text-[11px] font-semibold text-slate-400">Cliquez pour lire le sujet</span>
+                <span className="text-[11px] font-semibold text-slate-500">Cliquez pour lire le sujet</span>
               </div>
 
               {/* Grid of BFEM Subject Cards */}
@@ -399,7 +399,7 @@ export default function BfemPage() {
                           }`}>
                             {isCorrige ? t("prep.bfem.badgeCorrige") : t("prep.bfem.badgeEpreuve")}
                           </span>
-                          <span className="text-[11px] font-bold text-slate-400">
+                          <span className="text-[11px] font-bold text-slate-500">
                             BFEM · {d.annee}
                           </span>
                         </div>
@@ -409,13 +409,13 @@ export default function BfemPage() {
                         </p>
 
                         <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[13px] text-slate-400">menu_book</span>
+                          <span className="material-symbols-outlined text-[13px] text-slate-500">menu_book</span>
                           <span>Sujet officiel numérisé</span>
                         </p>
                       </div>
 
                       {/* Trailing Arrow */}
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-400 group-hover:text-[#005bbf] flex items-center justify-center shrink-0 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-500 group-hover:text-[#005bbf] flex items-center justify-center shrink-0 transition-colors">
                         <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                       </div>
                     </button>

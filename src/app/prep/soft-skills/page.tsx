@@ -216,7 +216,7 @@ export default function SoftSkillsPage() {
                 >
                   <p className="font-black text-slate-800 text-sm tracking-wide">{breathLabel[breathPhase]}</p>
                   {breathCount > 0 && (
-                    <span className="text-[11px] font-bold text-slate-400 mt-1">
+                    <span className="text-[11px] font-bold text-slate-500 mt-1">
                       Cycle {breathCount} terminé
                     </span>
                   )}
@@ -413,7 +413,7 @@ export default function SoftSkillsPage() {
                     }`}>
                       {checked.has(item) && <span className="material-symbols-outlined text-[14px]">check</span>}
                     </div>
-                    <span className={`text-xs sm:text-sm font-semibold ${checked.has(item) ? "line-through text-slate-400" : ""}`}>
+                    <span className={`text-xs sm:text-sm font-semibold ${checked.has(item) ? "line-through text-slate-500" : ""}`}>
                       {item}
                     </span>
                   </button>

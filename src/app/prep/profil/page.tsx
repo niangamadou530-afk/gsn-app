@@ -152,11 +152,11 @@ export default function StudentProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-slate-400 block font-semibold">Téléphone enregistré</span>
+              <span className="text-slate-500 block font-semibold">Téléphone enregistré</span>
               <span className="font-bold text-slate-800">{studentInfo?.phone || "Non renseigné"}</span>
             </div>
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-              <span className="text-slate-400 block font-semibold">Établissement scolaire</span>
+              <span className="text-slate-500 block font-semibold">Établissement scolaire</span>
               <span className="font-bold text-slate-800">{studentInfo?.ecole || "Non spécifié"}</span>
             </div>
           </div>
@@ -239,7 +239,7 @@ export default function StudentProfilePage() {
                 placeholder="SUPPRIMER"
                 value={deleteConfirmationText}
                 onChange={(e) => setDeleteConfirmationText(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20"
+                className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-base sm:text-xs font-mono font-bold text-slate-900 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500/20"
               />
             </div>
 
@@ -274,7 +274,7 @@ export default function StudentProfilePage() {
                   setDeleteConfirmationText("");
                   setError("");
                 }}
-                className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors"
               >
                 Annuler
               </button>
@@ -282,7 +282,7 @@ export default function StudentProfilePage() {
                 type="button"
                 disabled={deleteConfirmationText.trim() !== "SUPPRIMER" || deleting}
                 onClick={handleDeleteAccount}
-                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-sm transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
+                className="flex-1 min-h-[44px] py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold shadow-sm transition-colors disabled:opacity-40 flex items-center justify-center gap-1.5"
               >
                 {deleting ? (
                   <span>Suppression en cours...</span>

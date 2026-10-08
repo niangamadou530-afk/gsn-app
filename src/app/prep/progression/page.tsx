@@ -199,7 +199,7 @@ export default function ProgressionPage() {
 
         {/* Global Mastery Donut Card */}
         <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex flex-col items-center justify-center text-center">
-          <p className="text-xs font-extrabold text-slate-400 uppercase tracking-widest mb-3">
+          <p className="text-xs font-extrabold text-slate-500 uppercase tracking-widest mb-3">
             {t("prep.progression.globalScoreLabel")}
           </p>
           <div className="relative w-32 h-32 my-1">
@@ -220,7 +220,7 @@ export default function ProgressionPage() {
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-black text-slate-900">{globalScore}%</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Moyenne</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Moyenne</span>
             </div>
           </div>
           <p className="text-xs text-slate-500 mt-2">
@@ -231,7 +231,7 @@ export default function ProgressionPage() {
 
       {/* Matières Breakdown */}
       <div className="space-y-3">
-        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 px-1">
+        <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 px-1">
           {t("prep.progression.byMatiere")}
         </h2>
 
@@ -300,7 +300,7 @@ export default function ProgressionPage() {
       {/* Historique Récent */}
       {quiz.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-400 px-1">
+          <h2 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 px-1">
             {t("prep.progression.recentQuiz")}
           </h2>
           <div className="space-y-2">
@@ -310,7 +310,7 @@ export default function ProgressionPage() {
                 <div key={i} className="flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
                   <div>
                     <p className="font-extrabold text-slate-900 text-sm">{q.matiere}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{new Date(q.created_at).toLocaleDateString("fr-FR")}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{new Date(q.created_at).toLocaleDateString("fr-FR")}</p>
                   </div>
                   <span className={`text-xs font-black px-3 py-1.5 rounded-xl ${
                     pct >= 60 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :

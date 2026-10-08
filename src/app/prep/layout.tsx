@@ -88,41 +88,44 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
               </Link>
             </div>
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+            {/* Desktop & Tablet Navigation Links (adaptatifs pour éviter tout débordement à 768px) */}
+            <nav className="hidden md:flex items-center gap-0.5 lg:gap-1.5 shrink-0">
               <Link
                 href="/prep/dashboard"
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname === "/prep/dashboard"
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                Tableau de bord
+                <span className="md:inline lg:hidden">Accueil</span>
+                <span className="hidden lg:inline">Tableau de bord</span>
               </Link>
               <Link
                 href={annalesHref}
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname.startsWith("/prep/epreuves") || pathname.startsWith("/prep/bfem")
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                Annales & Corrigés
+                <span className="md:inline lg:hidden">Annales</span>
+                <span className="hidden lg:inline">Annales & Corrigés</span>
               </Link>
               <Link
                 href="/prep/generer"
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname.startsWith("/prep/generer") || pathname.startsWith("/prep/quiz") || pathname.startsWith("/prep/flashcards")
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                Entraînement IA
+                <span className="md:inline lg:hidden">Réviser</span>
+                <span className="hidden lg:inline">Entraînement IA</span>
               </Link>
               <Link
                 href="/prep/coach"
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname.startsWith("/prep/coach")
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -132,7 +135,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link
                 href="/prep/classement"
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname.startsWith("/prep/classement")
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -142,7 +145,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <Link
                 href="/prep/orientation"
-                className={`px-3 py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all ${
+                className={`px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all shrink-0 ${
                   pathname.startsWith("/prep/orientation")
                     ? "bg-slate-100 text-[#005bbf]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
@@ -156,7 +159,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Link
                 href="/prep/parent"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors"
+                className="inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors"
                 title="Espace Parents"
               >
                 <span className="material-symbols-outlined text-[17px]">family_restroom</span>
@@ -179,7 +182,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
       {!isPublicLanding && (
         <nav
           aria-label="Navigation mobile"
-          className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]"
+          className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] pb-[env(safe-area-inset-bottom,0px)]"
         >
           <div className="grid grid-cols-5 items-center h-16 max-w-md mx-auto px-1">
             {NAV_ITEMS.map((item) => {
@@ -199,7 +202,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
                 >
                   <div
                     className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
-                      active ? "bg-orange-50 text-[#FF6B00]" : "text-slate-400 hover:text-slate-600"
+                      active ? "bg-orange-50 text-[#FF6B00]" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     <span

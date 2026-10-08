@@ -239,7 +239,7 @@ export default function SimulateurPage() {
 
       {/* Series Switcher */}
       <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
-        <label className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block mb-2.5">
+        <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-2.5">
           Sélectionner l&apos;examen & la série :
         </label>
         <div className="flex flex-wrap gap-2">
@@ -377,7 +377,7 @@ export default function SimulateurPage() {
                             title="Modifier le coefficient de cette matière"
                           />
                         </div>
-                        <span className="text-[11px] font-medium text-slate-400">
+                        <span className="text-[11px] font-semibold text-slate-500">
                           ({subPoints} points)
                         </span>
                       </div>
@@ -393,16 +393,16 @@ export default function SimulateurPage() {
                         step={0.5}
                         value={currentGrade}
                         onChange={(e) => handleUpdateGrade(sub.id, parseFloat(e.target.value) || 0)}
-                        className="w-16 px-2 py-1.5 text-center font-black text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-[#005bbf]"
+                        className="w-16 px-2 py-1.5 text-center font-black text-base sm:text-sm rounded-xl border border-slate-300 bg-white text-slate-900 focus:outline-none focus:border-[#005bbf]"
                       />
-                      <span className="text-xs font-bold text-slate-400">/20</span>
+                      <span className="text-xs font-bold text-slate-500">/20</span>
                     </div>
 
                     {sub.isCustom && (
                       <button
                         type="button"
                         onClick={() => handleRemoveSubject(sub.id)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                         title="Supprimer cette matière ajoutée"
                       >
                         <span className="material-symbols-outlined text-[18px]">delete</span>

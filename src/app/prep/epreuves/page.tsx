@@ -133,8 +133,9 @@ export default function EpreuvesPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSelected(null)}
-                className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors active:scale-95"
+                className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors active:scale-95"
                 title="Retour à la liste"
+                aria-label="Retour à la liste"
               >
                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
               </button>
@@ -230,7 +231,7 @@ export default function EpreuvesPage() {
                   placeholder="Rechercher une matière, une série (ex: S2, SVT)..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -250,7 +251,7 @@ export default function EpreuvesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               {/* Year Pills */}
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1">Session :</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mr-1">Session :</span>
                 {annees.map((a) => (
                   <button
                     key={a}
@@ -290,7 +291,7 @@ export default function EpreuvesPage() {
 
             {/* Examination Groups */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide text-xs">
-              <span className="font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Groupe :</span>
+              <span className="font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Groupe :</span>
               {([
                 { k: "tous",         labelKey: "prep.epreuves.groupAll" },
                 { k: "1er",          labelKey: "prep.epreuves.groupFirst" },
@@ -313,7 +314,7 @@ export default function EpreuvesPage() {
 
             {/* Subject Chips */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide pt-1 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider shrink-0 mr-1">Matière :</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0 mr-1">Matière :</span>
               {matieres.map((m) => (
                 <button
                   key={m}
@@ -358,14 +359,14 @@ export default function EpreuvesPage() {
           ) : (
             <div className="space-y-3">
               <div className="flex items-center justify-between px-1">
-                <p className="text-xs font-bold text-slate-500">
+                <p className="text-xs font-bold text-slate-600">
                   {t(filtered.length > 1 ? "prep.epreuves.documentCountPlural" : "prep.epreuves.documentCountSingular", { count: filtered.length })} pour la session {annee}
                 </p>
-                <span className="text-[11px] font-semibold text-slate-400">Cliquez pour ouvrir le sujet</span>
+                <span className="text-[11px] font-semibold text-slate-500">Cliquez pour ouvrir le sujet</span>
               </div>
 
-              {/* Grid of Subject Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Grid of Subject Cards (3 colonnes sur grand écran pour un équilibre parfait) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                 {filtered.map((e) => {
                   const style = getMatiereIcon(e.matiere);
                   const isCorrige = e.type === "corrige";
@@ -392,7 +393,7 @@ export default function EpreuvesPage() {
                           }`}>
                             {isCorrige ? t("prep.epreuves.badgeCorrige") : t("prep.epreuves.badgeEpreuve")}
                           </span>
-                          <span className="text-[11px] font-bold text-slate-400">
+                          <span className="text-[11px] font-bold text-slate-500">
                             Série {e.serie} · {e.annee}
                           </span>
                         </div>
@@ -402,13 +403,13 @@ export default function EpreuvesPage() {
                         </p>
 
                         <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[13px] text-slate-400">picture_as_pdf</span>
+                          <span className="material-symbols-outlined text-[13px] text-slate-500">picture_as_pdf</span>
                           <span>Format PDF officiel</span>
                         </p>
                       </div>
 
                       {/* Trailing Arrow */}
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-400 group-hover:text-[#005bbf] flex items-center justify-center shrink-0 transition-colors">
+                      <div className="w-8 h-8 rounded-lg bg-slate-50 group-hover:bg-blue-50 text-slate-500 group-hover:text-[#005bbf] flex items-center justify-center shrink-0 transition-colors">
                         <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                       </div>
                     </button>

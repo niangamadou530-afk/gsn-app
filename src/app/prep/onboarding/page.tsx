@@ -163,7 +163,7 @@ function PrepOnboardingInner() {
               value={prenom}
               onChange={e => setPrenom(e.target.value)}
               placeholder="Ex: Awa, Cheikh, Fatou..."
-              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+              className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
             />
           </div>
 
@@ -211,7 +211,7 @@ function PrepOnboardingInner() {
                 <label className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">
                   {t("prep.onboarding.step0.serieLabel")}
                 </label>
-                <span className="text-[11px] text-slate-400 font-semibold">Choisis ta section</span>
+                <span className="text-[11px] text-slate-500 font-semibold">Choisis ta section</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
                 {BAC_SERIES.map(s => (
@@ -284,7 +284,7 @@ function PrepOnboardingInner() {
                 value={ecole}
                 onChange={e => setEcole(e.target.value)}
                 placeholder="Ex: Lycée Lamine Guèye, Collège Martin Luther King..."
-                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
               />
             </div>
 
@@ -297,7 +297,7 @@ function PrepOnboardingInner() {
                 value={classe}
                 onChange={e => setClasse(e.target.value)}
                 placeholder={examType === "BFEM" ? "Ex: 3ème B" : "Ex: Terminale S2A"}
-                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
+                className="w-full px-4 py-3.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-900 placeholder:text-slate-400 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#005bbf]/20 focus:border-[#005bbf] transition-all"
               />
             </div>
           </div>
@@ -315,7 +315,7 @@ function PrepOnboardingInner() {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="w-full py-2.5 text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
+              className="w-full py-2.5 min-h-[44px] flex items-center justify-center text-center text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
             >
               {t("prep.onboarding.step1.skip")}
             </button>
@@ -375,7 +375,7 @@ function Row({ icon, label, value }: { icon: string; label: string; value: strin
         <span className="material-symbols-outlined text-[18px]">{icon}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
         <p className="font-extrabold text-slate-900 text-sm truncate">{value}</p>
       </div>
     </div>

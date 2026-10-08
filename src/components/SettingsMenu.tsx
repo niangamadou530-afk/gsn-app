@@ -78,7 +78,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
           aria-haspopup="true"
           aria-label="Menu paramètres et profil"
           title="Paramètres & compte"
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
+          className={`w-11 h-11 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all active:scale-95 ${
             isOpen
               ? "bg-[#005bbf] text-white shadow-sm ring-2 ring-[#005bbf]/20"
               : "bg-slate-100 hover:bg-slate-200 text-slate-700"
@@ -101,7 +101,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               href="/prep/profil"
               role="menuitem"
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="block w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               Mon profil
             </Link>
@@ -111,7 +111,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               type="button"
               role="menuitem"
               onClick={toggleSound}
-              className="w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               {soundEnabled ? "Son : activé" : "Son : coupé"}
             </button>
@@ -123,7 +123,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               rel="noopener noreferrer"
               role="menuitem"
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="block w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               Aide (WhatsApp)
             </a>
@@ -133,7 +133,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               href={`mailto:${PREP_CONTACT_EMAIL}?subject=Contact%20GSN%20PREP`}
               role="menuitem"
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="block w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               Contact
             </a>
@@ -143,7 +143,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               href="/privacy"
               role="menuitem"
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="block w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               Confidentialité
             </Link>
@@ -153,7 +153,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               href="/terms"
               role="menuitem"
               onClick={closeMenu}
-              className="block w-full text-left px-4 py-2.5 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+              className="block w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
             >
               Conditions d&apos;utilisation
             </Link>
@@ -166,7 +166,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               type="button"
               role="menuitem"
               onClick={handleOpenLogoutConfirm}
-              className="w-full text-left px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+              className="w-full text-left px-4 py-3 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
             >
               Se déconnecter
             </button>

@@ -214,14 +214,14 @@ export default function ClassementPage() {
           <button
             key={tabItem.key}
             onClick={() => setTab(tabItem.key)}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2 sm:px-3 min-h-[44px] rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 ${
               tab === tabItem.key
                 ? "bg-[#005bbf] text-white shadow-xs"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">{tabItem.icon}</span>
-            <span>{tabItem.label}</span>
+            <span className="material-symbols-outlined text-[18px] shrink-0">{tabItem.icon}</span>
+            <span className="truncate">{tabItem.label}</span>
           </button>
         ))}
       </div>
@@ -241,7 +241,7 @@ export default function ClassementPage() {
             <>
               {/* Podium Top 3 */}
               <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs">
-                <p className="text-center font-extrabold text-xs uppercase tracking-wider text-slate-400 mb-6">
+                <p className="text-center font-extrabold text-xs uppercase tracking-wider text-slate-500 mb-6">
                   Podium des Majors de promo
                 </p>
                 <div className="flex items-end justify-center gap-2 sm:gap-4 pt-4 max-w-lg mx-auto">
@@ -275,7 +275,7 @@ export default function ClassementPage() {
                       <span className="text-2xl mb-1">{MEDAL[2]}</span>
                       <p className="text-xs font-black text-slate-900 text-center truncate w-full">{list[2].prenom}</p>
                       <span className="text-[11px] font-bold text-slate-500 mb-2">{list[2].avg_score}%</span>
-                      <div className="w-full h-18 rounded-t-2xl bg-gradient-to-t from-amber-100 to-orange-100 border-t-2 border-orange-200 flex items-center justify-center shadow-inner">
+                      <div className="w-full h-20 rounded-t-2xl bg-gradient-to-t from-amber-100 to-orange-100 border-t-2 border-orange-200 flex items-center justify-center shadow-inner">
                         <span className="text-amber-900 font-black text-base">3</span>
                       </div>
                     </div>
@@ -285,7 +285,7 @@ export default function ClassementPage() {
 
               {/* Ranks 4 to 10 */}
               <div className="space-y-2.5">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
                   Rangs suivants
                 </p>
                 {list.slice(3).map((p, i) => {
@@ -299,7 +299,7 @@ export default function ClassementPage() {
                           : "bg-white border border-slate-200/80 shadow-xs"
                       }`}
                     >
-                      <div className="w-8 text-center font-black text-slate-400 text-sm">
+                      <div className="w-8 text-center font-black text-slate-500 text-sm">
                         #{i + 4}
                       </div>
                       <div className="flex-1 min-w-0">

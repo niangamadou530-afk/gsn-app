@@ -323,7 +323,7 @@ export default function PrepDashboardPage() {
               </span>
             )}
             {student?.ecole && (
-              <span className="text-xs text-slate-400 font-medium">· {student.ecole}</span>
+              <span className="text-xs text-slate-500 font-medium">· {student.ecole}</span>
             )}
           </div>
 
@@ -332,13 +332,13 @@ export default function PrepDashboardPage() {
               Bonjour, <span className="text-[#005bbf]">{prenom}</span> 👋
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-500">
+          <p className="text-xs sm:text-sm text-slate-600">
             Objectif session 2027 : révise méthodiquement chaque jour pour décrocher la mention.
           </p>
         </div>
 
-        {/* Countdown Box with Change Date Button */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 min-w-[260px] shadow-sm">
+        {/* Countdown Box with Change Date Button (adaptatif sur tablette) */}
+        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 w-full md:w-auto md:min-w-[260px] shrink-0 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold text-orange-400 uppercase tracking-wider">
@@ -357,10 +357,10 @@ export default function PrepDashboardPage() {
           <button
             type="button"
             onClick={() => setShowDateModal(true)}
-            className="w-full py-1.5 px-3 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-300 hover:text-white text-[11px] font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
+            className="w-full py-2.5 px-3 min-h-[44px] rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 text-slate-200 hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition-colors active:scale-95"
             title="Modifier la série ou entrer une date personnalisée"
           >
-            <span className="material-symbols-outlined text-[15px]">edit_calendar</span>
+            <span className="material-symbols-outlined text-[16px]">edit_calendar</span>
             <span>Modifier ma date d&apos;examen</span>
           </button>
         </div>
@@ -400,49 +400,49 @@ export default function PrepDashboardPage() {
         {/* Metric 1 */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Dernier Quiz</span>
+            <span className="text-xs font-semibold text-slate-600">Dernier Quiz</span>
             <span className="material-symbols-outlined text-indigo-500 text-[20px]">quiz</span>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
             {quizScore !== null ? `${quizScore}%` : "—"}
           </p>
-          <p className="text-[11px] text-slate-400">Score d&apos;évaluation</p>
+          <p className="text-[11px] text-slate-500 font-medium">Score d&apos;évaluation</p>
         </div>
 
         {/* Metric 2 */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Flashcards</span>
+            <span className="text-xs font-semibold text-slate-600">Flashcards</span>
             <span className="material-symbols-outlined text-emerald-500 text-[20px]">style</span>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
             {flashCount}
           </p>
-          <p className="text-[11px] text-slate-400">Notions maîtrisées</p>
+          <p className="text-[11px] text-slate-500 font-medium">Notions maîtrisées</p>
         </div>
 
         {/* Metric 3 */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Session</span>
+            <span className="text-xs font-semibold text-slate-600">Session</span>
             <span className="material-symbols-outlined text-[#FF6B00] text-[20px]">event_available</span>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
             2027
           </p>
-          <p className="text-[11px] text-slate-400">{examType} Sénégal</p>
+          <p className="text-[11px] text-slate-500 font-medium">{examType} Sénégal</p>
         </div>
 
         {/* Metric 4 */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Progression</span>
+            <span className="text-xs font-semibold text-slate-600">Progression</span>
             <span className="material-symbols-outlined text-blue-500 text-[20px]">trending_up</span>
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums">
             Actif
           </p>
-          <p className="text-[11px] text-slate-400">Programme en cours</p>
+          <p className="text-[11px] text-slate-500 font-medium">Programme en cours</p>
         </div>
       </section>
 
@@ -565,7 +565,7 @@ export default function PrepDashboardPage() {
       {highlights && (
         <section className="bg-slate-50 rounded-2xl p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
               Matières prioritaires pour {serie ? `la Série ${serie}` : "ton examen"}
             </span>
             <p className="text-sm font-extrabold text-slate-900">{highlights.label}</p>
@@ -629,7 +629,7 @@ export default function PrepDashboardPage() {
       <section className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
         <button
           onClick={() => setShowFeedback(true)}
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 text-xs font-semibold transition-colors"
+          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 min-h-[44px] rounded-xl border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 text-xs font-semibold transition-colors"
         >
           <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
           <span>Donner un avis / Signaler un problème</span>
@@ -639,7 +639,7 @@ export default function PrepDashboardPage() {
           href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai besoin d'aide pour mon compte ou mes révisions.")}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 text-center sm:text-left py-2 min-h-[44px]"
         >
           <span className="material-symbols-outlined text-[16px]">support_agent</span>
           <span>Besoin d&apos;assistance ? Contacte l&apos;équipe GSN sur WhatsApp ({PREP_WHATSAPP_SUPPORT.phoneFormatted})</span>
@@ -689,7 +689,7 @@ export default function PrepDashboardPage() {
                     <button
                       key={cat}
                       onClick={() => setFbCategorie(fbCategorie === cat ? null : cat)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+                      className={`flex-1 py-2.5 min-h-[44px] rounded-xl text-xs font-bold border transition-all flex items-center justify-center ${
                         fbCategorie === cat
                           ? "border-[#005bbf] bg-blue-50 text-[#005bbf]"
                           : "border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -705,13 +705,13 @@ export default function PrepDashboardPage() {
                   onChange={(e) => setFbMessage(e.target.value)}
                   placeholder="Écris ton message ici..."
                   rows={4}
-                  className="w-full p-3.5 rounded-xl border border-slate-200 text-sm text-slate-900 focus:outline-none focus:border-[#005bbf] resize-none"
+                  className="w-full p-3.5 rounded-xl border border-slate-200 text-base sm:text-sm text-slate-900 focus:outline-none focus:border-[#005bbf] resize-none"
                 />
 
                 <button
                   onClick={submitFeedback}
                   disabled={!fbMessage.trim() || fbLoading}
-                  className="w-full py-3.5 font-extrabold text-white rounded-xl text-sm disabled:opacity-40 active:scale-[0.98] transition-all bg-[#FF6B00]"
+                  className="w-full py-3.5 min-h-[48px] font-extrabold text-white rounded-xl text-sm disabled:opacity-40 active:scale-[0.98] transition-all bg-[#FF6B00]"
                 >
                   {fbLoading ? "Envoi en cours..." : "Envoyer mon avis"}
                 </button>

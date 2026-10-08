@@ -279,7 +279,7 @@ export default function OrientationPage() {
             {/* Recommended Higher Education Establishments */}
             {result.etablissements_recommandes?.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-400 px-1">
+                <h2 className="text-xs font-extrabold uppercase tracking-widest text-slate-500 px-1">
                   {t("prep.orientation.recommendedInstitutions")}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -295,7 +295,7 @@ export default function OrientationPage() {
                       </div>
                       <p className="text-xs font-semibold text-slate-500">{e.type} · {e.filiere}</p>
                       <p className="text-xs text-slate-700 leading-relaxed">{e.pourquoi}</p>
-                      <p className="text-[11px] font-semibold text-slate-400 bg-slate-50 p-2 rounded-lg">
+                      <p className="text-[11px] font-semibold text-slate-600 bg-slate-50 p-2 rounded-lg">
                         Critères : {e.conditions_acces}
                       </p>
                     </div>

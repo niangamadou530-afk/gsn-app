@@ -218,7 +218,7 @@ export default function BibliothequePage() {
           value={searchQuery}
           onChange={e => setSearchQuery(e.target.value)}
           placeholder="Rechercher par matière, série, épreuve, mot-clé (ex: SVT, Maths S2, 2025)..."
-          className="w-full text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none bg-transparent"
+          className="w-full text-base sm:text-sm text-slate-900 placeholder:text-slate-400 outline-none bg-transparent"
         />
         {searchQuery && (
           <button
@@ -234,7 +234,7 @@ export default function BibliothequePage() {
       <div className="bg-white border border-slate-200/80 rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
         {/* Exams */}
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Examen :</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Examen :</label>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
             {exams.map(f => (
               <button
@@ -254,7 +254,7 @@ export default function BibliothequePage() {
 
         {/* Type d'épreuve (Sujet vs Corrigé) */}
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Nature du document :</label>
+          <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Nature du document :</label>
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
             {(["tous", "epreuve", "corrige"] as const).map(tType => (
               <button
@@ -275,7 +275,7 @@ export default function BibliothequePage() {
         {/* Series */}
         {series.length > 2 && (
           <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Série :</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Série :</label>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
               {series.map(s => (
                 <button
@@ -297,7 +297,7 @@ export default function BibliothequePage() {
         {/* Sessions / Years */}
         {annees.length > 1 && (
           <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Session :</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Session :</label>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
               {annees.map(a => (
                 <button
@@ -319,7 +319,7 @@ export default function BibliothequePage() {
         {/* Disciplines / Matières */}
         {matieres.length > 2 && (
           <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Discipline :</label>
+            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Discipline :</label>
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
               {matieres.map(m => (
                 <button
@@ -341,7 +341,7 @@ export default function BibliothequePage() {
 
       {/* Results Header Count */}
       <div className="flex items-center justify-between px-1">
-        <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+        <p className="text-xs font-extrabold uppercase tracking-wider text-slate-500">
           {loading ? (
             "Chargement des épreuves en cours..."
           ) : (
@@ -416,7 +416,7 @@ export default function BibliothequePage() {
                       )}
                     </div>
                     <p className="font-extrabold text-slate-900 text-sm truncate">{e.matiere}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
+                    <p className="text-xs text-slate-500 mt-0.5 truncate">
                       {e.nom_fichier || (hasText ? "Sujet officiel numérisé" : `Session ${e.annee}`)}
                     </p>
                   </div>
@@ -546,7 +546,7 @@ export default function BibliothequePage() {
                 <div className="max-w-3xl mx-auto space-y-4">
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-800">
                     <span className="material-symbols-outlined text-[18px] text-amber-600">info</span>
-                    <span>Sujet officiel retranscrit au format texte intégral (source officielle sunudaara / DEXCO).</span>
+                    <span>Sujet officiel retranscrit au format texte intégral (source officielle examens / DEXCO).</span>
                   </div>
                   <div
                     className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed text-slate-800 font-sans"

@@ -126,8 +126,8 @@ export default function PrepLandingPage() {
               <span className="whitespace-nowrap">Tableau de bord</span>
             </Link>
 
-            {/* Mobile Dropdown Menu for Parents & Dashboard */}
-            <div className="relative md:hidden">
+            {/* Mobile & Tablet Dropdown Menu for Parents, Sections & Dashboard */}
+            <div className="relative lg:hidden">
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -136,21 +136,21 @@ export default function PrepLandingPage() {
                     ? "bg-slate-900 text-white border-slate-900"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200"
                 }`}
-                title="Accès rapide Parents & Tableau de bord"
-                aria-label="Accès rapide"
+                title="Menu de navigation rapide"
+                aria-label="Menu de navigation"
               >
                 <span className="material-symbols-outlined text-[18px]">
                   {mobileMenuOpen ? "close" : "widgets"}
                 </span>
               </button>
 
-              {/* Mobile Quick Dropdown Popover */}
+              {/* Mobile & Tablet Quick Dropdown Popover */}
               {mobileMenuOpen && (
                 <div
                   className="absolute right-0 mt-2 w-56 bg-white rounded-2xl p-2.5 shadow-2xl border border-slate-200 z-50 animate-in fade-in zoom-in-95 duration-150"
                   onClick={() => setMobileMenuOpen(false)}
                 >
-                  <p className="text-[10px] font-black uppercase text-slate-400 px-2 py-1 tracking-wider">
+                  <p className="text-[10px] font-black uppercase text-slate-500 px-2 py-1 tracking-wider">
                     Accès direct
                   </p>
                   <Link
@@ -171,15 +171,23 @@ export default function PrepLandingPage() {
                   <a
                     href="#programmes"
                     onClick={(e) => handleAnchorClick(e, "programmes")}
-                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">school</span>
                     <span>Séries BAC & BFEM</span>
                   </a>
                   <a
+                    href="#fonctionnalites"
+                    onClick={(e) => handleAnchorClick(e, "fonctionnalites")}
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
+                    <span>Outils IA</span>
+                  </a>
+                  <a
                     href="#annales"
                     onClick={(e) => handleAnchorClick(e, "annales")}
-                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">auto_stories</span>
                     <span>Annales & Corrigés</span>
@@ -187,7 +195,7 @@ export default function PrepLandingPage() {
                   <a
                     href="#faq"
                     onClick={(e) => handleAnchorClick(e, "faq")}
-                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[16px]">quiz</span>
                     <span>FAQ</span>
@@ -199,13 +207,13 @@ export default function PrepLandingPage() {
             {/* Connexion & S'inscrire - fully visible at 360px without clipping */}
             <Link
               href="/login"
-              className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap"
+              className="inline-flex items-center justify-center text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-2.5 sm:px-3 py-2 min-h-[40px] sm:min-h-[44px] rounded-xl hover:bg-slate-100 transition-colors whitespace-nowrap"
             >
               Connexion
             </Link>
             <Link
               href="/signup"
-              className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0"
+              className="inline-flex items-center justify-center px-3.5 sm:px-4 py-2 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs sm:text-sm font-bold text-white shadow-md shadow-orange-500/20 active:scale-95 transition-all whitespace-nowrap shrink-0"
               style={{ backgroundColor: "#FF6B00" }}
             >
               S&apos;inscrire
@@ -236,7 +244,7 @@ export default function PrepLandingPage() {
 
               {/* Exam Switcher Buttons */}
               <div className="pt-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
                   Sélectionne ton objectif pour démarrer :
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto lg:mx-0">
@@ -361,7 +369,7 @@ export default function PrepLandingPage() {
                     <span className="material-symbols-outlined text-[18px] sm:text-[22px]">auto_stories</span>
                   </div>
                   <div>
-                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
+                    <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-500">Annales complètes</p>
                     <p className="text-xs sm:text-sm font-extrabold text-slate-900">
                       <CountUp end={600} prefix="+" minWidth="3.5ch" /> épreuves et corrigés
                     </p>
@@ -382,7 +390,7 @@ export default function PrepLandingPage() {
                 <div className="space-y-1 text-center md:text-left">
                   <p className="text-xs font-bold uppercase tracking-widest text-[#FF6B00]">Calendrier officiel 2027</p>
                   <h2 className="text-xl sm:text-2xl font-extrabold">Les dates clés des examens</h2>
-                  <p className="text-xs text-slate-400">Reste informé pour organiser tes révisions sereinement.</p>
+                  <p className="text-xs text-slate-300">Reste informé pour organiser tes révisions sereinement.</p>
                 </div>
               </Reveal>
 
@@ -682,7 +690,7 @@ export default function PrepLandingPage() {
               <h3 className="text-xl sm:text-2xl font-extrabold text-white">
                 Compte à rebours officiel en direct
               </h3>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-300 mt-0.5">
                 Suis le temps restant à la seconde près (jours, heures, minutes, secondes) pour chaque examen national.
               </p>
             </div>
