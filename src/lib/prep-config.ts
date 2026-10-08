@@ -522,3 +522,104 @@ export const PREP_COACH_CONFIG = {
   recentHistoryLimit: 6,
 } as const;
 
+/* ── VISITE GUIDÉE INTERACTIVE PREP (PARTIE K3) ─────────────── */
+
+export type TourPlacement = "haut" | "bas" | "gauche" | "droite" | "auto";
+
+export interface PrepTourStep {
+  id: string;
+  route: string;
+  cible?: string; // Sélecteur attribut data-tour
+  titre: string;
+  texte: string;
+  placement?: TourPlacement;
+  avant?: string; // Nom de l'événement CustomEvent à émettre avant (ex: prep-tour:open-coach-drawer)
+  apres?: string; // Nom de l'événement CustomEvent à émettre après (ex: prep-tour:close-coach-drawer)
+}
+
+export const PREP_TOUR_STEPS: PrepTourStep[] = [
+  {
+    id: "welcome",
+    route: "/prep/dashboard",
+    titre: "Bienvenue sur GSN PREP",
+    texte: "Ton espace de révision complet pour réussir le BFEM ou le BAC au Sénégal. Découvre en quelques étapes les outils clés conçus pour maximiser tes notes.",
+    placement: "auto",
+  },
+  {
+    id: "countdown",
+    route: "/prep/dashboard",
+    cible: "dashboard-countdown",
+    titre: "Compte à rebours officiel",
+    texte: "Suis en direct le temps restant avant les épreuves officielles de ta série. Ajuste ta date d'examen cible pour garder un rythme constant.",
+    placement: "bas",
+  },
+  {
+    id: "epreuves",
+    route: "/prep/epreuves",
+    cible: "epreuves-search",
+    titre: "Annales & Corrigés officiels",
+    texte: "Accède aux sujets d'examen réels avec corrections détaillées et barèmes complets. Recherche facilement par matière, série ou session.",
+    placement: "bas",
+  },
+  {
+    id: "generer",
+    route: "/prep/generer",
+    cible: "generer-quiz",
+    titre: "Entraînement Quiz & Révisions",
+    texte: "Valide tes compétences par chapitre avec des quiz interactifs, révise avec les flashcards et synthétise tes cours en toute autonomie.",
+    placement: "bas",
+  },
+  {
+    id: "coach-input",
+    route: "/prep/coach",
+    cible: "coach-input",
+    titre: "Ton Coach IA personnel",
+    texte: "Pose tes questions sur une notion difficile, ou demande un exercice type examen adapté au programme sénégalais. Ton coach te répond 24h/24.",
+    placement: "haut",
+  },
+  {
+    id: "coach-drawer",
+    route: "/prep/coach",
+    cible: "coach-drawer-btn",
+    titre: "Conversations & Fichiers générés",
+    texte: "Retrouve toutes tes conversations passées et télécharge tes fiches ou exercices générés pour réviser hors-ligne en Word ou PDF.",
+    placement: "droite",
+    avant: "prep-tour:open-coach-drawer",
+    apres: "prep-tour:close-coach-drawer",
+  },
+  {
+    id: "progression",
+    route: "/prep/progression",
+    cible: "progression-stats",
+    titre: "Tableau de progression",
+    texte: "Suis tes moyennes de quiz, ton taux de maîtrise et identifie les matières prioritaires pour cibler tes efforts efficacement.",
+    placement: "bas",
+  },
+  {
+    id: "parent",
+    route: "/prep/parent",
+    cible: "parent-code-card",
+    titre: "Partage sécurisé avec tes parents",
+    texte: "Transmets un code d'accès sécurisé à tes proches pour partager ta progression. Tes échanges avec le Coach restent strictement privés et confidentiels.",
+    placement: "bas",
+  },
+  {
+    id: "settings",
+    route: "/prep/dashboard",
+    cible: "header-settings-btn",
+    titre: "Paramètres & Didacticiel",
+    texte: "Gère tes préférences sonores, consulte les informations légales ou relance cette visite guidée à tout moment depuis ce menu.",
+    placement: "bas",
+    avant: "prep-tour:open-settings",
+    apres: "prep-tour:close-settings",
+  },
+  {
+    id: "ready",
+    route: "/prep/dashboard",
+    titre: "Tu es prêt à réussir !",
+    texte: "Toutes les ressources officielles sont à ta disposition. Travaille avec régularité chaque semaine et vise la mention !",
+    placement: "auto",
+  },
+];
+
+

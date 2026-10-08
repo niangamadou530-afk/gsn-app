@@ -221,7 +221,7 @@ export default function EpreuvesPage() {
             </div>
 
             {/* Quick Search */}
-            <div className="mt-5 max-w-md relative z-10">
+            <div data-tour="epreuves-search" className="mt-5 max-w-md relative z-10">
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
                   search

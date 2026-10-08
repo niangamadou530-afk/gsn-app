@@ -200,7 +200,7 @@ export default function ParentPage() {
       <div className="space-y-5">
         {/* Student code generation card (masqué à l'impression) */}
         {isStudent && (
-          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4 print:hidden">
+          <div data-tour="parent-code-card" className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-4 print:hidden">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-xl bg-orange-50 text-[#FF6B00] flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-[20px]">share</span>

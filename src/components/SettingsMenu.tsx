@@ -54,6 +54,20 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
     };
   }, [isOpen, showConfirmLogout]);
 
+  // Écouteurs pour la visite guidée (Partie K3)
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    const handleClose = () => setIsOpen(false);
+
+    window.addEventListener("prep-tour:open-settings", handleOpen);
+    window.addEventListener("prep-tour:close-settings", handleClose);
+
+    return () => {
+      window.removeEventListener("prep-tour:open-settings", handleOpen);
+      window.removeEventListener("prep-tour:close-settings", handleClose);
+    };
+  }, []);
+
   const toggleSound = () => {
     const next = sounds.toggle();
     setSoundEnabled(next);
@@ -72,6 +86,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
         {/* Trigger Button: Only the gear icon */}
         <button
           ref={triggerBtnRef}
+          data-tour="header-settings-btn"
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
           aria-expanded={isOpen}
@@ -165,6 +180,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               onClick={() => {
                 closeMenu();
                 if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("prep-tour:start"));
                   window.dispatchEvent(new CustomEvent("prep-open-tutorial"));
                 }
               }}

@@ -651,6 +651,7 @@ function GenererPageInner() {
           </div>
         </button>
         <button
+          data-tour="generer-quiz"
           onClick={() => { setMode("B"); setPhase("setup_b"); }}
           className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
           <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>

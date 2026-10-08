@@ -338,7 +338,7 @@ export default function PrepDashboardPage() {
         </div>
 
         {/* Countdown Box with Change Date Button (adaptatif sur tablette) */}
-        <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 w-full md:w-auto md:min-w-[260px] shrink-0 shadow-sm">
+        <div data-tour="dashboard-countdown" className="bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-3 w-full md:w-auto md:min-w-[260px] shrink-0 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[11px] font-bold text-orange-400 uppercase tracking-wider">

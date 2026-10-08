@@ -301,7 +301,7 @@ export function CoachConversationDrawer({
   return (
     <>
       {/* Colonne latérale fixe sur Ordinateur (desktop) */}
-      <aside className="hidden md:block w-72 h-[calc(100vh-140px)] min-h-[580px] shrink-0 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs">
+      <aside data-tour="coach-drawer-panel" className="hidden md:block w-72 h-[calc(100vh-140px)] min-h-[580px] shrink-0 rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs">
         {content}
       </aside>
 
@@ -314,7 +314,7 @@ export function CoachConversationDrawer({
             onClick={onClose}
           />
           {/* Panneau */}
-          <div className="relative w-80 max-w-[85vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+          <div data-tour="coach-drawer-panel" className="relative w-80 max-w-[85vw] h-full shadow-2xl z-10 animate-in slide-in-from-left duration-200">
             {content}
           </div>
         </div>

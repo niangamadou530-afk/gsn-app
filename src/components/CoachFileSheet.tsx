@@ -321,7 +321,7 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
                     className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
                   >
                     <span className="w-4 text-center font-mono font-bold text-slate-400">#</span>
-                    <span>Format Markdown (.md)</span>
+                    <span>Fichier texte brut (.md)</span>
                   </button>
 
                   <button

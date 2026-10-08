@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { SettingsMenu } from "@/components/SettingsMenu";
-import { TutorialModal } from "@/components/TutorialModal";
+import { TourProvider } from "@/components/TourProvider";
 
 interface StudentInfo {
   prenom: string | null;
@@ -69,7 +69,8 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
   const annalesHref = student?.exam_type === "BFEM" ? "/prep/bfem" : "/prep/epreuves";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-[#FF6B00]/15 selection:text-[#FF6B00]">
+    <TourProvider studentProfile={student}>
+      <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans selection:bg-[#FF6B00]/15 selection:text-[#FF6B00]">
       {/* Top Navbar for authenticated PREP app (Desktop & Tablet) */}
       {!isPublicLanding && (
         <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
@@ -229,9 +230,7 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
           </div>
         </nav>
       )}
-
-      {/* Didacticiel de première connexion & révision (Partie K) */}
-      {!isPublicLanding && <TutorialModal studentProfile={student} />}
-    </div>
+      </div>
+    </TourProvider>
   );
 }

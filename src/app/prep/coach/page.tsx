@@ -194,7 +194,7 @@ export default function CoachPage() {
           const greeting = [
             t("prep.coach.greetingLine1", { prenom }),
             t("prep.coach.greetingLine2", { days, exam }),
-            "Tu peux me poser une question de cours, me demander un exercice type examen ou une fiche de révision au format Markdown.",
+            "Tu peux me poser une question de cours, me demander un exercice type examen ou une fiche de révision.",
           ].join("\n\n");
 
           setMessages([{
@@ -223,6 +223,20 @@ export default function CoachPage() {
   }, [router, retryCount, fetchConversations, fetchAllFiles]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+
+  // Écoute des événements internes de la visite guidée (Partie K3)
+  useEffect(() => {
+    const handleOpenDrawer = () => setDrawerOpen(true);
+    const handleCloseDrawer = () => setDrawerOpen(false);
+
+    window.addEventListener("prep-tour:open-coach-drawer", handleOpenDrawer);
+    window.addEventListener("prep-tour:close-coach-drawer", handleCloseDrawer);
+
+    return () => {
+      window.removeEventListener("prep-tour:open-coach-drawer", handleOpenDrawer);
+      window.removeEventListener("prep-tour:close-coach-drawer", handleCloseDrawer);
+    };
+  }, []);
 
   useEffect(() => {
     if (retrySeconds <= 0) return;
@@ -609,6 +623,7 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
           <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
             {/* Bouton ouvrir tiroir sur Mobile */}
             <button
+              data-tour="coach-drawer-btn"
               type="button"
               onClick={() => setDrawerOpen(true)}
               className="md:hidden w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors shrink-0"
@@ -789,7 +804,7 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
         )}
 
         {/* Input Form & Mentions de confidentialité */}
-        <div className="pt-2 shrink-0 space-y-1.5">
+        <div data-tour="coach-input" className="pt-2 shrink-0 space-y-1.5">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -819,14 +834,13 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
           </form>
 
           {/* Mentions permanentes de confidentialité et sécurité (Règle 2.g & 6.b) */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-1 text-[11px] text-slate-500 gap-1">
+          <div className="flex items-center justify-between px-1 text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-[#005bbf] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <span>Privé : tes parents ne peuvent pas voir tes conversations ni tes fichiers.</span>
             </div>
-            <span className="text-slate-400">Évite d&apos;écrire ton nom ou des informations personnelles.</span>
           </div>
         </div>
 

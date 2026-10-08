@@ -186,13 +186,13 @@ export async function POST(req: Request) {
     fileFormatInstructions = `\n\nCONSIGNE SPÉCIALE GÉNÉRATION DE DOCUMENT :
 L'élève demande un document de révision structuré (type : ${fileIntent.kind}).
 Tu dois IMPÉRATIVEMENT formuler ta réponse sous cette structure exacte :
-Une courte phrase d'accompagnement (1 phrase polie).
+Une courte phrase d'accompagnement (1 phrase polie). Ne mentionne aucun nom de format technique ni de format de fichier (ne dis jamais 'format Markdown', 'en Markdown', 'fichier MD', etc.). Présente simplement le travail (par exemple : 'Voici ton exercice corrigé sur les suites numériques.').
 Puis le bloc délimité suivant :
 <<<FILE_START>>>
 KIND: ${fileIntent.kind}
 TITLE: [Titre clair du document, max 60 caractères]
 <<<CONTENT>>>
-[Le contenu Markdown du document : titres # et ##, listes, gras, formules en texte lisible x², √, ∑, tableaux simples. Pas de code HTML brut.]
+[Le contenu du document : titres # et ##, listes, gras, formules en texte lisible x², √, ∑, tableaux simples. Pas de code HTML brut. Ne mentionne aucun nom de format de fichier.]
 <<<CORRECTION>>>
 [Si le type est exercice : la correction détaillée étape par étape. Si un autre type, laisse ce bloc vide.]
 <<<FILE_END>>>`;

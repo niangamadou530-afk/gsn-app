@@ -172,7 +172,7 @@ export default function ProgressionPage() {
       </div>
 
       {/* Top Bento Row: Countdown & Mastery Donut */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div data-tour="progression-stats" className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Countdown Card */}
         <div className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 text-white shadow-xs relative overflow-hidden flex flex-col justify-between">
           <div>
