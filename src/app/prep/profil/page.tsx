@@ -213,10 +213,11 @@ export default function StudentProfilePage() {
               <p>
                 Cette action est <strong>irréversible</strong>. En confirmant :
               </p>
-              <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                <li>Ton compte et tes identifiants seront effacés de la plateforme.</li>
-                <li>Tous tes scores de quiz, tes fiches de révision et ton historique de progression seront supprimés.</li>
-                <li>Ton code d&apos;accès Espace Parents sera immédiatement révoqué.</li>
+              <ul className="list-disc pl-5 space-y-1.5 text-slate-700">
+                <li>Ton compte et tes identifiants seront définitivement effacés de la plateforme.</li>
+                <li>Tous tes scores de quiz, tes fiches et cartes de révision, tes résumés et ton niveau seront supprimés.</li>
+                <li>Ton code d&apos;accès Espace Parents et l&apos;adresse de suivi familial seront révoqués.</li>
+                <li>Tes compteurs d&apos;utilisation quotidienne et les données associées seront effacés.</li>
               </ul>
             </div>
 

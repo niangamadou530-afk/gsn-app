@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { t } from "@/lib/i18n";
+import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 
 type ParentViewData = {
   studentFirstName: string;
@@ -595,6 +597,31 @@ export default function ParentPage() {
             </div>
           </div>
         )}
+
+        {/* Footer légal et support (masqué lors de l'impression) */}
+        <footer className="pt-8 border-t border-slate-200/80 text-center text-xs text-slate-500 space-y-2 print:hidden">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/privacy" className="hover:text-slate-800 underline">
+              Politique de confidentialité
+            </Link>
+            <span>·</span>
+            <Link href="/terms" className="hover:text-slate-800 underline">
+              Conditions d&apos;utilisation
+            </Link>
+            <span>·</span>
+            <a
+              href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, je suis parent d'élève et j'ai besoin d'aide pour le suivi.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-slate-800 underline text-emerald-700 font-semibold"
+            >
+              Assistance WhatsApp
+            </a>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            GSN PREP · Portail de suivi pour les familles · Dakar, Sénégal
+          </p>
+        </footer>
       </div>
     </div>
   );

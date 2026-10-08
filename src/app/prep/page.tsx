@@ -626,9 +626,11 @@ export default function PrepLandingPage() {
             <span>· Tous droits réservés</span>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-6 gap-y-2">
             <Link href="/prep/parent" className="hover:text-white transition-colors">Espace Parents</Link>
             <a href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support WhatsApp</a>
+            <Link href="/privacy" className="hover:text-white transition-colors">Confidentialité</Link>
+            <Link href="/terms" className="hover:text-white transition-colors">Conditions d&apos;utilisation</Link>
             <Link href="/login" className="hover:text-white transition-colors">Espace Élève</Link>
           </div>
         </div>

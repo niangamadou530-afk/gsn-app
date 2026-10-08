@@ -404,6 +404,21 @@ export const PREP_WHATSAPP_SUPPORT = {
 };
 
 /**
+ * Contact officiel et responsabilité de traitement des données pour GSN PREP
+ */
+export const PREP_CONTACT_EMAIL = "globalskillsnetwork36@gmail.com";
+export const PREP_RESPONSIBLE_NAME = "Amadou Niang";
+
+export const PREP_LEGAL_CONFIG = {
+  publisher: "Global Skills Network (GSN)",
+  responsibleName: PREP_RESPONSIBLE_NAME,
+  contactEmail: PREP_CONTACT_EMAIL,
+  supportPhoneFormatted: "+221 78 124 65 04",
+  supportPhoneRaw: "221781246504",
+  address: "Dakar, République du Sénégal",
+};
+
+/**
  * Quotas quotidiens d'utilisation IA par élève
  * Centralisés en un point unique pour :
  * 1. Les vérifications serveur (/api/prep-generate, /api/prep-coach)

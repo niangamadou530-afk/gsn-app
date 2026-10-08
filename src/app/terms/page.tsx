@@ -1,4 +1,9 @@
 import Link from "next/link";
+import {
+  PREP_CONTACT_EMAIL,
+  PREP_LEGAL_CONFIG,
+  PREP_WHATSAPP_SUPPORT,
+} from "@/lib/prep-config";
 
 export default function TermsPage() {
   return (
@@ -14,29 +19,19 @@ export default function TermsPage() {
               GLOBAL SKILLS NETWORK
             </span>
           </Link>
-          <Link href="/prep" className="text-xs font-bold text-[#005bbf] hover:underline">
-            Accès GSN PREP
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/prep"
+              className="text-xs font-bold text-[#005bbf] hover:underline"
+            >
+              Accès GSN PREP
+            </Link>
+          </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-        {/* Banner: Brouillon Juridique */}
-        <div className="bg-amber-50 border-2 border-amber-300 text-amber-900 rounded-2xl p-4 sm:p-5 flex items-start gap-3 shadow-xs">
-          <span className="material-symbols-outlined text-amber-600 text-2xl shrink-0 mt-0.5">
-            warning
-          </span>
-          <div className="space-y-1">
-            <p className="font-black text-sm uppercase tracking-wide">
-              Document de travail — Brouillon à faire relire par un juriste
-            </p>
-            <p className="text-xs leading-relaxed text-amber-800">
-              Les présentes Conditions Générales d&apos;Utilisation (CGU) sont rédigées pour encadrer l&apos;usage de la plateforme GSN et du service de révision GSN PREP. Elles doivent être soumises à la validation d&apos;un conseil juridique qualifié en droit sénégalais des technologies de l&apos;information.
-            </p>
-          </div>
-        </div>
-
         {/* Document Header */}
         <div className="space-y-2 border-b border-slate-200 pb-6">
           <span className="text-xs font-black uppercase tracking-widest text-[#005bbf]">
@@ -46,7 +41,7 @@ export default function TermsPage() {
             Conditions Générales d&apos;Utilisation (CGU)
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Dernière mise à jour : 4 octobre 2026 · République du Sénégal
+            Dernière mise à jour : 8 octobre 2026 · {PREP_LEGAL_CONFIG.address}
           </p>
         </div>
 
@@ -57,10 +52,17 @@ export default function TermsPage() {
             1. Objet et présentation du service
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            La plateforme <strong>GSN (Global Skills Network)</strong> met à disposition des candidats sénégalais aux examens nationaux du Baccalauréat (BAC) et du Brevet de Fin d&apos;Études Moyennes (BFEM) un module pédagogique gratuit dénommé <strong>GSN PREP</strong>.
+            La plateforme <strong>{PREP_LEGAL_CONFIG.publisher}</strong> met à
+            disposition des élèves et candidats sénégalais préparant les examens
+            nationaux du Baccalauréat (BAC) et du Brevet de Fin d&apos;Études
+            Moyennes (BFEM) un module pédagogique gratuit d&apos;entraînement
+            dénommé <strong>GSN PREP</strong>.
           </p>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Le service comprend l&apos;accès à des annales d&apos;épreuves officielles, des corrigés types numérisés, des quiz interactifs d&apos;entraînement, des fiches de mémorisation (flashcards), un simulateur de moyenne indicatif et une assistance pédagogique assistée par Intelligence Artificielle.
+            Le service propose la consultation d&apos;annales d&apos;épreuves
+            officielles, des corrigés types numérisés, des quiz interactifs
+            d&apos;entraînement, des fiches de révision et un tuteur pédagogique
+            virtuel.
           </p>
         </section>
 
@@ -71,10 +73,34 @@ export default function TermsPage() {
             2. Modalités d&apos;accès et compte utilisateur
           </h2>
           <ul className="list-disc pl-5 text-xs sm:text-sm text-slate-700 space-y-2 leading-relaxed">
-            <li>L&apos;inscription à GSN PREP est accessible au moyen d&apos;un numéro de téléphone mobile sénégalais (+221) ou d&apos;une adresse email.</li>
-            <li>L&apos;élève s&apos;engage à fournir des informations loyales (prénom ou nom usuel, série et examen réels).</li>
-            <li>L&apos;accès est individuel. L&apos;élève est responsable du maintien de la confidentialité de son mot de passe.</li>
-            <li>En cas d&apos;oubli d&apos;identifiants, l&apos;élève peut solliciter l&apos;assistance officielle via le support WhatsApp dédié.</li>
+            <li>
+              L&apos;inscription à GSN PREP est accessible au moyen d&apos;un
+              numéro de téléphone mobile (+221) ou d&apos;une adresse email
+              valide.
+            </li>
+            <li>
+              L&apos;élève s&apos;engage à renseigner des informations loyales
+              (prénom usuel, examen et série préparés) afin de recevoir un
+              programme adapté à son niveau.
+            </li>
+            <li>
+              Le compte est strictement individuel. L&apos;élève est responsable
+              de la confidentialité de son mot de passe.
+            </li>
+            <li>
+              En cas d&apos;oubli de ses identifiants ou de besoin d&apos;aide,
+              l&apos;élève peut solliciter l&apos;assistance officielle via
+              WhatsApp au{" "}
+              <strong>{PREP_LEGAL_CONFIG.supportPhoneFormatted}</strong> ou par
+              courriel à{" "}
+              <a
+                href={`mailto:${PREP_CONTACT_EMAIL}`}
+                className="text-[#005bbf] font-bold underline"
+              >
+                {PREP_CONTACT_EMAIL}
+              </a>
+              .
+            </li>
           </ul>
         </section>
 
@@ -85,24 +111,37 @@ export default function TermsPage() {
             3. Propriété intellectuelle et épreuves officielles
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Les sujets des épreuves du Baccalauréat et du BFEM constituent des documents publics émanant de l&apos;Office du Baccalauréat et du Ministère de l&apos;Éducation Nationale de la République du Sénégal.
+            Les sujets des épreuves du Baccalauréat et du BFEM constituent des
+            documents publics issus de l&apos;Office du Baccalauréat et des
+            directions ministérielles en charge des examens au Sénégal.
           </p>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Leur mise à disposition sur GSN PREP est effectuée à des <strong>fins exclusivement pédagogiques, non commerciales et d&apos;intérêt public</strong>, dans le but d&apos;assurer l&apos;égalité des chances pour tous les élèves du Sénégal. Les corrigés, méthodologies et synthèses originaux élaborés par l&apos;équipe GSN restent la propriété exclusive de la plateforme.
+            Leur mise à disposition sur GSN PREP est effectuée à des{" "}
+            <strong>fins exclusivement pédagogiques, non commerciales et d&apos;intérêt public</strong>
+            , afin de garantir l&apos;égalité d&apos;accès aux ressources pour
+            tous les élèves. Les corrigés originaux, synthèses méthodologiques et
+            modules interactifs développés par GSN demeurent la propriété de la
+            plateforme.
           </p>
         </section>
 
-        {/* Section 4 : Règles d'usage de l'Intelligence Artificielle */}
+        {/* Section 4 : Règles d'usage des outils d'IA */}
         <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-4">
           <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#005bbf]" />
-            4. Usage loyal des outils d&apos;assistance IA
+            4. Usage loyal et équitable des outils d&apos;assistance IA
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Le Coach IA est un tuteur d&apos;accompagnement à la révision. L&apos;élève s&apos;interdit de formuler des requêtes abusives, injurieuses, à caractère diffamatoire ou manifestement étrangères à l&apos;apprentissage scolaire.
+            Le Coach IA est un tuteur virtuel d&apos;accompagnement à la
+            révision scolaire. L&apos;élève s&apos;interdit toute formulation
+            injurieuse, diffamatoire ou contraire aux règles de respect et de
+            sécurité.
           </p>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Afin de préserver la qualité de service pour l&apos;ensemble des élèves de la communauté, des quotas quotidiens d&apos;utilisation sont appliqués par compte.
+            Afin de préserver la qualité de service et la disponibilité pour
+            l&apos;ensemble de la communauté d&apos;élèves, des quotas
+            quotidiens d&apos;utilisation équitable sont appliqués à chaque
+            compte.
           </p>
         </section>
 
@@ -113,17 +152,74 @@ export default function TermsPage() {
             5. Droit applicable et juridiction compétente
           </h2>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            Les présentes Conditions Générales d&apos;Utilisation sont régies et interprétées conformément au droit en vigueur en <strong>République du Sénégal</strong>.
+            Les présentes Conditions Générales d&apos;Utilisation sont régies
+            par le droit applicable en <strong>République du Sénégal</strong>.
           </p>
           <p className="text-xs sm:text-sm text-slate-700 leading-relaxed">
-            En cas de différend relatif à l&apos;utilisation des services, les parties s&apos;engagent à rechercher en priorité une solution amiable avant toute action contentieuse devant les tribunaux compétents de <strong>Dakar</strong>.
+            En cas de difficulté relative à l&apos;utilisation des services, les
+            parties recherchent en priorité un règlement amiable avec
+            l&apos;équipe de GSN à Dakar.
           </p>
+        </section>
+
+        {/* Section 6 : Contact officiel */}
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xs space-y-3">
+          <h2 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#005bbf]" />
+            6. Contacts et éditeur
+          </h2>
+          <div className="text-xs sm:text-sm text-slate-700 space-y-1 leading-relaxed">
+            <p>
+              <strong>Éditeur :</strong> {PREP_LEGAL_CONFIG.publisher}
+            </p>
+            <p>
+              <strong>Responsable :</strong> {PREP_LEGAL_CONFIG.responsibleName}
+            </p>
+            <p>
+              <strong>Courriel :</strong>{" "}
+              <a
+                href={`mailto:${PREP_CONTACT_EMAIL}`}
+                className="text-[#005bbf] font-bold underline"
+              >
+                {PREP_CONTACT_EMAIL}
+              </a>
+            </p>
+            <p>
+              <strong>Assistance WhatsApp :</strong>{" "}
+              <a
+                href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-700 font-bold underline"
+              >
+                {PREP_LEGAL_CONFIG.supportPhoneFormatted}
+              </a>
+            </p>
+            <p>
+              <strong>Siège :</strong> {PREP_LEGAL_CONFIG.address}
+            </p>
+          </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-slate-200 py-6 text-center text-xs text-slate-500">
-        <p>© 2026 GSN (Global Skills Network) · Dakar, Sénégal</p>
+      <footer className="w-full border-t border-slate-200 py-6 text-center text-xs text-slate-500 space-y-2">
+        <div className="flex items-center justify-center gap-4">
+          <Link href="/privacy" className="hover:text-slate-800 underline">
+            Politique de confidentialité
+          </Link>
+          <span>·</span>
+          <Link href="/prep" className="hover:text-slate-800 underline">
+            GSN PREP
+          </Link>
+          <span>·</span>
+          <Link href="/prep/parent" className="hover:text-slate-800 underline">
+            Espace Parents
+          </Link>
+        </div>
+        <p>
+          © 2026 {PREP_LEGAL_CONFIG.publisher} · {PREP_LEGAL_CONFIG.address}
+        </p>
       </footer>
     </div>
   );

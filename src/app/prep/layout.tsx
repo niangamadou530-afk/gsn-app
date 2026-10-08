@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { SoundToggle } from "@/components/SoundToggle";
+import { SettingsMenu } from "@/components/SettingsMenu";
 import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 
 interface StudentInfo {
@@ -155,14 +156,14 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
 
             {/* Right Quick Actions */}
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <SoundToggle />
+              <SoundToggle compact className="hidden sm:inline-flex" />
 
               <a
                 href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai une question sur la plateforme.")}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Assistance WhatsApp"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
+                className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-colors"
               >
                 <span className="material-symbols-outlined text-[16px]">chat</span>
                 <span>Aide WhatsApp</span>
@@ -178,19 +179,18 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
               </Link>
 
               {student?.prenom && (
-                <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
+                <Link
+                  href="/prep/profil"
+                  title="Voir mon profil"
+                  className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                >
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>{student.prenom}</span>
-                </div>
+                </Link>
               )}
 
-              <button
-                onClick={handleSignOut}
-                title="Déconnexion"
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">logout</span>
-              </button>
+              {/* Settings Menu Component (Profile, Sound, Legal, Support, Sign out) */}
+              <SettingsMenu student={student} onSignOut={handleSignOut} />
             </div>
           </div>
         </header>
