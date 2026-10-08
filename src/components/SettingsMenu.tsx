@@ -158,10 +158,25 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
               Conditions d&apos;utilisation
             </Link>
 
+            {/* 7. Revoir le didacticiel */}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                closeMenu();
+                if (typeof window !== "undefined") {
+                  window.dispatchEvent(new CustomEvent("prep-open-tutorial"));
+                }
+              }}
+              className="w-full text-left px-4 py-3 text-xs font-semibold text-slate-800 hover:bg-slate-50 transition-colors"
+            >
+              Revoir le didacticiel
+            </button>
+
             {/* Séparateur léger */}
             <div className="border-t border-slate-100 my-1" />
 
-            {/* 7. Se déconnecter (couleur distincte) */}
+            {/* Se déconnecter (couleur distincte) */}
             <button
               type="button"
               role="menuitem"

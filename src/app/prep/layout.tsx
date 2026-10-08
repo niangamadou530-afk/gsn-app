@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { TutorialModal } from "@/components/TutorialModal";
 
 interface StudentInfo {
   prenom: string | null;
@@ -228,6 +229,9 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
           </div>
         </nav>
       )}
+
+      {/* Didacticiel de première connexion & révision (Partie K) */}
+      {!isPublicLanding && <TutorialModal studentProfile={student} />}
     </div>
   );
 }

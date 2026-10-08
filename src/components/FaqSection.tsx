@@ -57,7 +57,7 @@ export function FaqSection() {
       question: "Comment marche le Coach IA ?",
       answer: (
         <p>
-          Le Coach IA t&apos;aide à comprendre ton cours, explique les notions difficiles et te donne des méthodes de résolution.
+          Le Coach IA t&apos;aide à comprendre ton cours, explique les notions difficiles et produit à ta demande des fiches de révision, méthodes et exercices corrigés au format Markdown (téléchargeables en Word ou imprimables en PDF).
           Il peut parfois se tromper : prends le réflexe de vérifier les points clés avec ton professeur.
           Chaque élève dispose d&apos;un quota de {PREP_DAILY_QUOTAS.coach_count} questions par jour avec le Coach.
         </p>
@@ -80,7 +80,8 @@ export function FaqSection() {
       answer: (
         <p>
           Tes parents ont accès à une vue de suivi globale : ton prénom, ton examen et ta série, le nombre de quiz terminés dans la semaine, tes jours d&apos;activité, ta moyenne générale de quiz, tes statistiques par matière et les dates clés officielles de ton examen.
-          Ils <strong>ne voient jamais</strong> tes conversations privées avec le Coach IA.
+          Depuis l&apos;Espace Parents, ils <strong>ne voient jamais</strong> tes conversations ni tes fichiers générés par le Coach IA.
+          Ne partage pas ton mot de passe : celui qui l&apos;a peut ouvrir ton compte.
           C&apos;est toi qui génères ton code d&apos;accès sécurisé depuis ton espace, et tu peux le renouveler à tout moment (l&apos;ancien code cesse alors immédiatement de fonctionner).
         </p>
       ),

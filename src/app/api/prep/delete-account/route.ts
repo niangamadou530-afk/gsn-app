@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Suppression dans toutes les tables applicatives contenant des données de l'élève
     const tablesToDelete: { table: string; col: string }[] = [
+      { table: "prep_coach_files", col: "user_id" },
+      { table: "prep_coach_messages", col: "user_id" },
+      { table: "prep_coach_conversations", col: "user_id" },
       { table: "prep_students", col: "user_id" },
       { table: "quiz_results", col: "user_id" },
       { table: "flashcards", col: "user_id" },

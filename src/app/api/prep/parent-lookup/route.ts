@@ -1,3 +1,10 @@
+/**
+ * GARDE-FOU DE CONFIDENTIALITÉ PREP :
+ * Cette route est réservée exclusivement aux parents munis d'un code d'accès valide.
+ * Elle n'utilise qu'une liste blanche stricte de champs agrégés (statistiques globales de quiz).
+ * Elle n'interroge JAMAIS les tables du Coach IA (prep_coach_conversations, prep_coach_messages,
+ * prep_coach_files) : les conversations, messages et documents générés restent strictement privés à l'élève.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkAndIncrementServerRateLimit, resetServerRateLimit } from "@/lib/serverRateLimit";

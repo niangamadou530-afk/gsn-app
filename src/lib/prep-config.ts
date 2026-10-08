@@ -504,3 +504,21 @@ export const PREP_MOTION_PRESETS: Record<PrepMotionLevel, PrepMotionSettings> = 
 export const PREP_MOTION_ACTIVE_LEVEL: PrepMotionLevel = "marquee";
 
 export const PREP_MOTION: PrepMotionSettings = PREP_MOTION_PRESETS[PREP_MOTION_ACTIVE_LEVEL];
+
+/* ── CONFIGURATION DU COACH IA (PARTIE K) ─────────────────── */
+
+export const PREP_COACH_RETENTION_DAYS = 90;
+
+export const PREP_COACH_CONFIG = {
+  retentionDays: PREP_COACH_RETENTION_DAYS,
+  maxConversations: 50,
+  maxMessagesPerConversation: 200,
+  maxFilesTotal: 100,
+  maxFileCharLength: 40000,
+  maxNewConversationsPerDay: 20,
+  chatMaxTokens: 500,
+  fileMaxTokens: 1800,
+  titleMaxLength: 60,
+  recentHistoryLimit: 6,
+} as const;
+

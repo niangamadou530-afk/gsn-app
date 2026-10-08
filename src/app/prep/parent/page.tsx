@@ -268,6 +268,50 @@ export default function ParentPage() {
                 </div>
               </div>
             )}
+
+            {/* ── Section « Ce que voient tes parents » (Partie K) ── */}
+            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5">
+              <div className="flex items-center gap-2 text-slate-900 font-extrabold text-xs sm:text-sm">
+                <span className="material-symbols-outlined text-[18px] text-[#005bbf]">visibility</span>
+                <span>Ce que voient tes parents</span>
+              </div>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Depuis l&apos;Espace Parents, avec ton code d&apos;accès, tes parents peuvent consulter uniquement ces catégories de suivi :
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-700">
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-0.5">
+                  <span className="font-bold text-slate-900 block">Identité scolaire</span>
+                  <span className="text-[11px] text-slate-500">Ton prénom, ton examen préparé (BAC ou BFEM) et ta série.</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-0.5">
+                  <span className="font-bold text-slate-900 block">Moyenne générale & Assiduité</span>
+                  <span className="text-[11px] text-slate-500">Ta moyenne générale aux quiz et ton nombre total de quiz terminés.</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-0.5">
+                  <span className="font-bold text-slate-900 block">Performances par matière</span>
+                  <span className="text-[11px] text-slate-500">Tes scores moyens et le volume d&apos;entraînement dans chaque discipline.</span>
+                </div>
+                <div className="p-2.5 bg-white rounded-xl border border-slate-200 space-y-0.5">
+                  <span className="font-bold text-slate-900 block">Activités récentes & Échéances</span>
+                  <span className="text-[11px] text-slate-500">Les dates des derniers quiz réalisés et les jours restants avant l&apos;examen.</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-white rounded-xl border border-blue-200 flex items-start gap-2.5 text-xs text-slate-700">
+                <span className="material-symbols-outlined text-[18px] text-[#005bbf] shrink-0 mt-0.5">lock</span>
+                <div className="space-y-1">
+                  <p className="font-bold text-slate-900">
+                    Depuis l&apos;Espace Parents, ils ne voient jamais tes conversations ni tes fichiers.
+                  </p>
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    Tes échanges avec le Coach IA, tes fiches générées et tes brouillons restent strictement privés.
+                    Ne partage pas ton mot de passe : celui qui l&apos;a peut ouvrir ton compte. Tu peux renouveler ton code parent à tout moment : l&apos;ancien cesse alors immédiatement de fonctionner.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

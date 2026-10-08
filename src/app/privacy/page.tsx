@@ -3,6 +3,7 @@ import {
   PREP_CONTACT_EMAIL,
   PREP_LEGAL_CONFIG,
   PREP_WHATSAPP_SUPPORT,
+  PREP_COACH_RETENTION_DAYS,
 } from "@/lib/prep-config";
 
 export default function PrivacyPage() {
@@ -227,10 +228,15 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-5 space-y-1.5">
               <li>
-                <strong>Échanges éphémères avec le Coach IA :</strong> Les
-                questions posées au Coach IA sont traitées en temps réel pour
-                fournir la réponse pédagogique. Aucun historique de ces
-                conversations n&apos;est enregistré dans la base de données.
+                <strong>Conversations et documents du Coach IA :</strong> Les échanges
+                pédagogiques avec le Coach IA ainsi que les fichiers générés
+                (exercices, fiches de révision, méthodes, plannings) sont conservés
+                dans l&apos;espace personnel de l&apos;élève pendant {PREP_COACH_RETENTION_DAYS} jours
+                suivant sa dernière activité afin de lui permettre de reprendre ses révisions.
+                L&apos;élève peut à tout moment supprimer une conversation, un document ou
+                l&apos;ensemble de son historique d&apos;un simple clic.
+                De plus, depuis l&apos;Espace Parents, les parents n&apos;ont aucun accès
+                aux conversations ni aux fichiers générés par le Coach.
               </li>
               <li>
                 <strong>Documents et photos de cours :</strong> Les photographies
@@ -323,6 +329,9 @@ export default function PrivacyPage() {
               <ul className="list-circle pl-5 mt-2 space-y-1 text-slate-600">
                 <li>Le compte utilisateur et les identifiants de connexion.</li>
                 <li>Le profil scolaire (série, niveau d&apos;examen, lycée).</li>
+                <li>
+                  L&apos;ensemble des conversations, messages et documents (exercices, fiches, méthodes) du Coach IA.
+                </li>
                 <li>L&apos;historique complet des quiz et notes obtenues.</li>
                 <li>L&apos;ensemble des fiches et cartes de révision.</li>
                 <li>Tous les résumés de cours sauvegardés.</li>
