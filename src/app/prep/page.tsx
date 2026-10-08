@@ -3,10 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { getExamCountdown, PREP_WHATSAPP_SUPPORT, PREP_CONTACT_EMAIL } from "@/lib/prep-config";
+import { getExamCountdown, PREP_WHATSAPP_SUPPORT, PREP_CONTACT_EMAIL, PREP_MOTION } from "@/lib/prep-config";
 import { LiveExamCountdownCard } from "@/components/LiveExamCountdown";
 import { FaqSection } from "@/components/FaqSection";
 import { Reveal } from "@/components/Reveal";
+import { ScrollProgress } from "@/components/ScrollProgress";
+import { CountUp } from "@/components/CountUp";
 
 export default function PrepLandingPage() {
   const [selectedExam, setSelectedExam] = useState<"BAC" | "BFEM">("BAC");
@@ -210,6 +212,7 @@ export default function PrepLandingPage() {
             </Link>
           </div>
         </div>
+        <ScrollProgress className="absolute bottom-0 left-0 right-0 w-full h-[3px] bg-transparent pointer-events-none overflow-hidden" />
       </header>
 
       {/* Hero Section (Au-dessus du pli : PAS d'animation pour affichage immédiat sans saut) */}
@@ -239,7 +242,7 @@ export default function PrepLandingPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto lg:mx-0">
                   <Link
                     href="/signup?source=prep&exam=BAC"
-                    className="p-4 rounded-2xl border-2 border-orange-300 bg-white hover:border-[#FF6B00] shadow-sm hover:shadow-md transition-all text-left group flex items-start gap-3.5"
+                    className="p-4 rounded-2xl border-2 border-orange-300 bg-white hover:border-[#FF6B00] shadow-sm hover:shadow-md transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98] text-left group flex items-start gap-3.5"
                   >
                     <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center text-[#FF6B00] shrink-0 group-hover:scale-105 transition-transform">
                       <span className="material-symbols-outlined text-[24px]">school</span>
@@ -258,7 +261,7 @@ export default function PrepLandingPage() {
 
                   <Link
                     href="/signup?source=prep&exam=BFEM"
-                    className="p-4 rounded-2xl border-2 border-blue-200 bg-white hover:border-[#005bbf] shadow-sm hover:shadow-md transition-all text-left group flex items-start gap-3.5"
+                    className="p-4 rounded-2xl border-2 border-blue-200 bg-white hover:border-[#005bbf] shadow-sm hover:shadow-md transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98] text-left group flex items-start gap-3.5"
                   >
                     <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-[#005bbf] shrink-0 group-hover:scale-105 transition-transform">
                       <span className="material-symbols-outlined text-[24px]">assignment</span>
@@ -352,14 +355,16 @@ export default function PrepLandingPage() {
                   </div>
                 </div>
 
-                {/* Floating Stat Card (Annales complètes - updated to +600) */}
-                <div className="absolute -top-3 right-2 sm:-top-4 sm:-right-4 bg-white rounded-2xl p-2.5 sm:p-3.5 shadow-xl border border-slate-100 flex items-center gap-2 sm:gap-3 z-20 max-w-[calc(100%-1rem)]">
+                {/* Floating Stat Card (Annales complètes - updated to +600 with CountUp) */}
+                <div className="absolute -top-3 right-2 sm:-top-4 sm:-right-4 bg-white rounded-2xl p-2.5 sm:p-3.5 shadow-xl border border-slate-100 flex items-center gap-2 sm:gap-3 z-20 max-w-[calc(100%-1rem)] transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
                     <span className="material-symbols-outlined text-[18px] sm:text-[22px]">auto_stories</span>
                   </div>
                   <div>
                     <p className="text-[9px] sm:text-[10px] uppercase font-bold text-slate-400">Annales complètes</p>
-                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">+600 épreuves et corrigés</p>
+                    <p className="text-xs sm:text-sm font-extrabold text-slate-900">
+                      <CountUp end={600} prefix="+" minWidth="3.5ch" /> épreuves et corrigés
+                    </p>
                   </div>
                 </div>
               </div>
@@ -373,11 +378,13 @@ export default function PrepLandingPage() {
         <section className="bg-slate-900 text-white py-10">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-              <div className="space-y-1 text-center md:text-left">
-                <p className="text-xs font-bold uppercase tracking-widest text-[#FF6B00]">Calendrier officiel 2027</p>
-                <h2 className="text-xl sm:text-2xl font-extrabold">Les dates clés des examens</h2>
-                <p className="text-xs text-slate-400">Reste informé pour organiser tes révisions sereinement.</p>
-              </div>
+              <Reveal direction="up" withUnderline underlineClassName="h-[3px] bg-[#FF6B00] rounded-full mt-2 w-16 mx-auto md:mx-0">
+                <div className="space-y-1 text-center md:text-left">
+                  <p className="text-xs font-bold uppercase tracking-widest text-[#FF6B00]">Calendrier officiel 2027</p>
+                  <h2 className="text-xl sm:text-2xl font-extrabold">Les dates clés des examens</h2>
+                  <p className="text-xs text-slate-400">Reste informé pour organiser tes révisions sereinement.</p>
+                </div>
+              </Reveal>
 
               {/* BAC Aesthetic Timer */}
               <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 border border-slate-700/80 shadow-lg relative overflow-hidden flex flex-col justify-between">
@@ -455,7 +462,7 @@ export default function PrepLandingPage() {
       <Reveal direction="up">
         <section className="py-6 sm:py-8 bg-gradient-to-r from-purple-50 via-white to-blue-50 border-b border-slate-200/80">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-200/90 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-purple-200/90 shadow-md flex flex-col md:flex-row items-center justify-between gap-6 transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
               <div className="flex items-start sm:items-center gap-4">
                 <div className="w-14 h-14 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0 shadow-inner">
                   <span className="material-symbols-outlined text-[32px]">family_restroom</span>
@@ -495,7 +502,7 @@ export default function PrepLandingPage() {
         className="pt-10 pb-14 sm:pt-12 sm:pb-18 bg-white border-b border-slate-200/80"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10">
-          <Reveal direction="up">
+          <Reveal direction="up" withUnderline underlineClassName="h-[3px] bg-[#FF6B00] rounded-full mt-3 w-16 mx-auto">
             <div className="text-center max-w-2xl mx-auto space-y-3">
               <span className="text-xs font-black uppercase tracking-widest text-[#FF6B00]">Tout pour réussir</span>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight">
@@ -510,7 +517,7 @@ export default function PrepLandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
             {/* Card 1: Coach IA */}
             <Reveal delay={0} className="h-full">
-              <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+              <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md flex flex-col justify-between h-full transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                 <div className="space-y-4 flex-1 flex flex-col">
                   <div className="w-12 h-12 rounded-2xl bg-[#005bbf] text-white flex items-center justify-center shadow-lg shadow-blue-500/30">
                     <span className="material-symbols-outlined text-[26px]">smart_toy</span>
@@ -532,8 +539,8 @@ export default function PrepLandingPage() {
 
             {/* Card 2: Annales & Corrigés (Cible de l'ancre #annales) */}
             <div id="annales" style={{ scrollMarginTop: "5rem" }} className="h-full">
-              <Reveal delay={80} className="h-full">
-                <div className="bg-gradient-to-br from-slate-50 to-orange-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+              <Reveal delay={PREP_MOTION.staggerMs} className="h-full">
+                <div className="bg-gradient-to-br from-slate-50 to-orange-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md flex flex-col justify-between h-full transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                   <div className="space-y-4 flex-1 flex flex-col">
                     <div className="w-12 h-12 rounded-2xl bg-[#FF6B00] text-white flex items-center justify-center shadow-lg shadow-orange-500/30">
                       <span className="material-symbols-outlined text-[26px]">description</span>
@@ -542,7 +549,7 @@ export default function PrepLandingPage() {
                       Annales 2023-2026
                     </h3>
                     <p className="text-sm text-slate-700 font-medium leading-relaxed flex-1">
-                      Plus de 600 épreuves et corrigés réels du 1er groupe, 2ème groupe et sessions de remplacement numérisés haute définition.
+                      Plus de <CountUp end={600} minWidth="3ch" className="font-extrabold text-slate-900" /> épreuves et corrigés réels du 1er groupe, 2ème groupe et sessions de remplacement numérisés haute définition.
                     </p>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-200/70">
@@ -555,8 +562,8 @@ export default function PrepLandingPage() {
             </div>
 
             {/* Card 3: Simulateur de Moyenne & Orientation */}
-            <Reveal delay={160} className="h-full">
-              <div className="bg-gradient-to-br from-slate-50 to-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+            <Reveal delay={PREP_MOTION.staggerMs * 2} className="h-full">
+              <div className="bg-gradient-to-br from-slate-50 to-emerald-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-sm hover:shadow-md flex flex-col justify-between h-full transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                 <div className="space-y-4 flex-1 flex flex-col">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30">
                     <span className="material-symbols-outlined text-[26px]">calculate</span>
@@ -586,7 +593,7 @@ export default function PrepLandingPage() {
         className="pt-10 pb-12 sm:pt-12 sm:pb-14 bg-[#f8fafc]"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-8">
-          <Reveal direction="up">
+          <Reveal direction="up" withUnderline underlineClassName="h-[3px] bg-[#FF6B00] rounded-full mt-2.5 w-16">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
               <div className="space-y-2">
                 <span className="text-xs font-bold uppercase tracking-widest text-[#005bbf]">Programmes officiels</span>
@@ -627,8 +634,8 @@ export default function PrepLandingPage() {
                 { code: "Série STIDD / T1-T2", title: "Sciences Industrielles", matieres: "Mécanique, Électrotechnique" },
                 { code: "Série F6", title: "Chimie & Laboratoire", matieres: "Chimie organique, Physique" },
               ].map((s, idx) => (
-                <Reveal key={s.code} delay={Math.min(idx * 30, 210)}>
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm hover:border-[#005bbf] hover:shadow-md transition-all">
+                <Reveal key={s.code} delay={Math.min(idx * Math.round(PREP_MOTION.staggerMs / 3), 240)}>
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/90 shadow-sm hover:border-[#005bbf] hover:shadow-md transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-extrabold text-sm text-[#005bbf]">{s.code}</span>
                       <span className="text-[10px] font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full uppercase">BAC 2027</span>
@@ -642,7 +649,7 @@ export default function PrepLandingPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 w-full">
               <Reveal delay={0}>
-                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all space-y-2">
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98] space-y-2">
                   <span className="font-extrabold text-base text-[#FF6B00]">BFEM Enseignement Général</span>
                   <p className="text-xs sm:text-sm text-slate-700 font-medium mt-1 leading-relaxed">
                     Français (Texte suivi de questions, Dictée), Mathématiques, PC, SVT, Histoire-Géographie, Anglais, EPS.
@@ -650,8 +657,8 @@ export default function PrepLandingPage() {
                   <p className="text-xs text-[#005bbf] font-bold pt-2">Annales complètes depuis 2014</p>
                 </div>
               </Reveal>
-              <Reveal delay={80}>
-                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all space-y-2">
+              <Reveal delay={PREP_MOTION.staggerMs}>
+                <div className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-transform duration-200 hover:-translate-y-1 active:scale-[0.98] space-y-2">
                   <span className="font-extrabold text-base text-[#005bbf]">BFEM Option Franco-Arabe</span>
                   <p className="text-xs sm:text-sm text-slate-700 font-medium mt-1 leading-relaxed">
                     Épreuves spécifiques de langue arabe, études islamiques et matières scientifiques en bilingue.

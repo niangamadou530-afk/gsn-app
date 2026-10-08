@@ -460,3 +460,47 @@ export const PREP_QUOTA_DETAILS: Record<PrepUsageField, { label: string; limit: 
     description: "Synthèses ciblées par matière",
   },
 };
+
+/**
+ * Configuration centralisée des animations de défilement pour GSN PREP.
+ * Trois niveaux disponibles : "douce", "moyenne", "marquee".
+ * Pour changer de niveau global en une ligne, modifier PREP_MOTION_ACTIVE_LEVEL ci-dessous.
+ */
+export type PrepMotionLevel = "douce" | "moyenne" | "marquee";
+
+export interface PrepMotionSettings {
+  distanceY: number; // en px
+  initialScale: number;
+  durationMs: number;
+  staggerMs: number;
+  easing: string;
+}
+
+export const PREP_MOTION_PRESETS: Record<PrepMotionLevel, PrepMotionSettings> = {
+  douce: {
+    distanceY: 14,
+    initialScale: 1.0,
+    durationMs: 360,
+    staggerMs: 50,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  },
+  moyenne: {
+    distanceY: 28,
+    initialScale: 0.97,
+    durationMs: 520,
+    staggerMs: 90,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  },
+  marquee: {
+    distanceY: 48,
+    initialScale: 0.94,
+    durationMs: 700,
+    staggerMs: 120,
+    easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+  },
+};
+
+// RÉGLAGE UNIQUE : changer "marquee" en "moyenne" ou "douce" pour basculer toute l'application
+export const PREP_MOTION_ACTIVE_LEVEL: PrepMotionLevel = "marquee";
+
+export const PREP_MOTION: PrepMotionSettings = PREP_MOTION_PRESETS[PREP_MOTION_ACTIVE_LEVEL];
