@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default function StudentProfilePage() {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function StudentProfilePage() {
     phone: string | null;
   } | null>(null);
 
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -169,6 +171,21 @@ export default function StudentProfilePage() {
           </div>
         </div>
 
+        {/* Déconnexion */}
+        <div className="bg-white rounded-3xl p-4 border border-slate-200/90 shadow-xs flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-bold text-slate-900">Session active</h3>
+            <p className="text-[11px] text-slate-500">Se déconnecter de cet appareil</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLogoutConfirm(true)}
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-600 font-bold text-xs border border-slate-200/80 transition-colors"
+          >
+            Se déconnecter
+          </button>
+        </div>
+
         {/* Danger Zone: Account Deletion */}
         <div className="bg-white rounded-3xl p-6 border-2 border-rose-200 shadow-xs space-y-4">
           <div className="flex items-start gap-3">
@@ -289,6 +306,21 @@ export default function StudentProfilePage() {
           </div>
         </div>
       )}
+
+      {/* Confirmation de déconnexion */}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={async () => {
+          setShowLogoutConfirm(false);
+          await supabase.auth.signOut();
+          router.push("/login");
+        }}
+        title="Te déconnecter ?"
+        message="Tu pourras te reconnecter à tout moment avec ton numéro et ton mot de passe."
+        confirmText="Se déconnecter"
+        cancelText="Annuler"
+      />
     </div>
   );
 }

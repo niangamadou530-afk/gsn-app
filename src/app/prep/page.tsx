@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useState } from "react";
 import { getExamCountdown, PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 import { LiveExamCountdownCard } from "@/components/LiveExamCountdown";
+import { FaqSection } from "@/components/FaqSection";
+import { Reveal } from "@/components/Reveal";
 
 export default function PrepLandingPage() {
   const [selectedExam, setSelectedExam] = useState<"BAC" | "BFEM">("BAC");
@@ -38,6 +40,7 @@ export default function PrepLandingPage() {
             <a href="#programmes" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Examens & Séries</a>
             <a href="#fonctionnalites" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Outils IA</a>
             <a href="#annales" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">Annales & Corrigés</a>
+            <a href="#faq" className="hover:text-[#005bbf] transition-colors whitespace-nowrap">FAQ</a>
             <Link href="/prep/parent" className="hover:text-purple-700 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 font-bold text-purple-700">
               <span className="material-symbols-outlined text-[16px] text-purple-600">family_restroom</span>
               <span className="whitespace-nowrap">Espace Parents</span>
@@ -583,6 +586,11 @@ export default function PrepLandingPage() {
         </div>
       </section>
 
+      {/* FAQ Section */}
+      <Reveal direction="up">
+        <FaqSection />
+      </Reveal>
+
       {/* Call to action banner */}
       <section className="py-16 bg-gradient-to-tr from-[#005bbf] to-[#004493] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6">
@@ -627,6 +635,7 @@ export default function PrepLandingPage() {
           </div>
 
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-6 gap-y-2">
+            <a href="#faq" className="hover:text-white transition-colors">FAQ</a>
             <Link href="/prep/parent" className="hover:text-white transition-colors">Espace Parents</Link>
             <a href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support WhatsApp</a>
             <Link href="/privacy" className="hover:text-white transition-colors">Confidentialité</Link>

@@ -1,7 +1,7 @@
 // src/components/SoundToggle.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { sounds } from "@/lib/soundEffects";
 
 export function SoundToggle({ className = "", compact = false }: { className?: string; compact?: boolean }) {
@@ -49,7 +49,7 @@ export function SoundToggle({ className = "", compact = false }: { className?: s
         {enabled ? "volume_up" : "volume_off"}
       </span>
       <span className="hidden sm:inline">
-        {enabled ? "Son actif" : "Son coupé"}
+        {enabled ? "Son : activé" : "Son : coupé"}
       </span>
     </button>
   );
