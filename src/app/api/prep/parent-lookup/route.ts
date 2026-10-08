@@ -91,6 +91,22 @@ export async function POST(req: NextRequest) {
           examType: "BAC",
           serie: "S2",
         },
+        regularity: {
+          daysSinceLastActivity: 1,
+          lastActivityText: "Hier",
+          streakDays: 3,
+          isInactiveNotice: false,
+          inactiveMessage: null,
+        },
+        parentAdvice: {
+          general: [
+            "Veillez à un sommeil régulier de 7 à 8 heures : le repos nocturne consolide la mémorisation.",
+            "Privilégiez des séances courtes de 20 à 30 minutes plutôt que de longues sessions épuisantes.",
+            "Valorisez ses efforts constants et sa régularité plutôt que les notes brutes pour préserver sa confiance.",
+            "Encouragez une pause avec étirements et hydratation après chaque série de quiz pour relâcher la tension.",
+          ],
+          subjectSpecific: null,
+        },
       });
     }
 
@@ -205,6 +221,78 @@ export async function POST(req: NextRequest) {
       serie,
     };
 
+    // 1. Calcul de régularité
+    let daysSinceLastActivity: number | null = null;
+    let lastActivityText = "Aucune activité enregistrée";
+    let isInactiveNotice = false;
+
+    if (quizList.length > 0 && quizList[0].created_at) {
+      const lastDate = new Date(quizList[0].created_at.slice(0, 10));
+      const today = new Date(new Date().toISOString().slice(0, 10));
+      const diffMs = today.getTime() - lastDate.getTime();
+      const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      daysSinceLastActivity = diffDays;
+      if (diffDays === 0) {
+        lastActivityText = "Aujourd'hui";
+      } else if (diffDays === 1) {
+        lastActivityText = "Hier";
+      } else {
+        lastActivityText = `Il y a ${diffDays} jours`;
+      }
+      if (diffDays >= 3) {
+        isInactiveNotice = true;
+      }
+    } else {
+      isInactiveNotice = true;
+    }
+
+    // 2. Série de jours consécutifs (streak)
+    const uniqueDates = Array.from(
+      new Set(
+        quizList
+          .map(q => q.created_at?.slice(0, 10))
+          .filter(Boolean) as string[]
+      )
+    ).sort().reverse(); // plus récentes d'abord
+
+    let streakDays = 0;
+    if (uniqueDates.length > 0) {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const yesterdayDate = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+
+      if (uniqueDates[0] === todayStr || uniqueDates[0] === yesterdayStr) {
+        streakDays = 1;
+        let currentDate = new Date(uniqueDates[0]);
+
+        for (let i = 1; i < uniqueDates.length; i++) {
+          const prevExpected = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          if (uniqueDates[i] === prevExpected) {
+            streakDays += 1;
+            currentDate = new Date(uniqueDates[i]);
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    // 3. Conseils "Comment l'aider"
+    const generalAdvice = [
+      "Veillez à un sommeil régulier de 7 à 8 heures : le repos nocturne consolide la mémorisation.",
+      "Privilégiez des séances courtes de 20 à 30 minutes plutôt que de longues sessions épuisantes.",
+      "Valorisez ses efforts constants et sa régularité plutôt que les notes brutes pour préserver sa confiance.",
+      "Encouragez une pause avec étirements et hydratation après chaque série de quiz pour relâcher la tension.",
+    ];
+
+    let subjectSpecificAdvice: string | null = null;
+    for (const [m, data] of Object.entries(realSubjectStats)) {
+      if (data.hasEnoughData && data.score !== null && data.score < 50) {
+        subjectSpecificAdvice = `En ${m}, encouragez votre enfant à relire calmement les résumés et formules clés avant de refaire un quiz pas à pas, sans se décourager.`;
+        break;
+      }
+    }
+
     return NextResponse.json({
       found: true,
       studentFirstName,
@@ -217,6 +305,19 @@ export async function POST(req: NextRequest) {
       selfAssessment: stu?.level_per_subject || {},
       recentScores,
       examInfo,
+      regularity: {
+        daysSinceLastActivity,
+        lastActivityText,
+        streakDays,
+        isInactiveNotice,
+        inactiveMessage: isInactiveNotice
+          ? "Une petite pause permet de recharger les batteries. Un quiz rapide de 5 minutes aujourd'hui l'aidera à garder le rythme en toute sérénité !"
+          : null,
+      },
+      parentAdvice: {
+        general: generalAdvice,
+        subjectSpecific: subjectSpecificAdvice,
+      },
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

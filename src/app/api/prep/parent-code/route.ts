@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     // Check if code already exists for this student
     const { data: existingLink, error: selectError } = await sbAdmin
       .from("prep_parent_links")
-      .select("access_code, parent_email")
+      .select("access_code, parent_email, created_at")
       .eq("student_user_id", user.id)
       .maybeSingle();
 
@@ -154,6 +154,7 @@ export async function POST(req: NextRequest) {
         code: existingLink.access_code,
         parentEmail: parentEmail || existingLink.parent_email,
         existing: true,
+        createdAt: existingLink.created_at || null,
       });
     }
 
@@ -182,6 +183,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const nowIso = new Date().toISOString();
+
     // Upsert into prep_parent_links via service_role client
     const { error: upsertError } = await sbAdmin
       .from("prep_parent_links")
@@ -189,6 +192,7 @@ export async function POST(req: NextRequest) {
         student_user_id: user.id,
         parent_email: parentEmail || "Non renseigné",
         access_code: newCode,
+        created_at: nowIso,
       }, { onConflict: "student_user_id" });
 
     if (upsertError) {
@@ -207,6 +211,7 @@ export async function POST(req: NextRequest) {
       code: newCode,
       parentEmail: parentEmail || "Non renseigné",
       existing: false,
+      createdAt: nowIso,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
