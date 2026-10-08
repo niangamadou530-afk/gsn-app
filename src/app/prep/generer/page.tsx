@@ -11,7 +11,7 @@ import { PreviewBanner } from "@/components/PreviewBanner";
 import { sounds } from "@/lib/soundEffects";
 import { SoundToggle } from "@/components/SoundToggle";
 import { compressImageClient } from "@/lib/imageCompress";
-import { VideoSection, type YoutubeVideoItem } from "@/components/VideoCard";
+import { VideoCard, VideoCardSkeleton, sortVideosByStudentSerie } from "@/components/VideoCard";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -41,6 +41,7 @@ interface QcmQuestion {
   explanation: string; difficulty: string;
 }
 interface RedactionQuestion { id: number; question: string; }
+interface YoutubeVideo { videoId: string; title: string; thumbnail: string; }
 
 /* ─── Component ─────────────────────────────────────────── */
 
@@ -87,9 +88,9 @@ function GenererPageInner() {
   const [redactionFeedback, setRedactionFeedback] = useState<Array<{ score: number; feedback: string }>>([]);
   const [redactionEvaluating, setRedactionEvaluating] = useState(false);
   const [resume, setResume]             = useState<Record<string, unknown> | null>(null);
-  const [videos, setVideos]             = useState<YoutubeVideoItem[]>([]);
-  const [videosLoading, setVideosLoading] = useState(false);
+  const [videos, setVideos]             = useState<YoutubeVideo[]>([]);
   const [videoPlaying, setVideoPlaying] = useState<string | null>(null);
+  const [videosLoading, setVideosLoading] = useState(false);
 
   const [phase, setPhase]     = useState<Phase>("home");
   const [error, setError]     = useState("");
@@ -337,14 +338,12 @@ function GenererPageInner() {
         body: JSON.stringify({ matiere, chapitre, examType }),
       });
       if (!res.ok) {
-        setVideos([]);
+        setVideosLoading(false);
         return;
       }
       const data = await res.json();
       setVideos(data.videos ?? []);
-    } catch {
-      setVideos([]);
-    } finally {
+    } catch { /* silent */ } finally {
       setVideosLoading(false);
     }
   }
@@ -1133,12 +1132,11 @@ function GenererPageInner() {
 
         <VideoSection
           videos={videos}
-          loading={videosLoading}
-          matiere={activeMat()}
-          chapitre={activeChapitre()}
-          studentSerie={serie}
           videoPlaying={videoPlaying}
           setVideoPlaying={setVideoPlaying}
+          matiereOrChapitre={activeMat()}
+          studentSerie={serie}
+          loading={videosLoading}
         />
       </main>
     );
@@ -1365,12 +1363,11 @@ function GenererPageInner() {
 
         <VideoSection
           videos={videos}
-          loading={videosLoading}
-          matiere={activeMat()}
-          chapitre={activeChapitre()}
-          studentSerie={serie}
           videoPlaying={videoPlaying}
           setVideoPlaying={setVideoPlaying}
+          matiereOrChapitre={activeMat()}
+          studentSerie={serie}
+          loading={videosLoading}
         />
       </main>
     );
@@ -1424,12 +1421,11 @@ function GenererPageInner() {
 
         <VideoSection
           videos={videos}
-          loading={videosLoading}
-          matiere={activeMat()}
-          chapitre={activeChapitre()}
-          studentSerie={serie}
           videoPlaying={videoPlaying}
           setVideoPlaying={setVideoPlaying}
+          matiereOrChapitre={activeMat()}
+          studentSerie={serie}
+          loading={videosLoading}
         />
       </main>
     );
@@ -1733,7 +1729,7 @@ function formatSectionContent(raw: string, meta: SectionMeta): string {
 
   for (const line of lines) {
     const isBullet = /^[-*+•]\s/.test(line) || /^\d+\.\s/.test(line);
-    const text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
+    let text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
 
     let html = escapeHtml(text);
 
@@ -1952,6 +1948,82 @@ function Section({ title, icon, children }: { title: string; icon: string; child
       </div>
       {children}
     </div>
+  );
+}
+
+function VideoSection({
+  videos,
+  videoPlaying,
+  setVideoPlaying,
+  matiereOrChapitre,
+  studentSerie,
+  loading = false,
+}: {
+  videos: YoutubeVideo[];
+  videoPlaying: string | null;
+  setVideoPlaying: (id: string | null) => void;
+  matiereOrChapitre?: string;
+  studentSerie?: string | null;
+  loading?: boolean;
+}) {
+  if (!loading && videos.length === 0) return null;
+
+  const sortedVideos = sortVideosByStudentSerie(videos, studentSerie);
+
+  return (
+    <section className="px-4 sm:px-6 pb-6 space-y-4 max-w-5xl mx-auto w-full">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[20px] text-[#FF6B00]">smart_display</span>
+          <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
+            {t("prep.generer.videos.title")}
+          </h2>
+        </div>
+        {videos.length > 0 && !loading && (
+          <span className="text-xs text-slate-400 font-semibold">
+            {videos.length} recommandation{videos.length > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      {videoPlaying ? (
+        <div className="relative rounded-[24px] overflow-hidden shadow-xl border border-slate-200 bg-black aspect-video w-full">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${videoPlaying}?autoplay=1&rel=0`}
+            className="w-full h-full"
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            title="Lecteur vidéo YouTube"
+          />
+          <button
+            type="button"
+            onClick={() => setVideoPlaying(null)}
+            className="absolute top-3 right-3 bg-black/75 hover:bg-black text-white px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg transition-colors z-20"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+            <span>Fermer le lecteur</span>
+          </button>
+        </div>
+      ) : loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+          <VideoCardSkeleton />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedVideos.map(v => (
+            <VideoCard
+              key={v.videoId}
+              video={v}
+              matiereOrChapitre={matiereOrChapitre}
+              onPlay={id => setVideoPlaying(id)}
+              isPlaying={videoPlaying === v.videoId}
+            />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
