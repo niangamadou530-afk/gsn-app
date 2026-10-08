@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 
 export default function StudentProfilePage() {
   const router = useRouter();
@@ -71,23 +72,23 @@ export default function StudentProfilePage() {
         },
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        setError(data.error || "Erreur lors de la suppression du compte.");
+      if (!res.ok || !data.success) {
+        setError(data.error || "Ta demande n'a pas pu être terminée, réessaie ou contacte le support");
         setDeleting(false);
         return;
       }
 
-      // Nettoyer la session locale
+      // Nettoyer la session locale uniquement si suppression complète confirmée
       await supabase.auth.signOut();
       try {
         localStorage.clear();
       } catch {}
 
       router.push("/prep?deleted=1");
-    } catch (err: any) {
-      setError(err?.message || "Erreur de connexion.");
+    } catch (err: unknown) {
+      setError("Ta demande n'a pas pu être terminée, réessaie ou contacte le support");
       setDeleting(false);
     }
   }
@@ -234,8 +235,24 @@ export default function StudentProfilePage() {
             </div>
 
             {error && (
-              <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl">
-                {error}
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-rose-600 shrink-0 mt-0.5">error</span>
+                  <p className="font-semibold leading-relaxed">
+                    {error}
+                  </p>
+                </div>
+                <div className="pt-1 border-t border-rose-200/60">
+                  <a
+                    href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour, ma demande de suppression de compte GSN PREP n'a pas pu être terminée.")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-bold text-rose-900 underline hover:text-rose-700"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                    <span>Contacter le support WhatsApp ({PREP_WHATSAPP_SUPPORT.phoneFormatted})</span>
+                  </a>
+                </div>
               </div>
             )}
 

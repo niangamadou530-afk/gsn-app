@@ -11,6 +11,7 @@ import { PreviewBanner } from "@/components/PreviewBanner";
 import { sounds } from "@/lib/soundEffects";
 import { SoundToggle } from "@/components/SoundToggle";
 import { compressImageClient } from "@/lib/imageCompress";
+import { VideoSection, type YoutubeVideoItem } from "@/components/VideoCard";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -40,7 +41,6 @@ interface QcmQuestion {
   explanation: string; difficulty: string;
 }
 interface RedactionQuestion { id: number; question: string; }
-interface YoutubeVideo { videoId: string; title: string; thumbnail: string; }
 
 /* ─── Component ─────────────────────────────────────────── */
 
@@ -87,7 +87,8 @@ function GenererPageInner() {
   const [redactionFeedback, setRedactionFeedback] = useState<Array<{ score: number; feedback: string }>>([]);
   const [redactionEvaluating, setRedactionEvaluating] = useState(false);
   const [resume, setResume]             = useState<Record<string, unknown> | null>(null);
-  const [videos, setVideos]             = useState<YoutubeVideo[]>([]);
+  const [videos, setVideos]             = useState<YoutubeVideoItem[]>([]);
+  const [videosLoading, setVideosLoading] = useState(false);
   const [videoPlaying, setVideoPlaying] = useState<string | null>(null);
 
   const [phase, setPhase]     = useState<Phase>("home");
@@ -328,16 +329,24 @@ function GenererPageInner() {
   }
 
   async function fetchVideos(matiere: string, chapitre: string) {
+    setVideosLoading(true);
     try {
       const res = await fetch("/api/prep-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ matiere, chapitre, examType }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setVideos([]);
+        return;
+      }
       const data = await res.json();
       setVideos(data.videos ?? []);
-    } catch { /* silent */ }
+    } catch {
+      setVideos([]);
+    } finally {
+      setVideosLoading(false);
+    }
   }
 
   /* ── Generate ── */
@@ -1122,7 +1131,15 @@ function GenererPageInner() {
           </button>
         </div>
 
-        <VideoSection videos={videos} videoPlaying={videoPlaying} setVideoPlaying={setVideoPlaying} />
+        <VideoSection
+          videos={videos}
+          loading={videosLoading}
+          matiere={activeMat()}
+          chapitre={activeChapitre()}
+          studentSerie={serie}
+          videoPlaying={videoPlaying}
+          setVideoPlaying={setVideoPlaying}
+        />
       </main>
     );
   }
@@ -1346,7 +1363,15 @@ function GenererPageInner() {
           </button>
         </div>
 
-        <VideoSection videos={videos} videoPlaying={videoPlaying} setVideoPlaying={setVideoPlaying} />
+        <VideoSection
+          videos={videos}
+          loading={videosLoading}
+          matiere={activeMat()}
+          chapitre={activeChapitre()}
+          studentSerie={serie}
+          videoPlaying={videoPlaying}
+          setVideoPlaying={setVideoPlaying}
+        />
       </main>
     );
   }
@@ -1397,7 +1422,15 @@ function GenererPageInner() {
           </button>
         </div>
 
-        <VideoSection videos={videos} videoPlaying={videoPlaying} setVideoPlaying={setVideoPlaying} />
+        <VideoSection
+          videos={videos}
+          loading={videosLoading}
+          matiere={activeMat()}
+          chapitre={activeChapitre()}
+          studentSerie={serie}
+          videoPlaying={videoPlaying}
+          setVideoPlaying={setVideoPlaying}
+        />
       </main>
     );
   }
@@ -1700,7 +1733,7 @@ function formatSectionContent(raw: string, meta: SectionMeta): string {
 
   for (const line of lines) {
     const isBullet = /^[-*+•]\s/.test(line) || /^\d+\.\s/.test(line);
-    let text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
+    const text = line.replace(/^[-*+•]\s/, "").replace(/^\d+\.\s/, "");
 
     let html = escapeHtml(text);
 
@@ -1918,53 +1951,6 @@ function Section({ title, icon, children }: { title: string; icon: string; child
         <p className="font-bold text-slate-900 text-sm">{title}</p>
       </div>
       {children}
-    </div>
-  );
-}
-
-function VideoSection({
-  videos, videoPlaying, setVideoPlaying,
-}: {
-  videos: YoutubeVideo[];
-  videoPlaying: string | null;
-  setVideoPlaying: (id: string | null) => void;
-}) {
-  if (videos.length === 0) return null;
-  return (
-    <div className="px-6 pb-6 space-y-3">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t("prep.generer.videos.title")}</p>
-      {videos.map(v => (
-        <div key={v.videoId} className="bg-white border border-slate-200/80 shadow-xs rounded-2xl overflow-hidden shadow-sm">
-          {videoPlaying === v.videoId ? (
-            <div className="aspect-video">
-              <iframe
-                src={`https://www.youtube.com/embed/${v.videoId}?autoplay=1`}
-                className="w-full h-full"
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-              />
-            </div>
-          ) : (
-            <div className="flex gap-3 p-3 items-center">
-              <div className="relative flex-shrink-0 w-24 h-16 rounded-xl overflow-hidden cursor-pointer" onClick={() => setVideoPlaying(v.videoId)}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={v.thumbnail} alt="" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <span className="text-white text-xl">▶</span>
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 line-clamp-2">{v.title}</p>
-                <button
-                  onClick={() => setVideoPlaying(v.videoId)}
-                  className="mt-1 text-xs font-bold text-[#005bbf] underline">
-                  {t("prep.generer.videos.watch")}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ))}
     </div>
   );
 }

@@ -7,9 +7,15 @@
  * - N'utilise PAS de wildcard large comme "ais-"
  * En production (vrai domaine ou Vercel), cette fonction renvoie TOUJOURS false.
  */
-export function isPreviewEnvironment(): boolean {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname.toLowerCase();
+export function isPreviewEnvironment(hostParam?: string): boolean {
+  let host = "";
+  if (hostParam) {
+    host = hostParam.split(":")[0].toLowerCase();
+  } else if (typeof window !== "undefined") {
+    host = window.location.hostname.toLowerCase();
+  } else {
+    return false;
+  }
 
   // Ne jamais reconnaître vercel.app comme un aperçu
   if (host.endsWith(".vercel.app") || host === "vercel.app") {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { checkAndIncrementServerRateLimit, resetServerRateLimit } from "@/lib/serverRateLimit";
+import { getSeriesExamInfo } from "@/lib/prep-config";
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -10,9 +11,18 @@ function getClientIp(req: NextRequest): string {
   return "127.0.0.1";
 }
 
+function getServiceSupabase() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    return null;
+  }
+  return createClient(url, serviceKey, { auth: { persistSession: false } });
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { code } = await req.json();
+    const { code } = await req.json().catch(() => ({}));
     const cleanCode = (code || "").trim().toUpperCase();
 
     if (!cleanCode || cleanCode.length < 4 || cleanCode.length > 10) {
@@ -47,76 +57,172 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cas de démonstration (pour l'environnement preview / test)
-    if (cleanCode === "DEMO12") {
+    // Cas de démonstration : actif UNIQUEMENT si PREP_ENABLE_DEMO === "true"
+    if (cleanCode === "DEMO12" && process.env.PREP_ENABLE_DEMO === "true") {
       await resetServerRateLimit(`parent:${cleanCode}`);
+      const seriesInfo = getSeriesExamInfo("S2", "BAC");
       return NextResponse.json({
         found: true,
-        studentName: "Amadou Niang (Démo)",
-        studentData: {
-          exam_type: "BAC",
-          serie: "S2",
-          country: "Sénégal",
-          level_per_subject: {
-            "Mathématiques": { level: "Fort", score: 85 },
-            "Sciences Physiques": { level: "Fort", score: 88 },
-            "SVT": { level: "Moyen", score: 72 },
-            "Philosophie": { level: "Moyen", score: 65 },
-            "Français": { level: "Fort", score: 78 },
-          },
+        studentFirstName: "Élève Démo",
+        examType: "BAC",
+        serie: "S2",
+        quizzesThisWeek: 4,
+        activeDaysThisWeek: 3,
+        averageScore: 78,
+        realSubjectStats: {
+          "Mathématiques": { count: 4, score: 85, level: "Fort", hasEnoughData: true },
+          "Sciences Physiques": { count: 3, score: 80, level: "Fort", hasEnoughData: true },
+          "SVT": { count: 1, score: null, level: "Pas assez de données", hasEnoughData: false },
         },
-        examDate: "2026-07-02",
-        results: [
-          { subject: "Mathématiques", score: 17, created_at: new Date().toISOString() },
-          { subject: "Sciences Physiques", score: 16, created_at: new Date(Date.now() - 86400000).toISOString() },
-          { subject: "SVT", score: 14, created_at: new Date(Date.now() - 172800000).toISOString() },
+        selfAssessment: {
+          "Mathématiques": { level: "Fort", score: 85 },
+          "Sciences Physiques": { level: "Fort", score: 88 },
+          "SVT": { level: "Moyen", score: 72 },
+        },
+        recentScores: [
+          { subject: "Mathématiques", scoreSur20: 17, date: "2026-10-06" },
+          { subject: "Sciences Physiques", scoreSur20: 16, date: "2026-10-05" },
+          { subject: "SVT", scoreSur20: 14, date: "2026-10-04" },
         ],
+        examInfo: {
+          targetDate: seriesInfo.targetDate,
+          displayDateFr: seriesInfo.displayDateFr,
+          statutNote: "Date estimée, à confirmer",
+          examType: "BAC",
+          serie: "S2",
+        },
       });
     }
 
-    // Interrogation Supabase côté serveur avec client service_role
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { auth: { persistSession: false } }
-    );
+    // Client administratif Supabase sécurisé
+    const sbAdmin = getServiceSupabase();
+    if (!sbAdmin) {
+      console.error("[parent-lookup] configuration manquante");
+      return NextResponse.json(
+        { error: "Le service de consultation parent est momentanément indisponible. Réessayez dans quelques instants." },
+        { status: 500 }
+      );
+    }
 
-    const { data: link, error: linkError } = await supabase
+    const { data: link, error: linkError } = await sbAdmin
       .from("prep_parent_links")
       .select("student_user_id")
       .eq("access_code", cleanCode)
       .maybeSingle();
 
-    if (linkError || !link) {
+    if (linkError) {
+      console.error(
+        "[parent-lookup error]",
+        `Code: ${linkError.code || "inconnu"}, Message: ${linkError.message || "erreur"}`
+      );
+      return NextResponse.json({ found: false, error: "Erreur lors de la vérification du code." }, { status: 500 });
+    }
+
+    if (!link) {
       return NextResponse.json({ found: false, error: "Code d'accès introuvable ou expiré." }, { status: 404 });
     }
 
-    // Code valide trouvé -> Réinitialiser le compteur persistant pour ce code
+    // Code valide trouvé -> Réinitialiser le compteur de tentatives pour ce code
     await resetServerRateLimit(`parent:${cleanCode}`);
 
     const studentId = link.student_user_id;
 
     // Charger les informations pour le parent
-    const [{ data: profile }, { data: stu }, { data: res }] = await Promise.all([
-      supabase.from("users").select("name").eq("id", studentId).maybeSingle(),
-      supabase.from("prep_students").select("exam_type, serie, country, level_per_subject").eq("user_id", studentId).maybeSingle(),
-      supabase.from("quiz_results").select("subject:matiere, score, created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(10),
+    const [{ data: profile }, { data: stu }, { data: allQuizzes }] = await Promise.all([
+      sbAdmin.from("users").select("name").eq("id", studentId).maybeSingle(),
+      sbAdmin.from("prep_students").select("prenom, exam_type, serie, level_per_subject").eq("user_id", studentId).maybeSingle(),
+      sbAdmin
+        .from("quiz_results")
+        .select("matiere, score, total, created_at")
+        .eq("user_id", studentId)
+        .order("created_at", { ascending: false }),
     ]);
+
+    // Prénom uniquement (jamais le nom complet)
+    const rawName = stu?.prenom || profile?.name || "Élève";
+    const studentFirstName = rawName.trim().split(/\s+/)[0] || "Élève";
+
+    const examType = stu?.exam_type || "BAC";
+    const serie = stu?.serie || null;
+
+    // Calculs d'activité sur les 7 derniers jours (réel serveur sans limite de 10)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const quizList = allQuizzes || [];
+    const weekQuizzes = quizList.filter(q => q.created_at && q.created_at >= sevenDaysAgo);
+    const quizzesThisWeek = weekQuizzes.length;
+    const activeDaysThisWeek = new Set(weekQuizzes.map(q => q.created_at.slice(0, 10))).size;
+
+    // Moyenne calculée uniquement sur les quiz réels (jamais sur l'auto-évaluation)
+    let averageScore: number | null = null;
+    if (quizList.length > 0) {
+      const sumPct = quizList.reduce((acc, q) => {
+        const t = Math.max(1, q.total || 10);
+        return acc + ((q.score / t) * 100);
+      }, 0);
+      averageScore = Math.round(sumPct / quizList.length);
+    }
+
+    // Résultats réels par matière (calculés uniquement si >= 3 quiz par matière)
+    const byMatiere: Record<string, { totalPct: number; count: number }> = {};
+    for (const q of quizList) {
+      if (!q.matiere) continue;
+      const m = q.matiere.trim();
+      if (!byMatiere[m]) byMatiere[m] = { totalPct: 0, count: 0 };
+      const t = Math.max(1, q.total || 10);
+      byMatiere[m].totalPct += (q.score / t) * 100;
+      byMatiere[m].count += 1;
+    }
+
+    const realSubjectStats: Record<string, { count: number; score: number | null; level: string; hasEnoughData: boolean }> = {};
+    for (const [m, data] of Object.entries(byMatiere)) {
+      if (data.count >= 3) {
+        const avg = Math.round(data.totalPct / data.count);
+        const level = avg >= 75 ? "Fort" : avg >= 50 ? "Moyen" : "À consolider";
+        realSubjectStats[m] = { count: data.count, score: avg, level, hasEnoughData: true };
+      } else {
+        realSubjectStats[m] = { count: data.count, score: null, level: "Pas assez de données", hasEnoughData: false };
+      }
+    }
+
+    // 5 derniers scores avec la date du jour sans l'heure
+    const recentScores = quizList.slice(0, 5).map(q => {
+      const t = Math.max(1, q.total || 10);
+      const note20 = Math.round((q.score / t) * 20);
+      return {
+        subject: q.matiere,
+        scoreSur20: note20,
+        date: q.created_at ? q.created_at.slice(0, 10) : "",
+      };
+    });
+
+    // Date de référence officielle prise dans src/lib/prep-config.ts
+    const seriesInfo = getSeriesExamInfo(serie, examType);
+    const examInfo = {
+      targetDate: seriesInfo.targetDate,
+      displayDateFr: seriesInfo.displayDateFr,
+      statutNote: "Date estimée, à confirmer",
+      examType,
+      serie,
+    };
 
     return NextResponse.json({
       found: true,
-      studentName: profile?.name || "Élève GSN",
-      studentData: stu || {
-        exam_type: "BAC",
-        serie: "S2",
-        country: "Sénégal",
-        level_per_subject: {},
-      },
-      results: res || [],
+      studentFirstName,
+      examType,
+      serie,
+      quizzesThisWeek,
+      activeDaysThisWeek,
+      averageScore,
+      realSubjectStats,
+      selfAssessment: stu?.level_per_subject || {},
+      recentScores,
+      examInfo,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[parent-lookup exception]", msg);
     return NextResponse.json(
-      { error: err?.message || "Erreur serveur lors de la vérification du code" },
+      { error: "Erreur serveur lors de la vérification du code" },
       { status: 500 }
     );
   }

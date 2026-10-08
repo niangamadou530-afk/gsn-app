@@ -110,7 +110,7 @@ export default function PrivacyPage() {
               </div>
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <span className="font-extrabold text-slate-900 block">Progression Pédagogique</span>
-                <p className="text-slate-600">Résultats aux quiz, annales consultées, flashcards mémorisées, historique des échanges avec le Coach IA.</p>
+                <p className="text-slate-600">Résultats aux quiz, annales consultées, flashcards mémorisées, résumés enregistrés (les échanges avec le Coach IA sont éphémères et ne sont pas conservés en base de données).</p>
               </div>
               <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <span className="font-extrabold text-slate-900 block">Sécurité & Journalisation</span>
@@ -184,7 +184,7 @@ export default function PrivacyPage() {
                 <span className="text-[11px] font-bold text-slate-500 uppercase">Base de données, Auth & Stockage</span>
               </div>
               <p className="text-slate-600 leading-relaxed">
-                <strong>Données stockées :</strong> Comptes utilisateurs (numéro de téléphone portable sénégalais, adresse email optionnelle, mot de passe chiffré par Supabase Auth, identifiant UUID), profil scolaire (prénom, examen, série, lycée), progression (scores de quiz, flashcards maîtrisées, historique des conversations du Coach, date d&apos;examen personnalisée), sécurité (compteur de tentatives de connexion anti-bruteforce, compteurs de quotas quotidiens, codes de liaison parent-élève) et documents d&apos;annales officielles (PDF).
+                <strong>Données stockées :</strong> Comptes utilisateurs (numéro de téléphone portable sénégalais, adresse email optionnelle, mot de passe chiffré par Supabase Auth, identifiant UUID), profil scolaire (prénom, examen, série, lycée), progression (scores de quiz, flashcards maîtrisées, résumés enregistrés, date d&apos;examen personnalisée, compteurs d&apos;usage quotidien ; les conversations avec le Coach IA sont éphémères et ne sont pas stockées en base), sécurité (compteur de tentatives de connexion anti-bruteforce, codes de liaison parent-élève) et documents d&apos;annales officielles (PDF).
               </p>
               <p className="text-[11px] text-slate-500 font-mono">
                 Région des serveurs Supabase : [À COMPLÉTER : Région du projet de base de données Supabase, ex: eu-west-3 Paris / eu-central-1 Francfort / us-east-1]
@@ -219,7 +219,22 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-5 text-xs sm:text-sm text-slate-700 space-y-1.5 leading-relaxed">
             <li><strong>Droit d&apos;accès et d&apos;information :</strong> Obtenir communication de l&apos;intégralité des données vous concernant.</li>
             <li><strong>Droit de rectification :</strong> Modifier ses informations à tout moment depuis son espace ou via le support.</li>
-            <li><strong>Droit de suppression définitive :</strong> Supprimer son compte et l&apos;ensemble des données associées en un clic via le bouton dédié dans l&apos;espace profil.</li>
+            <li>
+              <strong>Droit de suppression définitive :</strong> Supprimer son compte et l&apos;ensemble de ses données enregistrées sur la plateforme en un clic via le bouton dédié dans l&apos;espace profil. La suppression définitive efface irréversiblement :
+              <ul className="list-circle pl-5 mt-1 space-y-0.5 text-xs text-slate-600">
+                <li>Le compte utilisateur et les identifiants d&apos;authentification.</li>
+                <li>Le profil scolaire de l&apos;élève (série, type d&apos;examen, établissement, auto-évaluation).</li>
+                <li>L&apos;historique complet des quiz et scores d&apos;entraînement (<code>quiz_results</code>).</li>
+                <li>Toutes les fiches de révision créées par l&apos;élève (<code>flashcards</code>).</li>
+                <li>Tous les résumés de cours générés et sauvegardés (<code>prep_resumes</code>).</li>
+                <li>Les statistiques et points d&apos;expérience dans l&apos;arène (<code>prep_player_stats</code>).</li>
+                <li>Le lien et le code d&apos;accès au portail de suivi des parents (<code>prep_parent_links</code>).</li>
+                <li>L&apos;historique des compteurs quotidiens d&apos;utilisation IA (<code>prep_usage_quotidien</code>).</li>
+                <li>Les avis et retours formulés (<code>prep_feedback</code>).</li>
+                <li>Les journaux de réinitialisation administrative de mot de passe (<code>prep_admin_password_resets</code>).</li>
+                <li>Les compteurs temporaires de sécurité anti-bruteforce liés à l&apos;élève (<code>prep_rate_limits</code>).</li>
+              </ul>
+            </li>
           </ul>
           <p className="text-xs text-slate-600 pt-2">
             Pour exercer ces droits ou pour toute question relative à vos données, vous pouvez contacter notre assistance par WhatsApp au <strong>{PREP_WHATSAPP_SUPPORT.phoneFormatted}</strong> ou par courriel à <strong>[À COMPLÉTER : contact@domaine.sn]</strong>.

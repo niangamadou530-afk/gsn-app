@@ -1,17 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { t } from "@/lib/i18n";
-import { isPreviewEnvironment } from "@/lib/previewAuth";
-import { PreviewBanner } from "@/components/PreviewBanner";
 
-type StudentData = {
-  exam_type: string;
+type ParentViewData = {
+  studentFirstName: string;
+  examType: string;
   serie: string | null;
-  level_per_subject: Record<string, { level: string; score: number }>;
-  country: string;
+  quizzesThisWeek: number;
+  activeDaysThisWeek: number;
+  averageScore: number | null;
+  realSubjectStats: Record<string, { count: number; score: number | null; level: string; hasEnoughData: boolean }>;
+  selfAssessment: Record<string, { level: string; score: number }>;
+  recentScores: { subject: string; scoreSur20: number; date: string }[];
+  examInfo: {
+    targetDate: string;
+    displayDateFr: string;
+    statutNote: string;
+    examType: string;
+    serie: string | null;
+  };
 };
 
 type Mode = "lookup" | "student_view" | "not_found";
@@ -20,19 +29,16 @@ export default function ParentPage() {
   const [mode, setMode] = useState<Mode>("lookup");
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [studentData, setStudentData] = useState<StudentData | null>(null);
-  const [studentName, setStudentName] = useState("");
-  const [results, setResults] = useState<{ subject: string; score: number; created_at: string }[]>([]);
-  const [examDate, setExamDate] = useState("");
+  const [parentData, setParentData] = useState<ParentViewData | null>(null);
   const [error, setError] = useState("");
 
   // Student mode: generate access code
-  const [myCode, setMyCode]         = useState("");
-  const [myEmail, setMyEmail]       = useState("");
-  const [codeSaved, setCodeSaved]   = useState(false);
+  const [myCode, setMyCode]           = useState("");
+  const [myEmail, setMyEmail]         = useState("");
+  const [codeSaved, setCodeSaved]     = useState(false);
   const [codeLoading, setCodeLoading] = useState(false);
-  const [codeError, setCodeError]   = useState("");
-  const [isStudent, setIsStudent]   = useState(false);
+  const [codeError, setCodeError]     = useState("");
+  const [isStudent, setIsStudent]     = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -120,10 +126,7 @@ export default function ParentPage() {
         return;
       }
 
-      setStudentName(data.studentName || t("prep.parent.studentFallback"));
-      setStudentData((data.studentData as StudentData) ?? null);
-      setExamDate(data.examDate || "");
-      setResults(data.results || []);
+      setParentData(data as ParentViewData);
       setMode("student_view");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : t("prep.parent.errorLookup"));
@@ -133,15 +136,13 @@ export default function ParentPage() {
   }
 
   function daysLeft() {
-    if (!examDate) return null;
-    return Math.max(0, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000));
+    if (!parentData?.examInfo?.targetDate) return null;
+    return Math.max(0, Math.ceil((new Date(parentData.examInfo.targetDate).getTime() - Date.now()) / 86400000));
   }
 
-  const globalAvg = studentData && studentData.level_per_subject
-    ? Math.round(Object.values(studentData.level_per_subject).reduce((s, v) => s + v.score, 0) / Math.max(1, Object.keys(studentData.level_per_subject).length))
-    : 0;
-
-  const reviewedDays = new Set(results.map(r => r.created_at?.slice(0, 10))).size;
+  const isInactiveWeek = Boolean(
+    parentData && parentData.quizzesThisWeek === 0 && parentData.activeDaysThisWeek === 0
+  );
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-6">
@@ -267,7 +268,7 @@ export default function ParentPage() {
         )}
 
         {/* ── STUDENT VIEW ── */}
-        {mode === "student_view" && studentData && (
+        {mode === "student_view" && parentData && (
           <div className="space-y-5">
             {/* Student Header Card */}
             <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs flex items-center justify-between gap-4">
@@ -276,9 +277,11 @@ export default function ParentPage() {
                   <span className="material-symbols-outlined text-[24px]">school</span>
                 </div>
                 <div>
-                  <h2 className="font-extrabold text-slate-900 text-base sm:text-lg">{studentName}</h2>
+                  <h2 className="font-extrabold text-slate-900 text-base sm:text-lg">
+                    {parentData.studentFirstName}
+                  </h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {studentData.exam_type}{studentData.serie ? ` · Série ${studentData.serie}` : ""} ({studentData.country || "Sénégal"})
+                    {parentData.examType}{parentData.serie ? ` · Série ${parentData.serie}` : ""}
                   </p>
                 </div>
               </div>
@@ -291,47 +294,117 @@ export default function ParentPage() {
             </div>
 
             {/* Countdown Banner */}
-            {daysLeft() !== null && (
+            {daysLeft() !== null && parentData.examInfo && (
               <div className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 text-white shadow-xs flex items-center justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">{t("prep.parent.countdown")}</span>
+                  <span className="text-xs font-semibold text-blue-100 uppercase tracking-wider">
+                    {t("prep.parent.countdown")}
+                  </span>
                   <p className="text-3xl sm:text-4xl font-black mt-1">J-{daysLeft()}</p>
+                  <p className="text-xs text-blue-100 mt-1">
+                    Examen prévu : {parentData.examInfo.displayDateFr}{" "}
+                    <span className="text-blue-200 text-[11px]">({parentData.examInfo.statutNote})</span>
+                  </p>
                 </div>
                 <span className="material-symbols-outlined text-[44px] text-white/30">timer</span>
               </div>
             )}
 
+            {/* Inactivity banner if 0 quizzes and 0 active days */}
+            {isInactiveWeek && (
+              <div className="p-4 bg-amber-50 border border-amber-200/80 rounded-2xl flex items-center gap-3 text-xs text-amber-900">
+                <span className="material-symbols-outlined text-[20px] text-amber-600 shrink-0">info</span>
+                <p>Pas encore d&apos;activité cette semaine. L&apos;élève pourra s&apos;entraîner dès ses prochains quiz !</p>
+              </div>
+            )}
+
             {/* Stats Row */}
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: t("prep.parent.stats.avgScore"), value: `${globalAvg}%`, color: "text-[#005bbf]", bg: "bg-blue-50" },
-                { label: t("prep.parent.stats.daysReviewed"), value: reviewedDays.toString(), color: "text-emerald-700", bg: "bg-emerald-50" },
-                { label: t("prep.parent.stats.mockExams"), value: results.length.toString(), color: "text-purple-700", bg: "bg-purple-50" },
-              ].map(s => (
-                <div key={s.label} className="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-xs">
-                  <p className={`text-2xl sm:text-3xl font-black ${s.color}`}>{s.value}</p>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">{s.label}</p>
-                </div>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Stat 1: Moyenne des quiz réels */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-xs">
+                <p className="text-xl sm:text-2xl font-black text-[#005bbf]">
+                  {parentData.averageScore !== null ? `${parentData.averageScore}%` : "Pas encore de quiz"}
+                </p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                  Moyenne des quiz
+                </p>
+              </div>
+
+              {/* Stat 2: Jours actifs cette semaine (sur 7) */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-xs">
+                <p className="text-xl sm:text-2xl font-black text-emerald-700">
+                  {parentData.activeDaysThisWeek > 0 ? `${parentData.activeDaysThisWeek}/7` : "Pas encore d'activité cette semaine"}
+                </p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                  Jours actifs cette semaine (sur 7)
+                </p>
+              </div>
+
+              {/* Stat 3: Quiz terminés cette semaine */}
+              <div className="bg-white border border-slate-200/80 rounded-2xl p-4 text-center shadow-xs">
+                <p className="text-xl sm:text-2xl font-black text-purple-700">
+                  {parentData.quizzesThisWeek > 0 ? `${parentData.quizzesThisWeek}` : "Pas encore d'activité cette semaine"}
+                </p>
+                <p className="text-[11px] font-bold text-slate-400 mt-1 uppercase tracking-wider">
+                  Quiz terminés cette semaine
+                </p>
+              </div>
             </div>
 
-            {/* Levels breakdown */}
-            {studentData.level_per_subject && Object.keys(studentData.level_per_subject).length > 0 && (
+            {/* Section A : Résultats réels par matière (>= 3 quiz) */}
+            {parentData.realSubjectStats && Object.keys(parentData.realSubjectStats).length > 0 && (
               <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
-                <h3 className="font-extrabold text-slate-900 text-sm">{t("prep.parent.levelsTitle")}</h3>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Résultats réels par matière</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Calculés sur les quiz complétés (minimum 3 quiz requis)</p>
+                </div>
                 <div className="space-y-2.5">
-                  {Object.entries(studentData.level_per_subject).map(([subj, info]) => (
+                  {Object.entries(parentData.realSubjectStats).map(([subj, info]) => (
+                    <div key={subj} className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs sm:text-sm font-bold text-slate-800 truncate">{subj}</p>
+                        <span className="text-[11px] text-slate-400">{info.count} quiz effectué{info.count > 1 ? "s" : ""}</span>
+                      </div>
+                      {info.hasEnoughData && info.score !== null ? (
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-20 sm:w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#005bbf] rounded-full" style={{ width: `${info.score}%` }} />
+                          </div>
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
+                            info.level === "Fort" ? "bg-emerald-100 text-emerald-800" :
+                            info.level === "Moyen" ? "bg-amber-100 text-amber-800" :
+                            "bg-rose-100 text-rose-800"
+                          }`}>
+                            {info.level} ({info.score}%)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] font-semibold text-slate-500 bg-slate-200/70 px-2 py-1 rounded-md">
+                          Pas assez de données ({info.count}/3)
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Section B : Auto-évaluation de l'élève */}
+            {parentData.selfAssessment && Object.keys(parentData.selfAssessment).length > 0 && (
+              <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">Auto-évaluation de l&apos;élève</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Niveau initial déclaré par l&apos;élève dans son profil</p>
+                </div>
+                <div className="space-y-2.5">
+                  {Object.entries(parentData.selfAssessment).map(([subj, info]) => (
                     <div key={subj} className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between gap-3">
                       <p className="text-xs sm:text-sm font-bold text-slate-800 flex-1 truncate">{subj}</p>
                       <div className="flex items-center gap-2.5">
-                        <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#005bbf] rounded-full" style={{ width: `${info.score}%` }} />
+                        <div className="w-20 sm:w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-slate-400 rounded-full" style={{ width: `${info.score}%` }} />
                         </div>
-                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md ${
-                          info.level === "Fort" ? "bg-emerald-100 text-emerald-800" :
-                          info.level === "Moyen" ? "bg-amber-100 text-amber-800" :
-                          "bg-rose-100 text-rose-800"
-                        }`}>
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                           {info.level}
                         </span>
                       </div>
@@ -342,26 +415,28 @@ export default function ParentPage() {
             )}
 
             {/* Recent Exam Results */}
-            {results.length > 0 && (
-              <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
-                <h3 className="font-extrabold text-slate-900 text-sm">{t("prep.parent.recentExams")}</h3>
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-xs space-y-3">
+              <h3 className="font-extrabold text-slate-900 text-sm">{t("prep.parent.recentExams")}</h3>
+              {parentData.recentScores && parentData.recentScores.length > 0 ? (
                 <div className="space-y-2">
-                  {results.slice(0, 5).map((r, i) => (
+                  {parentData.recentScores.map((r, i) => (
                     <div key={i} className="p-3 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between">
                       <p className="text-xs sm:text-sm font-bold text-slate-800">{r.subject}</p>
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-black ${r.score >= 10 ? "text-emerald-700" : "text-rose-600"}`}>
-                          {r.score}/20
+                        <span className={`text-xs font-black ${r.scoreSur20 >= 10 ? "text-emerald-700" : "text-rose-600"}`}>
+                          {r.scoreSur20}/20
                         </span>
                         <span className="text-[11px] text-slate-400">
-                          {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                          {r.date}
                         </span>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-slate-400 italic">Pas encore de quiz enregistré.</p>
+              )}
+            </div>
           </div>
         )}
       </div>

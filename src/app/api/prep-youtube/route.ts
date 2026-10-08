@@ -31,14 +31,45 @@ export async function POST(req: Request) {
     if (!res.ok) return NextResponse.json({ videos: [] });
 
     const data = await res.json();
+    const decodeHtml = (str: string) =>
+      str
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'")
+        .replace(/&apos;/g, "'")
+        .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)));
+
     const videos = (data.items ?? []).map((item: {
       id: { videoId: string };
-      snippet: { title: string; thumbnails: { medium: { url: string } } };
-    }) => ({
-      videoId:   item.id.videoId,
-      title:     item.snippet.title,
-      thumbnail: item.snippet.thumbnails?.medium?.url ?? "",
-    }));
+      snippet: {
+        title: string;
+        thumbnails?: {
+          maxres?: { url: string };
+          standard?: { url: string };
+          high?: { url: string };
+          medium?: { url: string };
+          default?: { url: string };
+        };
+      };
+    }) => {
+      const thumbs = item.snippet?.thumbnails || {};
+      const bestThumbnail =
+        thumbs.maxres?.url ||
+        thumbs.standard?.url ||
+        thumbs.high?.url ||
+        thumbs.medium?.url ||
+        thumbs.default?.url ||
+        "";
+
+      return {
+        videoId:   item.id.videoId,
+        title:     decodeHtml(item.snippet?.title ?? ""),
+        thumbnail: bestThumbnail,
+      };
+    });
 
     return NextResponse.json({ videos });
   } catch {
