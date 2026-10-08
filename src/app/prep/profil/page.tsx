@@ -160,15 +160,6 @@ export default function StudentProfilePage() {
               <span className="font-bold text-slate-800">{studentInfo?.ecole || "Non spécifié"}</span>
             </div>
           </div>
-
-          <div className="pt-2 text-xs text-slate-500 flex items-center justify-between">
-            <Link href="/privacy" className="hover:text-[#005bbf] underline">
-              Politique de confidentialité
-            </Link>
-            <Link href="/terms" className="hover:text-[#005bbf] underline">
-              Conditions d&apos;utilisation (CGU)
-            </Link>
-          </div>
         </div>
 
         {/* Déconnexion */}

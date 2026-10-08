@@ -331,14 +331,6 @@ export default function PrepDashboardPage() {
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               Bonjour, <span className="text-[#005bbf]">{prenom}</span> 👋
             </h1>
-            <Link
-              href="/prep/profil"
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-colors"
-              title="Gérer mon profil et mes données"
-            >
-              <span className="material-symbols-outlined text-[15px]">manage_accounts</span>
-              <span>Mon profil</span>
-            </Link>
           </div>
           <p className="text-xs sm:text-sm text-slate-500">
             Objectif session 2027 : révise méthodiquement chaque jour pour décrocher la mention.
