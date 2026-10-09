@@ -229,6 +229,14 @@ TITLE: [Titre clair du document, max 60 caractères]
       );
     }
 
+    // Nettoyer les artefacts de pensée et balises résiduelles
+    const cleanRawText = rawText
+      .replace(/<think>[\s\S]*?<\/think>/gi, "")
+      .replace(/<\/?think>/gi, "")
+      .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+      .replace(/<\/?reasoning>/gi, "")
+      .trim();
+
     // ── Extraction du fichier si présent ──
     let accompanyingText = rawText;
     let generatedFile: {
@@ -255,7 +263,13 @@ TITLE: [Titre clair du document, max 60 caractères]
         });
       }
 
-      accompanyingText = rawText.slice(0, fileStartIdx).trim();
+      accompanyingText = rawText.slice(0, fileStartIdx)
+        .replace(/<think>[\s\S]*?<\/think>/gi, "")
+        .replace(/<\/?think>/gi, "")
+        .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+        .replace(/<\/?reasoning>/gi, "")
+        .replace(/<<<[^>]+>>>/gi, "")
+        .trim();
       const fileBlock = rawText.slice(fileStartIdx + "<<<FILE_START>>>".length, fileEndIdx).trim();
 
       const kindMatch = fileBlock.match(/KIND:\s*([^\n\r]+)/i);
@@ -344,7 +358,7 @@ TITLE: [Titre clair du document, max 60 caractères]
           });
 
           // Message assistant (texte d'accompagnement ou réponse brute)
-          const assistantContent = accompanyingText || rawText;
+          const assistantContent = (accompanyingText || cleanRawText).replace(/<<<[^>]+>>>/gi, "").trim();
           await sb.from("prep_coach_messages").insert({
             conversation_id: activeConversationId,
             user_id: userId,
@@ -385,7 +399,7 @@ TITLE: [Titre clair du document, max 60 caractères]
     }
 
     return NextResponse.json({
-      message: accompanyingText || rawText,
+      message: (accompanyingText || cleanRawText).replace(/<<<[^>]+>>>/gi, "").trim(),
       file: generatedFile,
       conversationId: activeConversationId,
       historyUnavailable,

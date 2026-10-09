@@ -12,6 +12,8 @@ import { sounds } from "@/lib/soundEffects";
 import { SoundToggle } from "@/components/SoundToggle";
 import { compressImageClient } from "@/lib/imageCompress";
 import { VideoCard, VideoCardSkeleton, sortVideosByStudentSerie } from "@/components/VideoCard";
+import { MathRenderer } from "@/components/MathRenderer";
+import { formatMathFormulas, cleanAiArtifacts } from "@/lib/mathFormatter";
 
 /* ─── Types ─────────────────────────────────────────────── */
 
@@ -1056,7 +1058,7 @@ function GenererPageInner() {
                 </div>
               ) : (
                 <p className="text-white font-extrabold text-lg sm:text-xl leading-relaxed max-w-md mx-auto">
-                  {card.recto}
+                  {formatMathFormulas(cleanAiArtifacts(card.recto))}
                 </p>
               )}
             </div>
@@ -1180,9 +1182,9 @@ function GenererPageInner() {
 
           {/* Question Prompt Card */}
           <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-7 shadow-xs">
-            <p className="font-extrabold text-slate-900 text-base sm:text-lg leading-relaxed">
-              {q.question}
-            </p>
+            <div className="font-extrabold text-slate-900 text-base sm:text-lg leading-relaxed">
+              <MathRenderer content={q.question} />
+            </div>
           </div>
 
           {/* Multiple Choices */}
@@ -1222,7 +1224,7 @@ function GenererPageInner() {
                   }`}>
                     {letter}
                   </span>
-                  <span className="flex-1 leading-relaxed">{choice}</span>
+                  <span className="flex-1 leading-relaxed">{formatMathFormulas(choice)}</span>
                   {qcmShowAnswer && choice === q.correct_answer && (
                     <span className="material-symbols-outlined text-emerald-600 text-[20px] shrink-0" style={{ fontVariationSettings: "'FILL' 1" }}>
                       check_circle
@@ -1245,9 +1247,9 @@ function GenererPageInner() {
                 <span className="material-symbols-outlined text-[16px]">info</span>
                 <span>{t("prep.generer.quizQcm.explanationLabel")}</span>
               </div>
-              <p className="text-blue-950 text-xs sm:text-sm leading-relaxed font-medium">
-                {q.explanation}
-              </p>
+              <div className="text-blue-950 text-xs sm:text-sm leading-relaxed font-medium">
+                <MathRenderer content={q.explanation} isCorrection={true} />
+              </div>
             </div>
           )}
 
@@ -1338,7 +1340,9 @@ function GenererPageInner() {
                       {f.score}/10
                     </span>
                   </div>
-                  <p className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-1">{f.feedback}</p>
+                  <div className="text-slate-600 text-xs sm:text-sm leading-relaxed mt-1">
+                    <MathRenderer content={f.feedback} isCorrection={true} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -1618,7 +1622,7 @@ function VersoContent({ verso }: { verso: string }) {
       </div>
     );
   }
-  return <p className="text-white font-bold text-lg text-center leading-relaxed">{verso}</p>;
+  return <p className="text-white font-bold text-lg text-center leading-relaxed">{formatMathFormulas(cleanAiArtifacts(verso))}</p>;
 }
 
 function LibLoader() {
@@ -1797,7 +1801,8 @@ function SectionCard({ meta, title, html }: { meta: SectionMeta; title: string; 
   );
 }
 
-function ResumeDisplay({ texte, matiere = "" }: { texte: string; matiere?: string }) {
+function ResumeDisplay({ texte: rawTexte, matiere = "" }: { texte: string; matiere?: string }) {
+  const texte = cleanAiArtifacts(rawTexte);
   // ── Format HTML sections (nouveau) ──────────────────────
   const htmlSections = parseHtmlSections(texte);
   if (htmlSections) {

@@ -13,6 +13,7 @@ import { CoachConversationDrawer, ConversationSummary } from "@/components/Coach
 import { CoachFileSheet, CoachFile } from "@/components/CoachFileSheet";
 import { CoachFilesModal } from "@/components/CoachFilesModal";
 import { CoachFileCard } from "@/components/CoachFileCard";
+import { MathRenderer } from "@/components/MathRenderer";
 
 const BAC_DATE  = EXAM_CONFIG.BAC.targetDate;
 const BFEM_DATE = EXAM_CONFIG.BFEM.targetDate;
@@ -496,7 +497,7 @@ J-${days} avant le ${exam}. Scores par matière : ${statsStr}.
 Tu parles toujours par le prénom. Tu donnes des conseils basés sur les vraies données.
 Tu es motivant, bienveillant, pédagogique.
 Pour les questions simples, fais des réponses claires en français (3-5 phrases).
-Évite les formules compliquées non expliquées. Utilise des symboles lisibles (x², √, ∑).${programmeContext}`;
+Écris toutes les formules mathématiques et scientifiques de façon lisible avec des symboles clairs (x², √, ∑, ±, →, fractions avec barres de division /). Pas de LaTeX brut non expliqué ni de balises de balisage.${programmeContext}`;
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",
@@ -530,7 +531,13 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
         return;
       }
 
-      const assistantMsg = data.message || "Voici ma réponse.";
+      const assistantMsg = (data.message || "Voici ma réponse.")
+        .replace(/<think>[\s\S]*?<\/think>/gi, "")
+        .replace(/<\/?think>/gi, "")
+        .replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "")
+        .replace(/<\/?reasoning>/gi, "")
+        .replace(/<<<[^>]+>>>/gi, "")
+        .trim();
       const returnedFile: CoachFile | null = data.file || null;
 
       if (data.historyUnavailable) {

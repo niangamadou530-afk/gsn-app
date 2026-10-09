@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { CoachFilePrintView } from "./CoachFilePrintView";
+import { MathRenderer } from "./MathRenderer";
+import { cleanAiArtifacts } from "@/lib/mathFormatter";
 
 export interface CoachFile {
   id?: string;
@@ -363,7 +365,7 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
         {/* Corps du document avec défilement */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
           <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-2xs space-y-2">
-            {renderSafeMarkdown(file.content_md)}
+            <MathRenderer content={cleanAiArtifacts(file.content_md)} />
           </div>
 
           {/* Bouton et bloc de correction masqué par défaut */}
@@ -389,7 +391,7 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
                     <span>Correction pas à pas & Barème</span>
                   </div>
                   <div className="pt-2">
-                    {renderSafeMarkdown(file.correction_md || "")}
+                    <MathRenderer content={cleanAiArtifacts(file.correction_md || "")} isCorrection={true} />
                   </div>
                 </div>
               )}
