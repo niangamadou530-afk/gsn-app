@@ -367,7 +367,7 @@ export default function PrepDashboardPage() {
       </section>
 
       {/* Primary Action Card: AI Revision Session */}
-      <section>
+      <section data-tour="dashboard-daily-action">
         <Link
           href="/prep/generer"
           className="group block relative overflow-hidden rounded-3xl p-6 sm:p-8 text-white shadow-lg active:scale-[0.99] transition-all"

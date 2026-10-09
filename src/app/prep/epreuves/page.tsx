@@ -246,7 +246,7 @@ export default function EpreuvesPage() {
           </div>
 
           {/* Filter Controls Row */}
-          <div className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
+          <div data-tour="epreuves-filters" className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-4">
             {/* Year Selector & Document Type */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
               {/* Year Pills */}

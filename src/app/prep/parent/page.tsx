@@ -270,7 +270,7 @@ export default function ParentPage() {
             )}
 
             {/* ── Section « Ce que voient tes parents » (Partie K) ── */}
-            <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5">
+            <div data-tour="parent-what-parents-see" className="bg-slate-50 border border-slate-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5">
               <div className="flex items-center gap-2 text-slate-900 font-extrabold text-xs sm:text-sm">
                 <span className="material-symbols-outlined text-[18px] text-[#005bbf]">visibility</span>
                 <span>Ce que voient tes parents</span>

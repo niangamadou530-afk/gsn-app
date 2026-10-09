@@ -37,19 +37,41 @@ interface TourProviderProps {
   } | null;
 }
 
-const STORAGE_KEY_PREFIX = "prep_tour_completed_v2_";
+const STORAGE_KEY_PREFIX = "prep_tutorial_done_";
 const SESSION_STEP_KEY = "prep_tour_step_index";
 const SESSION_ACTIVE_KEY = "prep_tour_is_active";
+const SESSION_DONE_KEY = "prep_tutorial_done_session";
 
 function findTargetElement(cible: string): HTMLElement | null {
   if (!cible) return null;
 
-  // Cas spécial tiroir Coach : sur grand écran le bouton mobile est masqué, on pointe sur le panneau
-  if (cible === "coach-drawer-btn") {
-    const btn = document.querySelector<HTMLElement>('[data-tour="coach-drawer-btn"]');
+  // Replis intelligents selon la cible pour une détection infaillible mobile & desktop
+  if (cible === "settings-menu-panel") {
+    const panel = document.querySelector<HTMLElement>('[data-tour="settings-menu-panel"]');
+    if (panel && panel.getBoundingClientRect().width > 0) return panel;
+    const btn = document.querySelector<HTMLElement>('[data-tour="header-settings-btn"]');
     if (btn && btn.getBoundingClientRect().width > 0) return btn;
+  }
+
+  if (cible === "coach-drawer-panel") {
     const panel = document.querySelector<HTMLElement>('[data-tour="coach-drawer-panel"]');
     if (panel && panel.getBoundingClientRect().width > 0) return panel;
+    const btn = document.querySelector<HTMLElement>('[data-tour="coach-drawer-btn"]');
+    if (btn && btn.getBoundingClientRect().width > 0) return btn;
+  }
+
+  if (cible === "epreuves-filters") {
+    const filters = document.querySelector<HTMLElement>('[data-tour="epreuves-filters"]');
+    if (filters && filters.getBoundingClientRect().width > 0) return filters;
+    const search = document.querySelector<HTMLElement>('[data-tour="epreuves-search"]');
+    if (search && search.getBoundingClientRect().width > 0) return search;
+  }
+
+  if (cible === "generer-options") {
+    const opts = document.querySelector<HTMLElement>('[data-tour="generer-options"]');
+    if (opts && opts.getBoundingClientRect().width > 0) return opts;
+    const quiz = document.querySelector<HTMLElement>('[data-tour="generer-quiz"]');
+    if (quiz && quiz.getBoundingClientRect().width > 0) return quiz;
   }
 
   const el = document.querySelector<HTMLElement>(`[data-tour="${cible}"]`);
@@ -79,9 +101,11 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
       return 0;
     }
   });
+
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userMetadataDone, setUserMetadataDone] = useState(false);
 
   const activeStep: PrepTourStep | undefined = PREP_TOUR_STEPS[currentStepIndex];
   const totalSteps = PREP_TOUR_STEPS.length;
@@ -90,7 +114,7 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Détection de l'utilisateur pour la persistance locale
+  // 1. Détection de l'utilisateur pour la persistance locale et métadonnées
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -98,6 +122,9 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
         const { data: { user } } = await supabase.auth.getUser();
         if (mounted && user) {
           setUserId(user.id);
+          if (user.user_metadata?.prep_tutorial_done === true) {
+            setUserMetadataDone(true);
+          }
         } else if (mounted && isPreviewEnvironment()) {
           setUserId("preview_student");
         }
@@ -127,7 +154,7 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     }
   }, []);
 
-  // 4. Lancer la visite guidée
+  // 4. Lancer la visite guidée (ne modifie pas le drapeau de complétion)
   const startTour = useCallback(() => {
     clearTimers();
     closeOpenedElements();
@@ -145,8 +172,8 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     }
   }, [clearTimers, closeOpenedElements, pathname, router]);
 
-  // 5. Terminer / Quitter la visite
-  const skipTour = useCallback(() => {
+  // 5. Terminer / Quitter la visite (enregistre prep_tutorial_done dans métadonnées et localStorage)
+  const skipTour = useCallback(async () => {
     clearTimers();
     closeOpenedElements();
     setIsActive(false);
@@ -155,10 +182,22 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     try {
       sessionStorage.removeItem(SESSION_ACTIVE_KEY);
       sessionStorage.removeItem(SESSION_STEP_KEY);
+      sessionStorage.setItem(SESSION_DONE_KEY, "true");
       if (userId) {
         localStorage.setItem(`${STORAGE_KEY_PREFIX}${userId}`, "true");
       }
     } catch {}
+
+    // Enregistrement du drapeau dans les métadonnées Supabase si compte connecté
+    try {
+      if (userId && userId !== "preview_student") {
+        await supabase.auth.updateUser({
+          data: { prep_tutorial_done: true },
+        });
+      }
+    } catch (err) {
+      console.warn("Could not save tour completion in metadata:", err);
+    }
   }, [clearTimers, closeOpenedElements, userId]);
 
   // 6. Écoute de l'événement global pour relancer la visite (depuis Paramètres)
@@ -172,7 +211,7 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     };
   }, [startTour]);
 
-  // 7. Déclenchement automatique à la première connexion sur le tableau de bord
+  // 7. Déclenchement automatique selon les règles strictes de la Section 3
   useEffect(() => {
     if (!userId || isActive) return;
 
@@ -188,17 +227,28 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
 
     if (isExcluded) return;
 
-    // Vérifier si la visite a déjà été faite
+    // Règle 3.a : Exclure /prep/parent pour un parent sans compte et tout compte sans profil élève
+    const isPreview = isPreviewEnvironment();
+    if (!studentProfile && !isPreview) return;
+    if (normalized === "/prep/parent" && !studentProfile) return;
+
+    // Règle 3.b : Vérifier si la visite a déjà été effectuée
     let hasCompleted = false;
     try {
-      hasCompleted = localStorage.getItem(`${STORAGE_KEY_PREFIX}${userId}`) === "true";
+      hasCompleted =
+        localStorage.getItem(`${STORAGE_KEY_PREFIX}${userId}`) === "true" ||
+        sessionStorage.getItem(SESSION_DONE_KEY) === "true";
     } catch {}
 
-    // Déclenchement automatique uniquement sur /prep/dashboard pour un nouvel élève
+    if (userMetadataDone) {
+      hasCompleted = true;
+    }
+
+    // Déclenchement automatique une seule fois sur le tableau de bord
     if (!hasCompleted && (normalized === "/prep/dashboard" || studentProfile)) {
       startTour();
     }
-  }, [userId, pathname, studentProfile, isActive, startTour]);
+  }, [userId, pathname, studentProfile, isActive, startTour, userMetadataDone]);
 
   // 8. Navigation vers l'étape suivante
   const nextStep = useCallback(() => {
@@ -277,7 +327,10 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     }
 
     // Recherche de l'élément cible avec limite de 2 secondes
-    setIsLoading(true);
+    const startSearchingTimer = setTimeout(() => {
+      setIsLoading(true);
+    }, 0);
+
     const startTime = Date.now();
 
     const checkTarget = () => {
@@ -312,6 +365,7 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     }
 
     return () => {
+      clearTimeout(startSearchingTimer);
       clearTimers();
     };
   }, [isActive, currentStepIndex, pathname, activeStep, clearTimers]);
@@ -370,6 +424,7 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
               currentStepIndex={currentStepIndex}
               totalSteps={totalSteps}
               targetRect={targetRect}
+              studentFirstName={studentProfile?.prenom}
               onNext={nextStep}
               onPrev={prevStep}
               onSkip={skipTour}

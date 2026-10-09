@@ -834,7 +834,7 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
           </form>
 
           {/* Mentions permanentes de confidentialité et sécurité (Règle 2.g & 6.b) */}
-          <div className="flex items-center justify-between px-1 text-[11px] text-slate-500">
+          <div data-tour="coach-private-notice" className="flex items-center justify-between px-1 text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5 text-[#005bbf] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

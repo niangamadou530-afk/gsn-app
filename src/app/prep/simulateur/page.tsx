@@ -261,7 +261,7 @@ export default function SimulateurPage() {
       </div>
 
       {/* Real-time Results Card */}
-      <div className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+      <div data-tour="simulateur-verdict" className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
             <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-extrabold uppercase tracking-wider backdrop-blur-xs">
@@ -299,7 +299,7 @@ export default function SimulateurPage() {
       </div>
 
       {/* Grade Sliders & Inputs with Editable Coefficients */}
-      <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-5">
+      <div data-tour="simulateur-subjects-list" className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-5">
         {/* Actions bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>

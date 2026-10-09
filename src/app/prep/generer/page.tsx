@@ -640,43 +640,45 @@ function GenererPageInner() {
             </div>
           </div>
         )}
-        <p className="font-bold text-slate-900">{t("prep.generer.home.howToWork")}</p>
-        <button
-          onClick={() => { setMode("A"); setPhase("setup_a"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
-          <div>
-            <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionA.title")}</p>
-            <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionA.desc")}</p>
-          </div>
-        </button>
-        <button
-          data-tour="generer-quiz"
-          onClick={() => { setMode("B"); setPhase("setup_b"); }}
-          className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
-          <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-          <div>
-            <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionB.title")}</p>
-            <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionB.desc")}</p>
-          </div>
-        </button>
+        <div data-tour="generer-options" className="space-y-4">
+          <p className="font-bold text-slate-900">{t("prep.generer.home.howToWork")}</p>
+          <button
+            onClick={() => { setMode("A"); setPhase("setup_a"); }}
+            className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
+            <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>upload_file</span>
+            <div>
+              <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionA.title")}</p>
+              <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionA.desc")}</p>
+            </div>
+          </button>
+          <button
+            data-tour="generer-quiz"
+            onClick={() => { setMode("B"); setPhase("setup_b"); }}
+            className="w-full flex items-start gap-4 p-5 rounded-2xl border-2 border-transparent bg-white border border-slate-200/80 shadow-xs shadow-sm hover:border-[#005bbf]/30 active:scale-[0.98] transition-all text-left">
+            <span className="material-symbols-outlined text-[36px] text-[#005bbf] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+            <div>
+              <p className="font-extrabold text-slate-900 text-lg">{t("prep.generer.home.optionB.title")}</p>
+              <p className="text-sm text-slate-500 mt-0.5">{t("prep.generer.home.optionB.desc")}</p>
+            </div>
+          </button>
 
-        {/* Bibliothèque */}
-        <div className="pt-2">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">{t("prep.generer.home.savedContent")}</p>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              { key: "mes_flashcards", icon: "style",        label: t("prep.generer.home.myFlashcards"), color: "#6366f1" },
-              { key: "mes_quiz",       icon: "quiz",          label: t("prep.generer.home.myQuiz"),       color: "#10b981" },
-              { key: "mes_resumes",    icon: "auto_stories",  label: t("prep.generer.home.myResumes"),    color: "#f59e0b" },
-            ] as const).map(s => (
-              <button key={s.key}
-                onClick={() => loadLibrary(s.key)}
-                className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs shadow-sm active:scale-95 transition-transform">
-                <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
-                <span className="text-[11px] font-semibold text-slate-900 text-center leading-tight">{s.label}</span>
-              </button>
-            ))}
+          {/* Bibliothèque */}
+          <div className="pt-2">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">{t("prep.generer.home.savedContent")}</p>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { key: "mes_flashcards", icon: "style",        label: t("prep.generer.home.myFlashcards"), color: "#6366f1" },
+                { key: "mes_quiz",       icon: "quiz",          label: t("prep.generer.home.myQuiz"),       color: "#10b981" },
+                { key: "mes_resumes",    icon: "auto_stories",  label: t("prep.generer.home.myResumes"),    color: "#f59e0b" },
+              ] as const).map(s => (
+                <button key={s.key}
+                  onClick={() => loadLibrary(s.key)}
+                  className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs shadow-sm active:scale-95 transition-transform">
+                  <span className="material-symbols-outlined text-[28px]" style={{ color: s.color, fontVariationSettings: "'FILL' 1" }}>{s.icon}</span>
+                  <span className="text-[11px] font-semibold text-slate-900 text-center leading-tight">{s.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>

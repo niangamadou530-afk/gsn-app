@@ -158,7 +158,7 @@ export default function OrientationPage() {
         {!result && (
           <>
             {/* Upload Area */}
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs text-center">
+            <div data-tour="orientation-upload-zone" className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs text-center">
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}

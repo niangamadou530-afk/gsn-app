@@ -199,7 +199,7 @@ export default function SoftSkillsPage() {
         {tab === "stress" && (
           <div className="space-y-6">
             {/* Box Breathing */}
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs text-center space-y-6">
+            <div data-tour="soft-skills-breathing" className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs text-center space-y-6">
               <div>
                 <h2 className="font-extrabold text-lg sm:text-xl text-slate-900">
                   {t("prep.softSkills.stress.breathingTitle")}

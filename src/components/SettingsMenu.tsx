@@ -107,6 +107,7 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
         {/* Dropdown Menu Panel: Text only, strictly ordered */}
         {isOpen && (
           <div
+            data-tour="settings-menu-panel"
             role="menu"
             aria-orientation="vertical"
             className="absolute right-0 mt-2 w-56 sm:w-64 origin-top-right bg-white rounded-2xl border border-slate-200 shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100"

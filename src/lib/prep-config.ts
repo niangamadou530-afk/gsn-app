@@ -522,9 +522,12 @@ export const PREP_COACH_CONFIG = {
   recentHistoryLimit: 6,
 } as const;
 
-/* ── VISITE GUIDÉE INTERACTIVE PREP (PARTIE K3) ─────────────── */
+/* ── VISITE GUIDÉE INTERACTIVE PREP (PARTIE K4) ─────────────── */
+
+export const PREP_GUIDE_NAME = "Moussa";
 
 export type TourPlacement = "haut" | "bas" | "gauche" | "droite" | "auto";
+export type TourGuideAttitude = "accueil" | "montre" | "encourage" | "felicite";
 
 export interface PrepTourStep {
   id: string;
@@ -533,6 +536,7 @@ export interface PrepTourStep {
   titre: string;
   texte: string;
   placement?: TourPlacement;
+  attitude?: TourGuideAttitude;
   avant?: string; // Nom de l'événement CustomEvent à émettre avant (ex: prep-tour:open-coach-drawer)
   apres?: string; // Nom de l'événement CustomEvent à émettre après (ex: prep-tour:close-coach-drawer)
 }
@@ -541,32 +545,56 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
   {
     id: "welcome",
     route: "/prep/dashboard",
-    titre: "Bienvenue sur GSN PREP",
-    texte: "Ton espace de révision complet pour réussir le BFEM ou le BAC au Sénégal. Découvre en quelques étapes les outils clés conçus pour maximiser tes notes.",
+    titre: "Bienvenue sur PREP",
+    texte: "Je te montre PREP en 2 minutes. Tu peux arrêter quand tu veux.",
+    attitude: "accueil",
     placement: "auto",
   },
   {
     id: "countdown",
     route: "/prep/dashboard",
     cible: "dashboard-countdown",
-    titre: "Compte à rebours officiel",
-    texte: "Suis en direct le temps restant avant les épreuves officielles de ta série. Ajuste ta date d'examen cible pour garder un rythme constant.",
+    titre: "Le compte à rebours officiel",
+    texte: "Visualise ici les jours restants avant le début des épreuves officielles selon ta série. Prépare-toi avec sérénité et régularité.",
+    attitude: "montre",
     placement: "bas",
+  },
+  {
+    id: "daily-action",
+    route: "/prep/dashboard",
+    cible: "dashboard-daily-action",
+    titre: "Ton entraînement du jour",
+    texte: "Ton entraînement du jour est ici. Chaque matin, lance ta séance recommandée pour t'entraîner sur les notions clés de ta série.",
+    attitude: "montre",
+    placement: "haut",
+  },
+  {
+    id: "settings-menu",
+    route: "/prep/dashboard",
+    cible: "settings-menu-panel",
+    titre: "Paramètres & Réglages",
+    texte: "Gère ton profil, active ou coupe le son, contacte l'aide WhatsApp, revois ce guide ou déconnecte-toi en toute sécurité.",
+    attitude: "montre",
+    placement: "bas",
+    avant: "prep-tour:open-settings",
+    apres: "prep-tour:close-settings",
   },
   {
     id: "epreuves",
     route: "/prep/epreuves",
-    cible: "epreuves-search",
+    cible: "epreuves-filters",
     titre: "Annales & Corrigés officiels",
-    texte: "Accède aux sujets d'examen réels avec corrections détaillées et barèmes complets. Recherche facilement par matière, série ou session.",
+    texte: "Filtre par année, série ou matière. Consulte les vrais sujets du BAC et accède aux corrigés détaillés avec leurs barèmes.",
+    attitude: "montre",
     placement: "bas",
   },
   {
     id: "generer",
     route: "/prep/generer",
-    cible: "generer-quiz",
-    titre: "Entraînement Quiz & Révisions",
-    texte: "Valide tes compétences par chapitre avec des quiz interactifs, révise avec les flashcards et synthétise tes cours en toute autonomie.",
+    cible: "generer-options",
+    titre: "Quiz, Flashcards & Résumés",
+    texte: "Révise à partir du programme officiel ou envoie la photo d'un cours. Génère des quiz d'entraînement, fiches et cartes mémoires.",
+    attitude: "encourage",
     placement: "bas",
   },
   {
@@ -574,50 +602,90 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     route: "/prep/coach",
     cible: "coach-input",
     titre: "Ton Coach IA personnel",
-    texte: "Pose tes questions sur une notion difficile, ou demande un exercice type examen adapté au programme sénégalais. Ton coach te répond 24h/24.",
+    texte: "Pose tes questions sur une leçon difficile ou demande un exercice type examen. Ton coach te répond 24h/24 en français clair.",
+    attitude: "montre",
     placement: "haut",
   },
   {
     id: "coach-drawer",
     route: "/prep/coach",
-    cible: "coach-drawer-btn",
-    titre: "Conversations & Fichiers générés",
-    texte: "Retrouve toutes tes conversations passées et télécharge tes fiches ou exercices générés pour réviser hors-ligne en Word ou PDF.",
+    cible: "coach-drawer-panel",
+    titre: "Conversations & Fichiers",
+    texte: "Retrouve tes anciennes discussions, lance une nouvelle conversation et accède à tous tes exercices ou fiches générés en Word et PDF.",
+    attitude: "montre",
     placement: "droite",
     avant: "prep-tour:open-coach-drawer",
     apres: "prep-tour:close-coach-drawer",
   },
   {
+    id: "coach-private",
+    route: "/prep/coach",
+    cible: "coach-private-notice",
+    titre: "Échanges 100% privés",
+    texte: "Tes parents ne peuvent pas les voir depuis l'Espace Parents. Tes discussions et tes fichiers générés restent strictement confidentiels.",
+    attitude: "encourage",
+    placement: "haut",
+  },
+  {
+    id: "simulateur",
+    route: "/prep/simulateur",
+    cible: "simulateur-verdict",
+    titre: "Simulateur de moyenne & Mention",
+    texte: "Calcule ta moyenne, corrige un coefficient si besoin, ajoute des matières. Découvre ton verdict officiel prévisionnel au BAC.",
+    attitude: "montre",
+    placement: "bas",
+  },
+  {
+    id: "orientation",
+    route: "/prep/orientation",
+    cible: "orientation-upload-zone",
+    titre: "Orientation post-bac & Filières",
+    texte: "Découvre des pistes d'orientation adaptées à ta série et à tes points forts. Analyse tes bulletins pour explorer les filières universitaires.",
+    attitude: "montre",
+    placement: "bas",
+  },
+  {
+    id: "soft-skills",
+    route: "/prep/soft-skills",
+    cible: "soft-skills-breathing",
+    titre: "Gestion du stress & Méthodes",
+    texte: "Gère ton stress et organise tes révisions. Utilise le minuteur de concentration, la respiration guidée et nos astuces bien-être.",
+    attitude: "encourage",
+    placement: "bas",
+  },
+  {
     id: "progression",
     route: "/prep/progression",
     cible: "progression-stats",
-    titre: "Tableau de progression",
-    texte: "Suis tes moyennes de quiz, ton taux de maîtrise et identifie les matières prioritaires pour cibler tes efforts efficacement.",
+    titre: "Suivi de progression",
+    texte: "Mesure ton score global, ta régularité et tes points forts. Identifie les matières prioritaires pour maximiser ta moyenne.",
+    attitude: "montre",
     placement: "bas",
   },
   {
-    id: "parent",
+    id: "parent-code",
     route: "/prep/parent",
     cible: "parent-code-card",
-    titre: "Partage sécurisé avec tes parents",
-    texte: "Transmets un code d'accès sécurisé à tes proches pour partager ta progression. Tes échanges avec le Coach restent strictement privés et confidentiels.",
+    titre: "Code d'accès Espace Parents",
+    texte: "Partage un code temporaire pour rassurer tes proches. Tu peux le renouveler ou l'annuler à tout moment en un clic.",
+    attitude: "montre",
     placement: "bas",
   },
   {
-    id: "settings",
-    route: "/prep/dashboard",
-    cible: "header-settings-btn",
-    titre: "Paramètres & Didacticiel",
-    texte: "Gère tes préférences sonores, consulte les informations légales ou relance cette visite guidée à tout moment depuis ce menu.",
-    placement: "bas",
-    avant: "prep-tour:open-settings",
-    apres: "prep-tour:close-settings",
+    id: "parent-what-parents-see",
+    route: "/prep/parent",
+    cible: "parent-what-parents-see",
+    titre: "Ce que voient tes parents",
+    texte: "Tes parents voient : identité scolaire, moyenne générale et assiduité, scores par matière et activités récentes. Jamais tes messages ni fichiers.",
+    attitude: "encourage",
+    placement: "haut",
   },
   {
-    id: "ready",
+    id: "end",
     route: "/prep/dashboard",
-    titre: "Tu es prêt à réussir !",
-    texte: "Toutes les ressources officielles sont à ta disposition. Travaille avec régularité chaque semaine et vise la mention !",
+    titre: "C'est parti !",
+    texte: "Tu connais maintenant l'essentiel de PREP. Choisis par quoi débuter tes révisions aujourd'hui pour décrocher ta mention !",
+    attitude: "felicite",
     placement: "auto",
   },
 ];
