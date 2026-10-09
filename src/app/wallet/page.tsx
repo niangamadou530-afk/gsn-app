@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { checkClosedSpaceAccess } from "@/lib/spaceGuard";
 import { t } from "@/lib/i18n";
 
 type Transaction = {

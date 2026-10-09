@@ -9,7 +9,7 @@ export default function EmployerSignupPage() {
     <main className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md space-y-6">
         <header className="flex flex-col items-center space-y-3 text-center">
-          <GsnLogo variant="icon-only" size={56} />
+          <GsnLogo size={56} />
           <div className="space-y-1">
             <h1 className="text-2xl font-black tracking-tight text-slate-900">
               Espace Employeur · WORK

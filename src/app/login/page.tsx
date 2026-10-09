@@ -116,31 +116,11 @@ function LoginPageContent() {
         <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-orange-100/50 rounded-full blur-[100px]" />
       </div>
 
-      {/* Top Simple Nav */}
-      <header className="w-full max-w-md mx-auto flex items-center justify-between py-2 sm:py-3">
-        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <GsnLogo variant="icon-only" size={38} />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
-              {isFromPrep ? "PREP" : "Global Skills Network"}
-            </span>
-            {isFromPrep ? (
-              <span className="text-[9px] font-black uppercase text-[#FF6B00] tracking-wider mt-0.5">
-                Sénégal 2027
-              </span>
-            ) : (
-              <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase mt-0.5">
-                Plateforme GSN
-              </span>
-            )}
-          </div>
-        </Link>
-
+      {/* Top Simple Nav : aucun logo ni nom de marque */}
+      <header className="w-full max-w-md mx-auto flex items-center justify-end py-2 sm:py-3">
         <Link
           href={isFromPrep ? "/signup?source=prep" : "/signup"}
-          className="text-xs sm:text-sm font-bold text-[#005bbf] hover:underline"
+          className="text-xs sm:text-sm font-bold text-[#005bbf] hover:underline px-1 py-1"
         >
           Créer un compte
         </Link>
@@ -151,16 +131,13 @@ function LoginPageContent() {
         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-xl shadow-slate-900/5 space-y-5">
           {/* Header Title */}
           <div className="text-center space-y-3">
-            <div className="flex flex-col items-center justify-center gap-2">
-              <GsnLogo variant="icon-only" size={56} />
-              <div className="flex flex-col items-center">
-                <span className="font-black text-base sm:text-lg tracking-tight text-slate-900">
-                  Global Skills Network
-                </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#005bbf]">
-                  {isFromPrep ? "Espace Préparation Examens" : "Espace Connecté"}
-                </span>
+            <div className="flex flex-col items-center justify-center gap-2.5 pb-1">
+              <div className="w-[108px] h-[108px] sm:w-[124px] sm:h-[124px] flex items-center justify-center">
+                <GsnLogo size={116} />
               </div>
+              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-800">
+                Global Skills Network
+              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight pt-1">
               Connexion à ton espace

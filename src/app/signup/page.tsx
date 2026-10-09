@@ -193,7 +193,7 @@ function SignupPageContent() {
       <header className="w-full max-w-md mx-auto flex items-center justify-between py-2 sm:py-3">
         <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2.5 group">
           <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
-            <GsnLogo variant="icon-only" size={38} />
+            <GsnLogo size={42} />
           </div>
           <div className="flex flex-col">
             <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">

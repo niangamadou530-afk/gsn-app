@@ -315,13 +315,9 @@ export default function OrientationPage() {
                     </span>
                   ))}
                 </div>
-                <Link
-                  href="/learn"
-                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#005bbf] hover:underline"
-                >
-                  <span>{t("prep.orientation.viewGsnLearn")}</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </Link>
+                <div className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+                  <span>Parcours de spécialisation recommandés</span>
+                </div>
               </div>
             )}
 

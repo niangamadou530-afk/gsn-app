@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { checkClosedSpaceAccess } from "@/lib/spaceGuard";
 import { t } from "@/lib/i18n";
 
 type Course = {
@@ -32,6 +33,15 @@ export default function LearnPage() {
   useEffect(() => { load(); }, []);
 
   async function load() {
+    // Garde d'entrée K7 pour les nouveaux comptes
+    const access = await checkClosedSpaceAccess();
+    if (!access.allowed) {
+      if (access.needsRedirect && access.redirectTo) {
+        router.replace(access.redirectTo);
+      }
+      return;
+    }
+
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) { router.replace("/login"); return; }
     const { data, error } = await supabase

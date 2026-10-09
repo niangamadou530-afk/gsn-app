@@ -522,6 +522,28 @@ export const PREP_COACH_CONFIG = {
   recentHistoryLimit: 6,
 } as const;
 
+/* ── GARDE D'ENTRÉE ESPACES FERMÉS (PARTIE K7) ─────────────── */
+// Active ou désactive la garde d'accès d'un coup (true = actif, false = inactif)
+export const GSN_CLOSED_SPACES_GUARD = true;
+
+// Date pivot UTC : les comptes créés à partir de cette date sont refusés sur les espaces fermés
+// Les comptes créés STRICTEMENT AVANT cette date sont autorisés (testeurs existants)
+export const GSN_CLOSED_SPACES_CUTOFF = "2026-10-09T00:00:00Z";
+
+// Liste des espaces actuellement fermés aux nouveaux comptes
+export const GSN_CLOSED_SPACES = ["learn", "pay"] as const;
+
+export const GSN_CLOSED_SPACE_ACCESS_MESSAGE =
+  "Cet espace est en construction. Les inscriptions ouvriront bientôt.";
+
+export function isAccountAllowedInClosedSpaces(createdAt: string | null | undefined): boolean {
+  if (!GSN_CLOSED_SPACES_GUARD) return true;
+  if (!createdAt) return false;
+  const accountDate = new Date(createdAt).getTime();
+  const cutoffDate = new Date(GSN_CLOSED_SPACES_CUTOFF).getTime();
+  return accountDate < cutoffDate;
+}
+
 /* ── CONTRÔLE DES INSCRIPTIONS (PARTIE K6) ─────────────────── */
 // Tableau des profils actuellement ouverts aux nouvelles inscriptions
 // Pour rouvrir un espace ultérieurement, ajouter simplement son identifiant (ex: "professionnel")

@@ -9,6 +9,7 @@ import { FaqSection } from "@/components/FaqSection";
 import { Reveal } from "@/components/Reveal";
 import { ScrollProgress } from "@/components/ScrollProgress";
 import { CountUp } from "@/components/CountUp";
+import { GsnLogo } from "@/components/GsnLogo";
 
 export default function PrepLandingPage() {
   const [selectedExam, setSelectedExam] = useState<"BAC" | "BFEM">("BAC");
@@ -67,8 +68,8 @@ export default function PrepLandingPage() {
           {/* Logo & Brand */}
           <div className="flex items-center gap-2 shrink-0">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-xs sm:text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                GSN
+              <div className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center group-hover:scale-105 transition-transform">
+                <GsnLogo size={46} />
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="font-extrabold text-lg sm:text-xl tracking-tight text-slate-900">PREP</span>

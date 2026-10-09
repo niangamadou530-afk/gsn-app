@@ -79,8 +79,8 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
             {/* Brand Zone */}
             <div className="flex items-center gap-3">
               <Link href="/prep/dashboard" className="flex items-center gap-2 group">
-                <div className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center group-hover:scale-105 transition-transform">
-                  <GsnLogo variant="icon-only" size={38} />
+                <div className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <GsnLogo size={46} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-lg tracking-tight text-slate-900">PREP</span>
