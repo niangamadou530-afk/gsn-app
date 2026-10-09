@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { isDisposableEmail } from "@/lib/securityUtils";
 import { isValidPhone, normalizePhone } from "@/lib/phoneUtils";
+import {
+  GSN_SIGNUP_OPEN_PROFILES,
+  GSN_SIGNUP_CLOSED_MESSAGE,
+  isSignupProfileOpen,
+} from "@/lib/prep-config";
 
 function getServiceSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,8 +16,11 @@ function getServiceSupabase() {
 
 /**
  * Route sécurisée côté serveur pour enregistrer ou synchroniser le profil d'un utilisateur
- * Règle stricte : si source === "prep" ou si l'inscription a choisi un examen (BAC/BFEM),
- * le profil est IMPOSÉ côté serveur comme "eleve", même si le client tente de falsifier la requête.
+ * PARTIE K6 :
+ * - Seul le profil "eleve" (défini dans GSN_SIGNUP_OPEN_PROFILES) est accepté.
+ * - Tout profil non autorisé (ex: "professionnel", "employer", etc.) est REFUSÉ avec GSN_SIGNUP_CLOSED_MESSAGE.
+ * - Si aucun profil n'est fourni ou s'il est vide, le profil "eleve" est appliqué par défaut.
+ * - Ne fait jamais confiance au client.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -39,11 +47,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // RÈGLE DE SÉCURITÉ SERVEUR :
-    // Tout compte provenant de PREP (?source=prep ou avec un paramètre d'examen)
-    // se voit OBLIGATOIREMENT attribuer le profil "eleve".
-    const isFromPrep = source === "prep" || Boolean(exam);
-    const enforcedProfileType = isFromPrep ? "eleve" : (profileType === "professionnel" ? "professionnel" : "eleve");
+    // RÈGLE CRITIQUE SERVEUR PARTIE K6 :
+    // Vérification de la liste des profils ouverts
+    const requestedProfile = (profileType || "").trim().toLowerCase();
+
+    // Si le client tente d'enregistrer explicitement un profil fermé (ex: "professionnel")
+    if (requestedProfile && !isSignupProfileOpen(requestedProfile)) {
+      return NextResponse.json(
+        {
+          error: GSN_SIGNUP_CLOSED_MESSAGE,
+          closed: true,
+          openProfiles: GSN_SIGNUP_OPEN_PROFILES,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Profil effectif : 'eleve' par défaut si absent ou vide
+    const enforcedProfileType = isSignupProfileOpen(requestedProfile)
+      ? requestedProfile
+      : "eleve";
 
     const supabase = getServiceSupabase();
 
@@ -51,7 +74,7 @@ export async function POST(req: NextRequest) {
     const { error: upsertError } = await supabase.from("users").upsert(
       {
         id: userId,
-        name: name || "Utilisateur GSN",
+        name: name || "Élève GSN PREP",
         score: 0,
         profile_type: enforcedProfileType,
         phone: phone ? normalizePhone(phone) : null,
@@ -60,11 +83,11 @@ export async function POST(req: NextRequest) {
     );
 
     if (upsertError) {
-      // Si la colonne phone n'existe pas encore dans users, tenter un insert sans phone
+      // Fallback sans champ phone si la table est en structure basique
       const { error: fallbackError } = await supabase.from("users").upsert(
         {
           id: userId,
-          name: name || "Utilisateur GSN",
+          name: name || "Élève GSN PREP",
           score: 0,
           profile_type: enforcedProfileType,
         },
@@ -79,7 +102,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       profileType: enforcedProfileType,
-      isEnforcedEleve: isFromPrep,
+      isOpen: true,
     });
   } catch (err: any) {
     return NextResponse.json(

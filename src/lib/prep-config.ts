@@ -522,6 +522,23 @@ export const PREP_COACH_CONFIG = {
   recentHistoryLimit: 6,
 } as const;
 
+/* ── CONTRÔLE DES INSCRIPTIONS (PARTIE K6) ─────────────────── */
+// Tableau des profils actuellement ouverts aux nouvelles inscriptions
+// Pour rouvrir un espace ultérieurement, ajouter simplement son identifiant (ex: "professionnel")
+export const GSN_SIGNUP_OPEN_PROFILES = ["eleve"] as const;
+export type GsnOpenProfile = (typeof GSN_SIGNUP_OPEN_PROFILES)[number];
+
+export const GSN_SIGNUP_CLOSED_MESSAGE =
+  "En construction : les inscriptions ouvriront bientôt.";
+
+export const GSN_SIGNUP_BANNER_NOTICE =
+  "Pour le moment, seule l'inscription élève GSN PREP est ouverte.";
+
+export function isSignupProfileOpen(profileType: string | null | undefined): boolean {
+  if (!profileType) return false;
+  return (GSN_SIGNUP_OPEN_PROFILES as readonly string[]).includes(profileType);
+}
+
 /* ── VISITE GUIDÉE INTERACTIVE PREP (PARTIE K4) ─────────────── */
 
 export const PREP_GUIDE_NAME = "Prépy";

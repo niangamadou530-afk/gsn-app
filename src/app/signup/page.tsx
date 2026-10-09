@@ -12,7 +12,8 @@ import {
   resetClientRateLimit,
   getFriendlyAuthErrorMessage,
 } from "@/lib/securityUtils";
-import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
+import { PREP_WHATSAPP_SUPPORT, GSN_SIGNUP_BANNER_NOTICE, GSN_SIGNUP_CLOSED_MESSAGE } from "@/lib/prep-config";
+import { GsnLogo } from "@/components/GsnLogo";
 import { t } from "@/lib/i18n";
 
 type ProfileType = "eleve" | "professionnel" | "Beneficiaire du PNACIJ" | "";
@@ -27,7 +28,7 @@ function SignupPageContent() {
   const isFromPrep = sourceParam === "prep" || Boolean(examParam);
 
   const [step, setStep] = useState<1 | 2>(1);
-  const [profileType, setProfileType] = useState<ProfileType>(isFromPrep ? "eleve" : "");
+  const [profileType, setProfileType] = useState<ProfileType>("eleve");
   // Pour PREP : le téléphone est la méthode principale par défaut
   const [authMethod, setAuthMethod]   = useState<AuthMethod>(isFromPrep ? "phone" : "email");
   const [fullName, setFullName]       = useState("");
@@ -131,7 +132,7 @@ function SignupPageContent() {
 
     const userId = data.user?.id;
     // Règle stricte : un compte venu de PREP est TOUJOURS créé avec le profil élève
-    const finalProfileType = isFromPrep ? "eleve" : (profileType || "professionnel");
+    const finalProfileType = "eleve";
 
     if (userId) {
       // Synchronisation sécurisée côté serveur via API route
@@ -190,18 +191,24 @@ function SignupPageContent() {
 
       {/* Top Nav */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between py-2 sm:py-3">
-        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-xs shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-            GSN
+        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <GsnLogo variant="icon-only" size={38} />
           </div>
-          <span className="font-extrabold text-base tracking-tight text-slate-900">
-            {isFromPrep ? "PREP" : "GLOBAL SKILLS"}
-          </span>
-          {isFromPrep && (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-[#FF6B00] border border-orange-200">
-              Sénégal 2027
+          <div className="flex flex-col">
+            <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
+              {isFromPrep ? "PREP" : "Global Skills Network"}
             </span>
-          )}
+            {isFromPrep ? (
+              <span className="text-[9px] font-black uppercase text-[#FF6B00] tracking-wider mt-0.5">
+                Sénégal 2027
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase mt-0.5">
+                Plateforme GSN
+              </span>
+            )}
+          </div>
         </Link>
 
         <Link
@@ -244,8 +251,16 @@ function SignupPageContent() {
           {/* ── Étape 1 : Choix du profil ── */}
           {step === 1 && (
             <div className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-slate-700">Choisis ton profil :</p>
+              <div className="space-y-2">
+                <div className="p-3 rounded-2xl bg-blue-50/90 border border-blue-200/90 flex items-start gap-2.5 text-xs text-blue-950">
+                  <span className="material-symbols-outlined text-[18px] text-[#005bbf] shrink-0 mt-0.5 font-bold">
+                    info
+                  </span>
+                  <p className="font-semibold leading-relaxed">
+                    {GSN_SIGNUP_BANNER_NOTICE}
+                  </p>
+                </div>
+                <p className="text-xs font-bold text-slate-700">Profils d'inscription :</p>
               </div>
 
               <div className="space-y-2.5">
@@ -283,43 +298,47 @@ function SignupPageContent() {
                 </button>
 
                 {/* Option Professionnel (Cadenas actif si provenance PREP) */}
-                <button
-                  type="button"
-                  disabled={isFromPrep}
-                  onClick={() => !isFromPrep && setProfileType("professionnel")}
-                  className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                    isFromPrep
-                      ? "border-slate-200 bg-slate-50/70 opacity-60 cursor-not-allowed"
-                      : profileType === "professionnel"
-                      ? "border-[#005bbf] bg-blue-50/50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
+                <div
+                  aria-disabled="true"
+                  className="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/90 text-left opacity-80 cursor-not-allowed relative"
                 >
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl shrink-0">👨‍💼</span>
+                    <span className="text-2xl shrink-0 grayscale opacity-70">👨‍💼</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <p className="font-extrabold text-sm text-slate-900">Professionnel</p>
-                        {isFromPrep && (
-                          <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">
-                            <span className="material-symbols-outlined text-[13px]">lock</span>
-                            <span>Espace Pro</span>
-                          </span>
-                        )}
+                        <p className="font-extrabold text-sm text-slate-700">Profil Professionnel</p>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
+                          <span className="material-symbols-outlined text-[12px]">lock</span>
+                          <span>Fermé</span>
+                        </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {isFromPrep
-                          ? "Réservé aux pros (inscription élève présélectionnée depuis PREP)."
-                          : "Entreprises, formateurs et demandeurs d'emploi GSN."}
+                      <p className="text-xs text-amber-900 font-medium mt-1">
+                        {GSN_SIGNUP_CLOSED_MESSAGE}
                       </p>
                     </div>
-                    {profileType === "professionnel" && !isFromPrep && (
-                      <span className="material-symbols-outlined text-[#005bbf] text-[20px] shrink-0 font-bold">
-                        check_circle
-                      </span>
-                    )}
                   </div>
-                </button>
+                </div>
+
+                <div
+                  aria-disabled="true"
+                  className="w-full p-4 rounded-2xl border-2 border-slate-200 bg-slate-50/90 text-left opacity-80 cursor-not-allowed relative"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl shrink-0 grayscale opacity-70">💼</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-extrabold text-sm text-slate-700">Espaces LEARN · WORK · PAY</p>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-200">
+                          <span className="material-symbols-outlined text-[12px]">lock</span>
+                          <span>Fermé</span>
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-900 font-medium mt-1">
+                        {GSN_SIGNUP_CLOSED_MESSAGE}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <button

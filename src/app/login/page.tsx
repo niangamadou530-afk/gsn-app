@@ -8,6 +8,7 @@ import { phoneToFakeEmail, isValidPhone, normalizePhone } from "@/lib/phoneUtils
 import { checkClientRateLimit, recordClientAttempt, resetClientRateLimit, getFriendlyAuthErrorMessage } from "@/lib/securityUtils";
 import { PREP_WHATSAPP_SUPPORT } from "@/lib/prep-config";
 import { t } from "@/lib/i18n";
+import { GsnLogo } from "@/components/GsnLogo";
 
 type AuthMethod = "email" | "phone";
 
@@ -117,18 +118,24 @@ function LoginPageContent() {
 
       {/* Top Simple Nav */}
       <header className="w-full max-w-md mx-auto flex items-center justify-between py-2 sm:py-3">
-        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-xs shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-            GSN
+        <Link href={isFromPrep ? "/prep" : "/"} className="flex items-center gap-2.5 group">
+          <div className="w-10 h-10 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <GsnLogo variant="icon-only" size={38} />
           </div>
-          <span className="font-extrabold text-base tracking-tight text-slate-900">
-            {isFromPrep ? "PREP" : "GLOBAL SKILLS"}
-          </span>
-          {isFromPrep && (
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-orange-100 text-[#FF6B00] border border-orange-200">
-              Sénégal 2027
+          <div className="flex flex-col">
+            <span className="font-extrabold text-base tracking-tight text-slate-900 leading-none">
+              {isFromPrep ? "PREP" : "Global Skills Network"}
             </span>
-          )}
+            {isFromPrep ? (
+              <span className="text-[9px] font-black uppercase text-[#FF6B00] tracking-wider mt-0.5">
+                Sénégal 2027
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold text-slate-500 tracking-wider uppercase mt-0.5">
+                Plateforme GSN
+              </span>
+            )}
+          </div>
         </Link>
 
         <Link
@@ -143,8 +150,19 @@ function LoginPageContent() {
       <div className="w-full max-w-md mx-auto my-auto py-2 sm:py-4">
         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-xl shadow-slate-900/5 space-y-5">
           {/* Header Title */}
-          <div className="text-center space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+          <div className="text-center space-y-3">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <GsnLogo variant="icon-only" size={56} />
+              <div className="flex flex-col items-center">
+                <span className="font-black text-base sm:text-lg tracking-tight text-slate-900">
+                  Global Skills Network
+                </span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#005bbf]">
+                  {isFromPrep ? "Espace Préparation Examens" : "Espace Connecté"}
+                </span>
+              </div>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight pt-1">
               Connexion à ton espace
             </h1>
             <p className="text-xs sm:text-sm text-slate-600">

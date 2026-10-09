@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 import { SettingsMenu } from "@/components/SettingsMenu";
+import { GsnLogo } from "@/components/GsnLogo";
 import { TourProvider } from "@/components/TourProvider";
 
 interface StudentInfo {
@@ -78,8 +79,8 @@ export default function PrepLayout({ children }: { children: React.ReactNode }) 
             {/* Brand Zone */}
             <div className="flex items-center gap-3">
               <Link href="/prep/dashboard" className="flex items-center gap-2 group">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#005bbf] to-[#1a73e8] flex items-center justify-center text-white font-black text-sm shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
-                  GSN
+                <div className="w-10 h-10 min-w-[44px] min-h-[44px] flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <GsnLogo variant="icon-only" size={38} />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="font-extrabold text-lg tracking-tight text-slate-900">PREP</span>

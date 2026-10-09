@@ -1,134 +1,58 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase";
-import { t } from "@/lib/i18n";
+import { GSN_SIGNUP_CLOSED_MESSAGE } from "@/lib/prep-config";
+import { GsnLogo } from "@/components/GsnLogo";
 
 export default function EmployerSignupPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [company, setCompany] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  async function handleSignup(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      // Tenter login d'abord — si le compte existe déjà dans auth.users
-      let userId: string | null = null;
-      const { data: tryLogin } = await supabase.auth.signInWithPassword({ email, password });
-      if (tryLogin?.user) {
-        userId = tryLogin.user.id;
-        console.log("[signup] existing auth user found:", userId);
-      } else {
-        // Nouveau compte
-        const { data: signUpData, error: authErr } = await supabase.auth.signUp({ email, password });
-        console.log("[signup] signUp result:", signUpData?.user?.id, "err:", authErr?.message);
-        if (authErr || !signUpData?.user) { setError(authErr?.message ?? t("work.employerSignup.errorAccountCreation")); return; }
-
-        const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
-        console.log("[signup] signIn after signUp:", loginData?.user?.id, "err:", loginErr?.message);
-        if (loginErr || !loginData?.user) { setError(t("work.employerSignup.errorReloginManually")); return; }
-        userId = loginData.user.id;
-      }
-
-      // Vérifier si un profil employeur existe déjà
-      const { data: existing } = await supabase.from("employers").select("id").eq("auth_id", userId).limit(1);
-      if (existing && existing.length > 0) {
-        router.push("/employer/dashboard");
-        return;
-      }
-
-      const { data: insertData, error: empErr } = await supabase.from("employers").insert({
-        auth_id: userId,
-        email,
-        company_name: company,
-      }).select();
-      console.log("[signup] insert result:", insertData, "error:", empErr?.message, empErr?.code);
-      if (empErr) { setError(t("work.employerSignup.errorProfile", { message: empErr.message, code: empErr.code })); return; }
-      if (!insertData || insertData.length === 0) { setError(t("work.employerSignup.errorSilentInsert")); return; }
-
-      router.push("/employer/dashboard");
-    } catch {
-      setError(t("work.employerSignup.errorGeneric"));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
-    <main className="min-h-screen bg-surface text-on-surface flex flex-col items-center justify-center p-6">
-      <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-primary-fixed/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-secondary-fixed/20 blur-[120px] rounded-full" />
-      </div>
-
-      <div className="w-full max-w-md space-y-8">
+    <main className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-md space-y-6">
         <header className="flex flex-col items-center space-y-3 text-center">
-          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-            <span className="material-symbols-outlined text-on-primary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>add_business</span>
+          <GsnLogo variant="icon-only" size={56} />
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
+              Espace Employeur · WORK
+            </h1>
+            <p className="text-slate-600 text-xs sm:text-sm">
+              Global Skills Network
+            </p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-on-surface">{t("work.employerSignup.title")}</h1>
-          <p className="text-on-surface-variant text-sm">{t("work.employerSignup.subtitle")}</p>
         </header>
 
-        <section className="bg-surface-container-lowest rounded-2xl p-8 shadow-[0_8px_24px_rgba(25,28,35,0.07)] space-y-5">
-          <form onSubmit={handleSignup} className="space-y-5">
+        <section className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl space-y-5 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto text-2xl">
+            🔒
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="company">{t("work.employerSignup.companyLabel")}</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">business</span>
-                <input id="company" type="text" placeholder="Acme Corp" required value={company} onChange={e => setCompany(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none" />
-              </div>
-            </div>
+          <div className="space-y-2">
+            <h2 className="text-lg font-extrabold text-slate-900">
+              Inscriptions temporairement fermées
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed font-medium">
+              {GSN_SIGNUP_CLOSED_MESSAGE}
+            </p>
+            <p className="text-xs text-slate-500 pt-1">
+              Les testeurs disposant déjà d&apos;un compte peuvent continuer à se connecter normalement.
+            </p>
+          </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="email">{t("work.employerSignup.emailLabel")}</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">mail</span>
-                <input id="email" type="email" placeholder={t("work.employerSignup.emailPlaceholder")} required value={email} onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none" />
-              </div>
-            </div>
+          <div className="pt-3 space-y-2">
+            <Link
+              href="/employer/login"
+              className="w-full py-3.5 px-4 rounded-xl bg-[#005bbf] hover:bg-[#004799] text-white font-extrabold text-sm shadow-md shadow-blue-500/20 active:scale-98 transition-all flex items-center justify-center gap-2"
+            >
+              <span>Se connecter à mon compte existant</span>
+            </Link>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-on-surface ml-1" htmlFor="password">{t("work.employerSignup.passwordLabel")}</label>
-              <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline group-focus-within:text-primary transition-colors text-[20px]">lock</span>
-                <input id="password" type="password" placeholder="••••••••" required minLength={6} value={password} onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3.5 bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-on-surface placeholder:text-outline-variant outline-none" />
-              </div>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 bg-error/10 text-error rounded-xl px-4 py-3 text-sm font-medium">
-                <span className="material-symbols-outlined text-[18px]">error</span>
-                {error}
-              </div>
-            )}
-
-            <button type="submit" disabled={loading}
-              className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-[0_4px_12px_rgba(0,91,191,0.25)] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2">
-              {loading ? (
-                <><div className="w-5 h-5 rounded-full border-2 border-on-primary border-t-transparent animate-spin" /> {t("work.employerSignup.submitting")}</>
-              ) : (
-                <><span className="material-symbols-outlined text-[20px]">check_circle</span> {t("work.employerSignup.submit")}</>
-              )}
-            </button>
-          </form>
+            <Link
+              href="/signup?source=prep"
+              className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-2"
+            >
+              <span>Découvrir l&apos;espace élève GSN PREP</span>
+            </Link>
+          </div>
         </section>
-
-        <p className="text-center text-sm text-on-surface-variant">
-          {t("work.employerSignup.alreadyAccount")}{" "}
-          <Link href="/employer/login" className="text-primary font-bold hover:underline">{t("work.employerSignup.loginCta")}</Link>
-        </p>
       </div>
     </main>
   );
