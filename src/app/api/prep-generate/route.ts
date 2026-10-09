@@ -106,7 +106,7 @@ Exactly 12 flashcards. Recto in English only. Focus on what is evaluated in the 
   if (fromDoc) {
     return `Tu es un professeur expert du ${examType} sénégalais (${examType === "BFEM" ? "classe de 3e" : "classe de Terminale"}).
 Génère 12 flashcards de révision basées EXCLUSIVEMENT sur le document fourni pour ${matiere}.
-CONSIGNES STRICTES :
+CONSIGNES STRICTES : N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code.
 1. Chaque flashcard doit porter UNIQUEMENT sur une notion, définition, règle ou formule explicitement présente dans le document.
 2. N'invente AUCUNE information extérieure, n'extrapole pas au-delà des notions traitées.
 3. Rédige en français clair, précis et rigoureux, parfaitement adapté au niveau ${examType} de l'élève.
@@ -134,7 +134,7 @@ Retourne UNIQUEMENT ce JSON :
     { "recto": "Question ou notion ?", "verso": "Réponse complète et claire." }
   ]
 }
-Exactement 12 flashcards. Tout en français. Privilégie les notions souvent évaluées aux examens.`;
+Exactement 12 flashcards. Tout en français. Privilégie les notions souvent évaluées aux examens. N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code.`;
 }
 
 function quizPrompt(matiere: string, chapitre: string, examType: string, serie: string, quizMode: string, fromDoc: boolean, contenuCtx = ""): string {
@@ -164,7 +164,7 @@ ALL questions and ALL answer choices must be in ENGLISH ONLY.
 Focus on what is most evaluated in the actual exam.
 ${progCtx}${contenuCtx}
 ABSOLUTE RULE: each element in "choices" must be the COMPLETE TEXT of the answer, never a single letter.
-ABSOLUTE RULE: "correct_answer" must be the COMPLETE TEXT identical to one of the "choices" elements.
+ABSOLUTE RULE: "correct_answer" must be the COMPLETE TEXT identical to one of the "choices" elements. N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code.
 
 Return ONLY this JSON:
 {

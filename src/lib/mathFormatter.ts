@@ -1,124 +1,205 @@
 /**
- * Utilitaire de nettoyage des artefacts IA et de formatage des formules mathématiques
- * pour l'application GSN PREP.
+ * Module partagé de nettoyage pur et de formatage des réponses de l'IA (GSN PREP).
  *
- * Résout :
- * 1. Les artefacts dans les réponses de l'IA (<think>...</think>, balises internes,
- *    <<<FILE_START>>>, <<<FILE_END>>>, blocs de code résiduels).
- * 2. L'affichage propre des corrections et explications avec barème lisible.
- * 3. Le rendu esthétique et universel des formules mathématiques (LaTeX, symboles, fractions, exposants, racines).
+ * RÈGLE ABSOLUE : Fonction pure sans dépendances externes.
+ * - Supprime tous les artefacts d'IA, raisonnements internes (<think>, <reasoning>),
+ *   marqueurs techniques (<<<FILE_START>>>, [[...]], undefined, null, \n littéraux).
+ * - Nettoie et convertit tout LaTeX résiduel en texte lisible avec symboles Unicode.
+ * - Ne modifie JAMAIS le contenu à l'intérieur des blocs de code markdown (```...```).
+ * - Préserve intacte la virgule décimale (ex: 0,476) et les devises monétaires ($).
  */
 
 /**
- * Nettoie tous les artefacts techniques générés par les modèles d'IA (Groq, Llama, DeepSeek, etc.)
+ * Nettoie le texte produit par l'IA et convertit tout LaTeX résiduel en texte mathématique clair.
+ */
+export function cleanAiText(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let text = String(raw);
+
+  // 1. Extraire et protéger les blocs de code markdown
+  const codeBlocks: string[] = [];
+  text = text.replace(/```[\s\S]*?```/g, (match) => {
+    codeBlocks.push(match);
+    return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+  });
+
+  // 2. Nettoyer les balises de réflexion de modèles d'IA (DeepSeek, Llama, etc.)
+  text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
+  text = text.replace(/<\/?think>/gi, "");
+  text = text.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "");
+  text = text.replace(/<\/?reasoning>/gi, "");
+  text = text.replace(/<\/?(?:system|user|assistant|output|thought|meta)>/gi, "");
+
+  // 3. Délimiteurs techniques de documents et balises
+  text = text.replace(/<<<FILE_START>>>[\s\S]*?<<<FILE_END>>>/gi, "");
+  text = text.replace(/<<<[^>]+>>>/gi, "");
+  text = text.replace(/\[\[[\s\S]*?\]\]/gi, "");
+  text = text.replace(/\bundefined\b/g, "");
+  text = text.replace(/\bnull\b/g, "");
+
+  // 4. Normalisation des retours à la ligne LaTeX et échappements littéraux
+  text = text.replace(/\\newline\b/g, "\n");
+  text = text.replace(/\\\\/g, "\n");
+  text = text.replace(/\\n/g, "\n");
+
+  // 5. Normalisation des environnements LaTeX multi-lignes
+  text = text.replace(/\\begin\{(?:cases|aligned|pmatrix|matrix)\}([\s\S]*?)\\end\{(?:cases|aligned|pmatrix|matrix)\}/g, (_m, body) => {
+    return body.split(/\n/).map((l: string) => l.trim().replace(/&/g, "  ")).join("\n");
+  });
+
+  // 6. Ignorer les commandes de formatage et espaces LaTeX
+  text = text.replace(/\\displaystyle\b/g, "");
+  text = text.replace(/\\left\b/g, "");
+  text = text.replace(/\\right\b/g, "");
+  text = text.replace(/\\,/g, " ");
+  text = text.replace(/\\;/g, " ");
+  text = text.replace(/\\quad\b/g, "  ");
+  text = text.replace(/\\qquad\b/g, "   ");
+  text = text.replace(/\\%/g, "%");
+
+  // 7. Retrait des délimiteurs de blocs mathématiques
+  // Blocs multi-lignes \[ ... \] ou $$ ... $$
+  text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, c) => "\n" + c.trim() + "\n");
+  text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_m, c) => "\n" + c.trim() + "\n");
+  // Formules en ligne \( ... \)
+  text = text.replace(/\\\(([\s\S]*?)\\\)/g, "$1");
+  // Dollar isolé : ignorer les montants d'argent (ex: 500 $ ou 100$)
+  text = text.replace(/\$([^\$\n]+?)\$/g, (m, expr) => {
+    if (/^\s*\d+([.,]\d+)?\s*(F|CFA|EUR|USD|€|\$)?\s*$/i.test(expr)) return m;
+    return expr;
+  });
+
+  // 8. Opérateurs et symboles mathématiques usuels
+  const symbolMap: Array<[RegExp, string]> = [
+    [/\\approx/g, "≈"],
+    [/\\times/g, "×"],
+    [/\\cdot/g, "·"],
+    [/\\div/g, "÷"],
+    [/\\pm/g, "±"],
+    [/\\mp/g, "∓"],
+    [/\\neq/g, "≠"],
+    [/\\leq/g, "≤"],
+    [/\\le\b/g, "≤"],
+    [/\\geq/g, "≥"],
+    [/\\ge\b/g, "≥"],
+    [/\\in\b/g, "∈"],
+    [/\\notin\b/g, "∉"],
+    [/\\subset\b/g, "⊂"],
+    [/\\infty/g, "∞"],
+    [/\\rightarrow/g, "→"],
+    [/\\to\b/g, "→"],
+    [/\\leftarrow/g, "←"],
+    [/\\implies/g, "⇒"],
+    [/\\Rightarrow/g, "⇒"],
+    [/\\iff/g, "⇔"],
+    [/\\Leftrightarrow/g, "⇔"],
+    [/\\sum/g, "∑"],
+    [/\\prod/g, "∏"],
+    [/\\int/g, "∫"],
+    [/\\lim/g, "lim"],
+    [/\\cup/g, "∪"],
+    [/\\cap/g, "∩"],
+    [/\\emptyset/g, "∅"],
+    [/\\forall/g, "∀"],
+    [/\\exists/g, "∃"],
+    [/\\Delta/g, "Δ"],
+    [/\\delta/g, "δ"],
+    [/\\pi/g, "π"],
+    [/\\theta/g, "θ"],
+    [/\\alpha/g, "α"],
+    [/\\beta/g, "β"],
+    [/\\gamma/g, "γ"],
+    [/\\lambda/g, "λ"],
+    [/\\sigma/g, "σ"],
+    [/\\omega/g, "ω"],
+    [/\\Omega/g, "Ω"],
+    [/\\mu/g, "µ"]
+  ];
+  for (const [re, sym] of symbolMap) {
+    text = text.replace(re, sym);
+  }
+
+  // 9. Combinaisons \binom{n}{k} -> C(n, k)
+  while (/\\binom\{([^{}]+)\}\{([^{}]+)\}/.test(text)) {
+    text = text.replace(/\\binom\{([^{}]+)\}\{([^{}]+)\}/g, "C($1, $2)");
+  }
+
+  // 10. Fractions récursives \frac, \dfrac, \tfrac
+  while (/\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}/.test(text)) {
+    text = text.replace(/\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}/g, (_m, num, den) => {
+      const cleanNum = num.length > 3 || /[\+\-\*\/]/.test(num) ? `(${num.trim()})` : num.trim();
+      const cleanDen = den.length > 3 || /[\+\-\*\/]/.test(den) ? `(${den.trim()})` : den.trim();
+      return `${cleanNum}/${cleanDen}`;
+    });
+  }
+
+  // 11. Racines carrées et racines n-ièmes
+  text = text.replace(/\\sqrt\[(\d+)\]\{([^{}]+)\}/g, "$1√($2)");
+  text = text.replace(/\\sqrt\{([^{}]+)\}/g, "√($1)");
+
+  // 12. Ensembles de nombres
+  text = text.replace(/\\mathbb\{R\}/g, "ℝ");
+  text = text.replace(/\\mathbb\{N\}/g, "ℕ");
+  text = text.replace(/\\mathbb\{Z\}/g, "ℤ");
+  text = text.replace(/\\mathbb\{Q\}/g, "ℚ");
+  text = text.replace(/\\mathbb\{C\}/g, "ℂ");
+
+  // 13. Textes, vecteurs et surlignages
+  text = text.replace(/\\(?:text|mathrm|mathbf|mathit)\{([^{}]+)\}/g, "$1");
+  text = text.replace(/\\vec\{([^{}]+)\}/g, "vec($1)");
+  text = text.replace(/\\overline\{([^{}]+)\}/g, "($1)");
+  text = text.replace(/\\hat\{([^{}]+)\}/g, "($1)");
+
+  // 14. Exposants et indices usuels
+  const supMap: Record<string, string> = {
+    "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
+    "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
+    "+": "⁺", "-": "⁻", "n": "ⁿ", "x": "ˣ"
+  };
+  const subMap: Record<string, string> = {
+    "0": "₀", "1": "₁", "2": "₂", "3": "₃", "4": "₄",
+    "5": "₅", "6": "₆", "7": "₇", "8": "₈", "9": "₉",
+    "i": "ᵢ", "j": "ⱼ", "k": "ₖ", "n": "ₙ"
+  };
+
+  text = text.replace(/\^\{([0-9n\+\-]+)\}/g, (_m, exp) => exp.split("").map((c: string) => supMap[c] || c).join(""));
+  text = text.replace(/\^([0-9nx])/g, (_m, c) => supMap[c] || `^${c}`);
+  text = text.replace(/\_\{([0-9ijk\+\-]+)\}/g, (_m, sub) => sub.split("").map((c: string) => subMap[c] || c).join(""));
+  text = text.replace(/\_([0-9ijk])/g, (_m, c) => subMap[c] || `_${c}`);
+
+  // 15. Commandes inconnues restantes : retire la barre oblique inverse et conserve l'argument
+  text = text.replace(/\\([a-zA-Z]+)\{([^{}]+)\}/g, "$2");
+  text = text.replace(/\\([a-zA-Z]+)/g, "$1");
+
+  // 16. Retrait des accolades orphelines
+  text = text.replace(/\{([^{}]+)\}/g, "$1");
+  text = text.replace(/[{}]/g, "");
+
+  // 17. Restauration des blocs de code markdown
+  codeBlocks.forEach((block, idx) => {
+    text = text.replace(`__CODE_BLOCK_${idx}__`, block);
+  });
+
+  return text.trim();
+}
+
+/**
+ * Nettoyage des artefacts techniques spécifiquement (alias de cleanAiText).
  */
 export function cleanAiArtifacts(text: string): string {
-  if (!text) return "";
-  let out = text;
-
-  // 1. Balises de réflexion de modèles type DeepSeek / reasoning models
-  out = out.replace(/<think>[\s\S]*?<\/think>/gi, "");
-  out = out.replace(/<\/?think>/gi, "");
-  out = out.replace(/<reasoning>[\s\S]*?<\/reasoning>/gi, "");
-  out = out.replace(/<\/?reasoning>/gi, "");
-
-  // 2. Balises internes de fichiers PREP
-  out = out.replace(/<<<FILE_START>>>[\s\S]*?<<<FILE_END>>>/gi, "");
-  out = out.replace(/<<<FILE_START>>>[\s\S]*$/gi, "");
-  out = out.replace(/<<<[^>]+>>>/gi, "");
-
-  // 3. Balises résiduelles de rôle ou de métadonnées de chat
-  out = out.replace(/<\/?(?:system|user|assistant|output|thought|meta)>/gi, "");
-
-  // 4. Délimiteurs markdown de blocs résiduels enveloppant toute la réponse
-  out = out.replace(/^```(?:markdown|latex|json|text)?\r?\n([\s\S]*?)\r?\n```$/i, "$1");
-
-  // 5. Nettoyage des espaces et retours à la ligne superflus créés par le retrait des balises
-  out = out.replace(/\n{3,}/g, "\n\n").trim();
-
-  return out;
+  return cleanAiText(text);
 }
 
 /**
- * Nettoie et transforme les formules mathématiques brutes (LaTeX, notations en ligne)
- * en texte et symboles Unicode clairs et lisibles immédiatement sur mobile et desktop.
+ * Formatage des formules mathématiques (alias de cleanAiText).
  */
 export function formatMathFormulas(text: string): string {
-  if (!text) return "";
-  let s = text;
-
-  // Normalisation des délimiteurs LaTeX : \( ... \) -> $ ... $, \[ ... \] -> $$ ... $$
-  s = s.replace(/\\?\(([\s\S]*?)\\?\)/g, "$$1$");
-  s = s.replace(/\\?\[([\s\S]*?)\\?\]/g, "$$$$1$$$");
-
-  // Remplacement des symboles LaTeX courants par leurs équivalents Unicode de haute qualité
-  s = s.replace(/\\times\b/g, "×");
-  s = s.replace(/\\cdot\b/g, "·");
-  s = s.replace(/\\pm\b/g, "±");
-  s = s.replace(/\\mp\b/g, "∓");
-  s = s.replace(/\\div\b/g, "÷");
-  s = s.replace(/\\approx\b/g, "≈");
-  s = s.replace(/\\neq\b/g, "≠");
-  s = s.replace(/\\le\b|\\leq\b/g, "≤");
-  s = s.replace(/\\ge\b|\\geq\b/g, "≥");
-  s = s.replace(/\\infty\b/g, "∞");
-  s = s.replace(/\\to\b|\\rightarrow\b/g, "→");
-  s = s.replace(/\\leftarrow\b/g, "←");
-  s = s.replace(/\\Leftrightarrow\b/g, "⇔");
-  s = s.replace(/\\Rightarrow\b/g, "⇒");
-  s = s.replace(/\\in\b/g, "∈");
-  s = s.replace(/\\notin\b/g, "∉");
-  s = s.replace(/\\subset\b/g, "⊂");
-  s = s.replace(/\\cup\b/g, "∪");
-  s = s.replace(/\\cap\b/g, "∩");
-  s = s.replace(/\\forall\b/g, "∀");
-  s = s.replace(/\\exists\b/g, "∃");
-  s = s.replace(/\\Delta\b/g, "Δ");
-  s = s.replace(/\\delta\b/g, "δ");
-  s = s.replace(/\\pi\b/g, "π");
-  s = s.replace(/\\theta\b/g, "θ");
-  s = s.replace(/\\alpha\b/g, "α");
-  s = s.replace(/\\beta\b/g, "β");
-  s = s.replace(/\\gamma\b/g, "γ");
-  s = s.replace(/\\lambda\b/g, "λ");
-  s = s.replace(/\\sigma\b/g, "σ");
-  s = s.replace(/\\omega\b/g, "ω");
-  s = s.replace(/\\Omega\b/g, "Ω");
-  s = s.replace(/\\mu\b/g, "µ");
-  s = s.replace(/\\sum\b/g, "∑");
-  s = s.replace(/\\prod\b/g, "∏");
-  s = s.replace(/\\int\b/g, "∫");
-
-  // Remplacement des fractions LaTeX \frac{a}{b} -> (a)/(b) ou a/b
-  s = s.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, "($1)/($2)");
-  // Remplacement des racines carrées \sqrt{x} -> √(x)
-  s = s.replace(/\\sqrt\{([^{}]+)\}/g, "√($1)");
-  s = s.replace(/\\sqrt\[(\d+)\]\{([^{}]+)\}/g, "^{$1}√($2)");
-
-  // Remplacement des textes LaTeX \text{...} ou \mathrm{...}
-  s = s.replace(/\\(?:text|mathrm|mathbf|mathit)\{([^{}]+)\}/g, "$1");
-
-  // Exposants usuels en chiffres simples : ^0 -> ⁰, ^1 -> ¹, ^2 -> ², ^3 -> ³, etc.
-  s = s.replace(/\^2\b/g, "²");
-  s = s.replace(/\^3\b/g, "³");
-  s = s.replace(/\^0\b/g, "⁰");
-  s = s.replace(/\^1\b/g, "¹");
-  s = s.replace(/\^n\b/g, "ⁿ");
-
-  // Nettoyage des $ résiduels isolés lorsqu'ils entourent une expression
-  // $x^2 + y = 0$ -> x² + y = 0
-  s = s.replace(/\$\$([\s\S]*?)\$\$/g, "$1");
-  s = s.replace(/\$([^\$\n]+?)\$/g, "$1");
-
-  return s;
+  return cleanAiText(text);
 }
 
 /**
- * Nettoie une correction ou explication d'IA pour lui donner un rendu impeccable,
- * aéré et lisible, avec mise en valeur des étapes de calcul et du barème.
+ * Formatage du texte de correction d'épreuve ou d'exercice.
  */
 export function formatCorrectionText(text: string): string {
-  if (!text) return "";
-  const cleaned = cleanAiArtifacts(text);
-  return formatMathFormulas(cleaned);
+  return cleanAiText(text);
 }

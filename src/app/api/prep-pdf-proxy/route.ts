@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 /**
  * Liste blanche stricte des domaines sources d'annales officielles autorisées
  */
-export const ALLOWED_PDF_HOSTS = [
+const ALLOWED_PDF_HOSTS = [
   "hriyttxrymwysdfvudsp.supabase.co", // Storage Supabase officiel du projet GSN
   "officedubac.sn",                  // Office du Baccalauréat du Sénégal
   "www.officedubac.sn",

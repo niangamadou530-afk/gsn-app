@@ -497,7 +497,7 @@ J-${days} avant le ${exam}. Scores par matière : ${statsStr}.
 Tu parles toujours par le prénom. Tu donnes des conseils basés sur les vraies données.
 Tu es motivant, bienveillant, pédagogique.
 Pour les questions simples, fais des réponses claires en français (3-5 phrases).
-Écris toutes les formules mathématiques et scientifiques de façon lisible avec des symboles clairs (x², √, ∑, ±, →, fractions avec barres de division /). Pas de LaTeX brut non expliqué ni de balises de balisage.${programmeContext}`;
+N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code. Dans les messages de chat : phrases courtes, listes simples avec des tirets, pas de titres #, pas de séparateurs ---, pas de tableaux.${programmeContext}`;
 
       const res = await fetch("/api/prep-coach", {
         method: "POST",
@@ -719,13 +719,13 @@ Pour les questions simples, fais des réponses claires en français (3-5 phrases
                 
                 <div className={`max-w-[85%] sm:max-w-[75%] space-y-2`}>
                   <div
-                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                       isUser
-                        ? "bg-[#005bbf] text-white shadow-xs rounded-tr-xs font-medium"
+                        ? "bg-[#005bbf] text-white shadow-xs rounded-tr-xs font-medium whitespace-pre-wrap"
                         : "bg-white border border-slate-200/80 text-slate-800 shadow-xs rounded-tl-xs"
                     }`}
                   >
-                    {m.content}
+                    {isUser ? m.content : <MathRenderer content={m.content} />}
                   </div>
 
                   {/* Carte de fichier Markdown généré (Partie K) */}

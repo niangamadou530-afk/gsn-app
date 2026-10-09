@@ -192,7 +192,7 @@ Puis le bloc délimité suivant :
 KIND: ${fileIntent.kind}
 TITLE: [Titre clair du document, max 60 caractères]
 <<<CONTENT>>>
-[Le contenu du document : titres # et ##, listes, gras, formules en texte lisible x², √, ∑, tableaux simples. Pas de code HTML brut. Ne mentionne aucun nom de format de fichier.]
+[Le contenu du document : titres # et ##, listes simples avec tirets, gras, tableaux simples. N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code. Pas de code HTML brut. Ne mentionne aucun nom de format technique.]
 <<<CORRECTION>>>
 [Si le type est exercice : la correction détaillée étape par étape. Si un autre type, laisse ce bloc vide.]
 <<<FILE_END>>>`;

@@ -9,7 +9,8 @@ interface CoachFilePrintViewProps {
   dateStr?: string;
 }
 
-function cleanMarkdownForPrint(md: string): string {
+function cleanMarkdownForPrint(rawMd: string): string {
+  const md = cleanAiText(rawMd); return cleanMarkdownForPrintInternal(cleanAiText(md)); } function cleanMarkdownForPrintInternal(md: string): string {
   return md
     .replace(/^#\s+(.+)$/gm, "<h1 class='print-h1'>$1</h1>")
     .replace(/^##\s+(.+)$/gm, "<h2 class='print-h2'>$1</h2>")
@@ -46,7 +47,7 @@ export function CoachFilePrintView({
             </span>
           </div>
           <p className="text-[11px] text-slate-600 mt-0.5">
-            Document pédagogique officiel · Programme sénégalais
+            Document pédagogique · Programme sénégalais
           </p>
         </div>
         <div className="text-right">
@@ -57,7 +58,7 @@ export function CoachFilePrintView({
 
       {/* Titre du document */}
       <h1 className="text-2xl font-black text-slate-900 mb-6 leading-tight">
-        {title}
+        {cleanAiText(title)}
       </h1>
 
       {/* Contenu principal */}

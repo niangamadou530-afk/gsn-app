@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { CoachFilePrintView } from "./CoachFilePrintView";
 import { MathRenderer } from "./MathRenderer";
-import { cleanAiArtifacts } from "@/lib/mathFormatter";
+import { cleanAiArtifacts, cleanAiText } from "@/lib/mathFormatter";
 
 export interface CoachFile {
   id?: string;
@@ -155,8 +155,8 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
 
   // Télécharger en Markdown (.md)
   const downloadMarkdown = () => {
-    const fullText = `# GSN PREP · ${file.title}\nDate: ${dateFormatted}\n\n${file.content_md}${
-      file.correction_md ? `\n\n## Correction & Barème\n\n${file.correction_md}` : ""
+    const fullText = `# GSN PREP · ${cleanAiText(file.title)}\nDate: ${dateFormatted}\n\n${cleanAiText(file.content_md)}${
+      file.correction_md ? `\n\n## Correction & Barème\n\n${cleanAiText(file.correction_md)}` : ""
     }`;
     const blob = new Blob([fullText], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -192,11 +192,11 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
     <p class="meta">Document pédagogique · ${dateFormatted} · Aucun renseignement personnel inclus</p>
   </div>
   <div>
-    ${file.content_md.replace(/\n\n/g, "<p>").replace(/\n/g, "<br/>")}
+    ${cleanAiText(file.content_md).replace(/\n\n/g, "<p>").replace(/\n/g, "<br/>")}
   </div>
   ${
     file.correction_md
-      ? `<div class="correction-box"><h2>Correction & Barème</h2>${file.correction_md.replace(/\n\n/g, "<p>").replace(/\n/g, "<br/>")}</div>`
+      ? `<div class="correction-box"><h2>Correction & Barème</h2>${cleanAiText(file.correction_md).replace(/\n\n/g, "<p>").replace(/\n/g, "<br/>")}</div>`
       : ""
   }
 </body>
@@ -334,6 +334,9 @@ export function CoachFileSheet({ file, isOpen, onClose }: CoachFileSheetProps) {
                     <span className="w-4 text-center font-bold text-[#005bbf]">W</span>
                     <span>Document Word (.doc)</span>
                   </button>
+                  <p className="px-4 py-1 text-[10px] text-slate-500 font-medium leading-tight">
+                    Si le fichier Word ne s'ouvre pas bien, utilise le PDF.
+                  </p>
 
                   <button
                     type="button"
