@@ -8,10 +8,14 @@ import { TourCard } from "./TourCard";
 import { supabase } from "@/lib/supabase";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 
+// Machine d'états déduite
+export type TourEngineState = "idle" | "navigating" | "locating" | "ready" | "fallback";
+
 interface TourContextType {
   isActive: boolean;
   currentStepIndex: number;
   totalSteps: number;
+  engineState: TourEngineState;
   startTour: () => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -52,21 +56,18 @@ function findTargetElement(cible: string): HTMLElement | null {
     const btn = document.querySelector<HTMLElement>('[data-tour="header-settings-btn"]');
     if (btn && btn.getBoundingClientRect().width > 0) return btn;
   }
-
   if (cible === "coach-drawer-panel") {
     const panel = document.querySelector<HTMLElement>('[data-tour="coach-drawer-panel"]');
     if (panel && panel.getBoundingClientRect().width > 0) return panel;
     const btn = document.querySelector<HTMLElement>('[data-tour="coach-drawer-btn"]');
     if (btn && btn.getBoundingClientRect().width > 0) return btn;
   }
-
   if (cible === "epreuves-filters") {
     const filters = document.querySelector<HTMLElement>('[data-tour="epreuves-filters"]');
     if (filters && filters.getBoundingClientRect().width > 0) return filters;
     const search = document.querySelector<HTMLElement>('[data-tour="epreuves-search"]');
     if (search && search.getBoundingClientRect().width > 0) return search;
   }
-
   if (cible === "generer-options") {
     const opts = document.querySelector<HTMLElement>('[data-tour="generer-options"]');
     if (opts && opts.getBoundingClientRect().width > 0) return opts;
@@ -103,18 +104,49 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
   });
 
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [internalState, setInternalState] = useState<TourEngineState>("idle");
   const [userId, setUserId] = useState<string | null>(null);
   const [userMetadataDone, setUserMetadataDone] = useState(false);
+
+  // Diagnostic mode (?tourdebug=1 ou localStorage.prep_tour_debug === "1")
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugStartTime, setDebugStartTime] = useState(Date.now());
+  const [targetFoundDebug, setTargetFoundDebug] = useState(false);
+
+  // Verrouillage de transition pour bloquer les doubles clics rapides sur "Suivant"
+  const isTransitioningRef = useRef(false);
 
   const activeStep: PrepTourStep | undefined = PREP_TOUR_STEPS[currentStepIndex];
   const totalSteps = PREP_TOUR_STEPS.length;
 
-  const animationFrameRef = useRef<number | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const searchIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mutationObserverRef = useRef<MutationObserver | null>(null);
+  const locatingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const rafRef = useRef<number | null>(null);
 
-  // 1. Détection de l'utilisateur pour la persistance locale et métadonnées
+  // 1. Initialisation & détection du mode diagnostic
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Détection ?tourdebug=1
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tourdebug") === "1") {
+      try {
+        localStorage.setItem("prep_tour_debug", "1");
+        params.delete("tourdebug");
+        const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : "");
+        window.history.replaceState({}, "", cleanUrl);
+      } catch {}
+    }
+
+    try {
+      if (localStorage.getItem("prep_tour_debug") === "1") {
+        setDebugMode(true);
+      }
+    } catch {}
+  }, []);
+
+  // 2. Détection de l'utilisateur pour la persistance
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -139,14 +171,27 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     };
   }, []);
 
-  // 2. Nettoyage de tous les timers et frames en cours
-  const clearTimers = useCallback(() => {
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    if (searchIntervalRef.current) clearInterval(searchIntervalRef.current);
-    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+  // 3. Nettoyage sécurisé des observateurs et minuteurs
+  const cleanupObserversAndTimers = useCallback(() => {
+    if (mutationObserverRef.current) {
+      mutationObserverRef.current.disconnect();
+      mutationObserverRef.current = null;
+    }
+    if (locatingTimeoutRef.current) {
+      clearTimeout(locatingTimeoutRef.current);
+      locatingTimeoutRef.current = null;
+    }
+    if (fallbackTimeoutRef.current) {
+      clearTimeout(fallbackTimeoutRef.current);
+      fallbackTimeoutRef.current = null;
+    }
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
   }, []);
 
-  // 3. Fermer les panneaux ouverts lors de la visite guidée
+  // 4. Fermer les panneaux ouverts lors de la visite
   const closeOpenedElements = useCallback(() => {
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("prep-tour:close-settings"));
@@ -154,12 +199,15 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     }
   }, []);
 
-  // 4. Lancer la visite guidée (ne modifie pas le drapeau de complétion)
+  // 5. Démarrer la visite
   const startTour = useCallback(() => {
-    clearTimers();
+    cleanupObserversAndTimers();
     closeOpenedElements();
+    setDebugStartTime(Date.now());
     setCurrentStepIndex(0);
     setIsActive(true);
+    isTransitioningRef.current = false;
+
     try {
       sessionStorage.setItem(SESSION_ACTIVE_KEY, "true");
       sessionStorage.setItem(SESSION_STEP_KEY, "0");
@@ -167,17 +215,18 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
 
     const firstStep = PREP_TOUR_STEPS[0];
     if (firstStep && pathname !== firstStep.route) {
-      setIsLoading(true);
       router.push(firstStep.route);
     }
-  }, [clearTimers, closeOpenedElements, pathname, router]);
+  }, [cleanupObserversAndTimers, closeOpenedElements, pathname, router]);
 
-  // 5. Terminer / Quitter la visite (enregistre prep_tutorial_done dans métadonnées et localStorage)
+  // 6. Quitter / Passer la visite (sécurité absolue : fonctionne dans tous les états)
   const skipTour = useCallback(async () => {
-    clearTimers();
+    cleanupObserversAndTimers();
     closeOpenedElements();
     setIsActive(false);
     setTargetRect(null);
+    setInternalState("idle");
+    isTransitioningRef.current = false;
 
     try {
       sessionStorage.removeItem(SESSION_ACTIVE_KEY);
@@ -188,19 +237,28 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
       }
     } catch {}
 
-    // Enregistrement du drapeau dans les métadonnées Supabase si compte connecté
     try {
       if (userId && userId !== "preview_student") {
         await supabase.auth.updateUser({
           data: { prep_tutorial_done: true },
         });
       }
-    } catch (err) {
-      console.warn("Could not save tour completion in metadata:", err);
-    }
-  }, [clearTimers, closeOpenedElements, userId]);
+    } catch {}
+  }, [cleanupObserversAndTimers, closeOpenedElements, userId]);
 
-  // 6. Écoute de l'événement global pour relancer la visite (depuis Paramètres)
+  // 7. Raccourci clavier Échap : quitte immédiatement la visite
+  useEffect(() => {
+    if (!isActive) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        skipTour();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isActive, skipTour]);
+
+  // 8. Écoute de l'événement global de relance depuis les Paramètres
   useEffect(() => {
     const handleStartEvent = () => {
       startTour();
@@ -211,11 +269,10 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
     };
   }, [startTour]);
 
-  // 7. Déclenchement automatique selon les règles strictes de la Section 3
+  // 9. Déclenchement automatique selon les règles
   useEffect(() => {
     if (!userId || isActive) return;
 
-    // Ne JAMAIS déclencher sur les pages publiques ou d'authentification
     const normalized = pathname?.replace(/\/+$/, "") || "/prep";
     const isExcluded =
       normalized === "/prep" ||
@@ -227,12 +284,10 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
 
     if (isExcluded) return;
 
-    // Règle 3.a : Exclure /prep/parent pour un parent sans compte et tout compte sans profil élève
     const isPreview = isPreviewEnvironment();
     if (!studentProfile && !isPreview) return;
     if (normalized === "/prep/parent" && !studentProfile) return;
 
-    // Règle 3.b : Vérifier si la visite a déjà été effectuée
     let hasCompleted = false;
     try {
       hasCompleted =
@@ -244,22 +299,27 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
       hasCompleted = true;
     }
 
-    // Déclenchement automatique une seule fois sur le tableau de bord
     if (!hasCompleted && (normalized === "/prep/dashboard" || studentProfile)) {
       startTour();
     }
   }, [userId, pathname, studentProfile, isActive, startTour, userMetadataDone]);
 
-  // 8. Navigation vers l'étape suivante
+  // 10. Navigation étape suivante avec anti-rebond (une seule transition par clic)
   const nextStep = useCallback(() => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
+
     if (currentStepIndex >= totalSteps - 1) {
       skipTour();
       return;
     }
 
-    const prevStep = PREP_TOUR_STEPS[currentStepIndex];
-    if (prevStep?.apres && typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent(prevStep.apres));
+    const prev = PREP_TOUR_STEPS[currentStepIndex];
+    if (prev?.apres && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(prev.apres));
     }
 
     const nextIndex = currentStepIndex + 1;
@@ -270,13 +330,18 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
 
     const nextStepConfig = PREP_TOUR_STEPS[nextIndex];
     if (nextStepConfig && pathname !== nextStepConfig.route) {
-      setIsLoading(true);
       router.push(nextStepConfig.route);
     }
   }, [currentStepIndex, totalSteps, skipTour, pathname, router]);
 
-  // 9. Navigation vers l'étape précédente
+  // 11. Navigation étape précédente
   const prevStep = useCallback(() => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    setTimeout(() => {
+      isTransitioningRef.current = false;
+    }, 450);
+
     if (currentStepIndex <= 0) return;
 
     const current = PREP_TOUR_STEPS[currentStepIndex];
@@ -292,144 +357,171 @@ export function TourProvider({ children, studentProfile }: TourProviderProps) {
 
     const prevStepConfig = PREP_TOUR_STEPS[prevIndex];
     if (prevStepConfig && pathname !== prevStepConfig.route) {
-      setIsLoading(true);
       router.push(prevStepConfig.route);
     }
   }, [currentStepIndex, pathname, router]);
 
-  // 10. Traitement de l'étape courante (localisation de la cible et synchronisation DOM)
+  // 12. MACHINE D'ÉTATS DÉDUITE ET RECHERCHE PAR MUTATIONOBSERVER (PHASE 1)
   useEffect(() => {
-    if (!isActive || !activeStep) return;
-
-    clearTimers();
-
-    // Si l'étape requiert une autre route et qu'on n'y est pas encore
-    if (pathname !== activeStep.route) {
-      const timer = setTimeout(() => {
-        setIsLoading(true);
-        setTargetRect(null);
-      }, 0);
-      return () => clearTimeout(timer);
+    if (!isActive || !activeStep) {
+      setInternalState("idle");
+      return;
     }
 
-    // Émettre l'événement "avant" si configuré (ex: ouvrir le menu ou tiroir)
+    cleanupObserversAndTimers();
+
+    // RÈGLE CRITIQUE : Si le chemin courant diffère de la route de l'étape -> navigating
+    if (pathname !== activeStep.route) {
+      setInternalState("navigating");
+      setTargetRect(null);
+      setTargetFoundDebug(false);
+      return;
+    }
+
+    // Nous sommes arrivés sur la bonne page !
+    // Émettre l'événement "avant" si nécessaire (ouvrir tiroir ou menu)
     if (activeStep.avant && typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent(activeStep.avant));
     }
 
-    // Si étape sans cible : affichage centré immédiat
+    // Étape centrée sans cible (ex: Étape 1 accueil ou Étape 13 fin)
     if (!activeStep.cible) {
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        setTargetRect(null);
-      }, 0);
-      return () => clearTimeout(timer);
+      setInternalState("ready");
+      setTargetRect(null);
+      setTargetFoundDebug(true);
+      return;
     }
 
-    // Recherche de l'élément cible avec limite de 2 secondes
-    const startSearchingTimer = setTimeout(() => {
-      setIsLoading(true);
-    }, 0);
+    // Recherche de la cible avec état 'locating'
+    setInternalState("locating");
+    setTargetFoundDebug(false);
 
-    const startTime = Date.now();
-
-    const checkTarget = () => {
+    const tryFindAndFocus = (): boolean => {
       const el = findTargetElement(activeStep.cible!);
       if (el) {
-        clearTimers();
-        // Amener l'élément à l'écran avec marge douce
-        try {
-          el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-        } catch {}
-
-        // Récupération de la position
-        setTargetRect(el.getBoundingClientRect());
-        setIsLoading(false);
-        return true;
+        const rect = el.getBoundingClientRect();
+        // S'assurer que l'élément est rendu avec une géométrie valide
+        if (rect.width > 0 && rect.height > 0) {
+          try {
+            el.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+          } catch {}
+          setTargetRect(el.getBoundingClientRect());
+          setInternalState("ready");
+          setTargetFoundDebug(true);
+          cleanupObserversAndTimers();
+          return true;
+        }
       }
-
-      // Si le temps de recherche dépasse 2 secondes, basculer en carte centrée sans bloquer
-      if (Date.now() - startTime >= 2000) {
-        clearTimers();
-        setTargetRect(null);
-        setIsLoading(false);
-        return true;
-      }
-
       return false;
     };
 
-    // Première vérification immédiate
-    if (!checkTarget()) {
-      searchIntervalRef.current = setInterval(checkTarget, 80);
-    }
+    // 1ère tentative immédiate
+    if (tryFindAndFocus()) return;
+
+    // MutationObserver pour détecter l'apparition asynchrone des composants (React Suspense, données)
+    const observer = new MutationObserver(() => {
+      if (tryFindAndFocus()) {
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    mutationObserverRef.current = observer;
+
+    // Sécurité 1 : limite de 2,5 secondes d'observation
+    locatingTimeoutRef.current = setTimeout(() => {
+      if (!tryFindAndFocus()) {
+        cleanupObserversAndTimers();
+        setTargetRect(null);
+        setInternalState("fallback"); // Affiche la carte centrée sans jamais bloquer
+      }
+    }, 2500);
+
+    // Sécurité 2 : au bout de 3 secondes max absolu, disparition complète du voile de chargement
+    fallbackTimeoutRef.current = setTimeout(() => {
+      setInternalState((prev) => (prev === "locating" || prev === "navigating" ? "fallback" : prev));
+    }, 3000);
 
     return () => {
-      clearTimeout(startSearchingTimer);
-      clearTimers();
+      cleanupObserversAndTimers();
     };
-  }, [isActive, currentStepIndex, pathname, activeStep, clearTimers]);
+  }, [isActive, currentStepIndex, pathname, activeStep, cleanupObserversAndTimers]);
 
-  // 11. Recalcul dynamique de la position (redimensionnement, défilement)
-  const updateRect = useCallback(() => {
-    if (!isActive || !activeStep?.cible) return;
-    const el = findTargetElement(activeStep.cible);
-    if (el) {
-      setTargetRect(el.getBoundingClientRect());
-    }
-  }, [isActive, activeStep]);
-
+  // 13. Recalcul continu de la position de la cible (défilement et redimensionnement)
   useEffect(() => {
-    if (!isActive || !activeStep?.cible) return;
+    if (!isActive || !activeStep?.cible || internalState !== "ready") return;
 
-    const onScrollOrResize = () => {
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = requestAnimationFrame(updateRect);
+    const handleUpdate = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        const el = findTargetElement(activeStep.cible!);
+        if (el) {
+          setTargetRect(el.getBoundingClientRect());
+        }
+      });
     };
 
-    window.addEventListener("resize", onScrollOrResize, { passive: true });
-    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+    window.addEventListener("resize", handleUpdate, { passive: true });
+    window.addEventListener("scroll", handleUpdate, { passive: true });
 
     return () => {
-      window.removeEventListener("resize", onScrollOrResize);
-      window.removeEventListener("scroll", onScrollOrResize);
-      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener("scroll", handleUpdate);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isActive, activeStep, updateRect]);
+  }, [isActive, activeStep, internalState]);
 
-  const contextValue: TourContextType = {
-    isActive,
-    currentStepIndex,
-    totalSteps,
-    startTour,
-    nextStep,
-    prevStep,
-    skipTour,
-  };
+  // Déduire si le voile de chargement doit être actif
+  const isScreenLoading = internalState === "navigating" || internalState === "locating";
 
   return (
-    <TourContext.Provider value={contextValue}>
+    <TourContext.Provider
+      value={{
+        isActive,
+        currentStepIndex,
+        totalSteps,
+        engineState: internalState,
+        startTour,
+        nextStep,
+        prevStep,
+        skipTour,
+      }}
+    >
       {children}
 
-      {/* Rendu du projecteur et de la carte d'explication */}
+      {/* Rendu visuel de la visite quand active */}
       {isActive && activeStep && (
         <>
           <TourOverlay
             targetRect={targetRect}
-            isLoading={isLoading}
+            isLoading={isScreenLoading}
+            status={internalState}
+            onSkip={skipTour}
           />
-          {!isLoading && (
-            <TourCard
-              step={activeStep}
-              currentStepIndex={currentStepIndex}
-              totalSteps={totalSteps}
-              targetRect={targetRect}
-              studentFirstName={studentProfile?.prenom}
-              onNext={nextStep}
-              onPrev={prevStep}
-              onSkip={skipTour}
-              isLastStep={currentStepIndex === totalSteps - 1}
-            />
+          <TourCard
+            step={activeStep}
+            currentStepIndex={currentStepIndex}
+            totalSteps={totalSteps}
+            targetRect={targetRect}
+            studentFirstName={studentProfile?.prenom}
+            onNext={nextStep}
+            onPrev={prevStep}
+            onSkip={skipTour}
+            isLastStep={currentStepIndex === totalSteps - 1}
+            status={internalState}
+          />
+
+          {/* Mode diagnostic masqué (?tourdebug=1 ou localStorage.prep_tour_debug === "1") */}
+          {debugMode && (
+            <div
+              aria-live="polite"
+              className="fixed bottom-3 left-3 z-[9999] pointer-events-none px-3 py-1.5 rounded-xl bg-slate-950/90 text-white font-mono text-[11px] border border-white/20 shadow-xl flex items-center gap-2 backdrop-blur-md"
+            >
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                Étape {currentStepIndex + 1}/{totalSteps} · {pathname} · {internalState} · Cible :{" "}
+                {targetFoundDebug ? "oui" : "non"} · {Date.now() - debugStartTime} ms
+              </span>
+            </div>
           )}
         </>
       )}

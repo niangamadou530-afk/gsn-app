@@ -524,10 +524,21 @@ export const PREP_COACH_CONFIG = {
 
 /* ── VISITE GUIDÉE INTERACTIVE PREP (PARTIE K4) ─────────────── */
 
-export const PREP_GUIDE_NAME = "Moussa";
+export const PREP_GUIDE_NAME = "Prépy";
+
+// Réglage pose par pose du support de fond transparent (true = sans cadre ni fond uni, false = cercle doux)
+export const PREP_GUIDE_TRANSPARENT: Record<TourGuideAttitude, boolean> = {
+  accueil: true,
+  montre: true,
+  encourage: true,
+  felicite: true,
+  reflechit: true,
+  erreur: true,
+  idle: true,
+};
 
 export type TourPlacement = "haut" | "bas" | "gauche" | "droite" | "auto";
-export type TourGuideAttitude = "accueil" | "montre" | "encourage" | "felicite";
+export type TourGuideAttitude = "accueil" | "montre" | "encourage" | "felicite" | "reflechit" | "erreur" | "idle";
 
 export interface PrepTourStep {
   id: string;
@@ -554,8 +565,8 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     id: "countdown",
     route: "/prep/dashboard",
     cible: "dashboard-countdown",
-    titre: "Le compte à rebours officiel",
-    texte: "Visualise ici les jours restants avant le début des épreuves officielles selon ta série. Prépare-toi avec sérénité et régularité.",
+    titre: "Le compte à rebours",
+    texte: "Visualise ici les jours restants avant le début des épreuves selon ta série. Prépare-toi avec sérénité et régularité.",
     attitude: "montre",
     placement: "bas",
   },
@@ -583,7 +594,7 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     id: "epreuves",
     route: "/prep/epreuves",
     cible: "epreuves-filters",
-    titre: "Annales & Corrigés officiels",
+    titre: "Annales & Corrigés",
     texte: "Filtre par année, série ou matière. Consulte les vrais sujets du BAC et accède aux corrigés détaillés avec leurs barèmes.",
     attitude: "montre",
     placement: "bas",
@@ -593,7 +604,7 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     route: "/prep/generer",
     cible: "generer-options",
     titre: "Quiz, Flashcards & Résumés",
-    texte: "Révise à partir du programme officiel ou envoie la photo d'un cours. Génère des quiz d'entraînement, fiches et cartes mémoires.",
+    texte: "Révise à partir de ton programme ou envoie la photo d'un cours. Génère des quiz d'entraînement, fiches et cartes mémoires.",
     attitude: "encourage",
     placement: "bas",
   },
@@ -611,7 +622,7 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     route: "/prep/coach",
     cible: "coach-drawer-panel",
     titre: "Conversations & Fichiers",
-    texte: "Retrouve tes anciennes discussions, lance une nouvelle conversation et accède à tous tes exercices ou fiches générés en Word et PDF.",
+    texte: "Retrouve tes anciennes discussions, lance une nouvelle conversation et accède à tous tes exercices ou fiches générés directement.",
     attitude: "montre",
     placement: "droite",
     avant: "prep-tour:open-coach-drawer",
@@ -631,7 +642,7 @@ export const PREP_TOUR_STEPS: PrepTourStep[] = [
     route: "/prep/simulateur",
     cible: "simulateur-verdict",
     titre: "Simulateur de moyenne & Mention",
-    texte: "Calcule ta moyenne, corrige un coefficient si besoin, ajoute des matières. Découvre ton verdict officiel prévisionnel au BAC.",
+    texte: "Calcule ta moyenne, corrige un coefficient si besoin, ajoute des matières. Découvre ton verdict prévisionnel au BAC.",
     attitude: "montre",
     placement: "bas",
   },
