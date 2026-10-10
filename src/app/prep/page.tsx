@@ -767,7 +767,7 @@ export default function PrepLandingPage() {
               FAQ
             </a>
             <Link href="/prep/parent" className="hover:text-white transition-colors">Espace Parents</Link>
-            <a href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl()} target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Support WhatsApp</a>
+            
             <a href={`mailto:${PREP_CONTACT_EMAIL}?subject=Contact%20GSN%20PREP`} className="hover:text-white transition-colors">Contact</a>
             <Link href="/privacy" className="hover:text-white transition-colors">Confidentialité</Link>
             <Link href="/terms" className="hover:text-white transition-colors">Conditions d&apos;utilisation</Link>

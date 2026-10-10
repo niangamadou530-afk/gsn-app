@@ -34,6 +34,22 @@ export async function POST(req: NextRequest) {
     { auth: { persistSession: false } }
   );
 
+  // Vérification de la confirmation explicite côté serveur
+  try {
+    const body = await req.json().catch(() => ({}));
+    if (body?.confirmation !== "SUPPRIMER") {
+      return NextResponse.json(
+        { error: "Confirmation textuelle manquante ou invalide" },
+        { status: 400 }
+      );
+    }
+  } catch {
+    return NextResponse.json(
+      { error: "Corps de requête invalide" },
+      { status: 400 }
+    );
+  }
+
   // Filtrage strict sur l'identifiant issu du jeton validé uniquement
   const userId = user.id;
   const userEmail = user.email || "";

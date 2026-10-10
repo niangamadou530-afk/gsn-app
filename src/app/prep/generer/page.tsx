@@ -9,7 +9,6 @@ import { t } from "@/lib/i18n";
 import { isPreviewEnvironment } from "@/lib/previewAuth";
 import { PreviewBanner } from "@/components/PreviewBanner";
 import { sounds } from "@/lib/soundEffects";
-import { SoundToggle } from "@/components/SoundToggle";
 import { compressImageClient } from "@/lib/imageCompress";
 import { VideoCard, VideoCardSkeleton, sortVideosByStudentSerie } from "@/components/VideoCard";
 import { MathRenderer } from "@/components/MathRenderer";
@@ -1003,7 +1002,7 @@ function GenererPageInner() {
         <PageHeader
           title={t("prep.generer.flashcardsResult.headerTitle", { matiere: activeMat() })}
           onBack={() => setPhase("home")}
-          action={<SoundToggle />}
+          
         />
         <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
@@ -1159,7 +1158,7 @@ function GenererPageInner() {
         <PageHeader
           title={t("prep.generer.quizQcm.headerTitle", { matiere: activeMat() })}
           onBack={() => setPhase("home")}
-          action={<SoundToggle />}
+          
         />
         <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-4">
           {/* Header Stats */}
@@ -1315,7 +1314,7 @@ function GenererPageInner() {
         <PageHeader
           title={t("prep.generer.quizResult.headerTitle", { matiere: activeMat() })}
           onBack={() => setPhase("home")}
-          action={<SoundToggle />}
+          
         />
         <div className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
           <div
@@ -1388,7 +1387,7 @@ function GenererPageInner() {
         <PageHeader
           title={t("prep.generer.resumeResult.headerTitle", { matiere: activeMat() })}
           onBack={() => setPhase("home")}
-          action={<SoundToggle />}
+          
         />
         <div className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
           {resumeSaved && (

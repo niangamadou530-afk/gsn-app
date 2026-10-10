@@ -1,5 +1,7 @@
 "use client";
 
+import { cleanAiText } from "@/lib/mathFormatter";
+
 interface CoachFilePrintViewProps {
   title: string;
   kind: string;
@@ -10,7 +12,7 @@ interface CoachFilePrintViewProps {
 }
 
 function cleanMarkdownForPrint(rawMd: string): string {
-  const md = cleanAiText(rawMd); return cleanMarkdownForPrintInternal(cleanAiText(md)); } function cleanMarkdownForPrintInternal(md: string): string {
+  const md = cleanAiText(rawMd);
   return md
     .replace(/^#\s+(.+)$/gm, "<h1 class='print-h1'>$1</h1>")
     .replace(/^##\s+(.+)$/gm, "<h2 class='print-h2'>$1</h2>")

@@ -220,7 +220,7 @@ export default function SimulateurPage() {
   }, [subjectsList, grades]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
       {/* Header Banner */}
       <div className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs relative overflow-hidden">
         <div className="max-w-2xl relative z-10 space-y-2">
@@ -260,46 +260,50 @@ export default function SimulateurPage() {
         </div>
       </div>
 
-      {/* Real-time Results Card */}
-      <div data-tour="simulateur-verdict" className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div>
-            <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-extrabold uppercase tracking-wider backdrop-blur-xs">
-              {config.label}
-            </span>
-            <div className="mt-4 flex items-baseline gap-2">
-              <span className="text-5xl sm:text-6xl font-black tracking-tight tabular-nums">
-                {average.toFixed(2)}
-              </span>
-              <span className="text-xl sm:text-2xl font-bold opacity-80">/20</span>
-            </div>
-            <p className="text-xs text-blue-100 mt-1.5 font-medium">
-              Total cumulé : <strong className="text-white">{totalPoints.toFixed(1)}</strong> points sur {totalCoeff * 20} (Coeff total : {totalCoeff})
-            </p>
-          </div>
+      {/* Grid container: Verdict collant en colonne latérale sur écran large (>= 1280px) */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Real-time Results Card - Sticky sur xl */}
+        <div className="xl:col-span-5 xl:order-2 xl:sticky xl:top-20 space-y-6">
+          <div data-tour="simulateur-verdict" className="bg-gradient-to-br from-[#005bbf] to-indigo-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row xl:flex-col justify-between gap-6">
+              <div>
+                <span className="px-3 py-1 rounded-full bg-white/20 text-white text-xs font-extrabold uppercase tracking-wider backdrop-blur-xs">
+                  {config.label}
+                </span>
+                <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-5xl sm:text-6xl font-black tracking-tight tabular-nums">
+                    {average.toFixed(2)}
+                  </span>
+                  <span className="text-xl sm:text-2xl font-bold opacity-80">/20</span>
+                </div>
+                <p className="text-xs text-blue-100 mt-1.5 font-medium">
+                  Total cumulé : <strong className="text-white">{totalPoints.toFixed(1)}</strong> points sur {totalCoeff * 20} (Coeff total : {totalCoeff})
+                </p>
+              </div>
 
-          <div className="sm:text-right bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/20 space-y-2">
-            <span className="text-xs text-blue-100 font-bold block uppercase tracking-wider">
-              Verdict officiel prévisionnel
-            </span>
-            <p className="text-lg sm:text-xl font-black text-white">
-              {mention}
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/prep/orientation"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white font-extrabold text-xs shadow-md transition-all active:scale-95"
-              >
-                <span>Tester mon orientation post-bac</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
+              <div className="sm:text-right xl:text-left bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/20 space-y-2">
+                <span className="text-xs text-blue-100 font-bold block uppercase tracking-wider">
+                  Verdict officiel prévisionnel
+                </span>
+                <p className="text-lg sm:text-xl font-black text-white">
+                  {mention}
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/prep/orientation"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#FF6B00] hover:bg-[#e05e00] text-white font-extrabold text-xs shadow-md transition-all active:scale-95"
+                  >
+                    <span>Tester mon orientation post-bac</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Grade Sliders & Inputs with Editable Coefficients */}
-      <div data-tour="simulateur-subjects-list" className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-5">
+        {/* Grade Sliders & Inputs with Editable Coefficients */}
+        <div data-tour="simulateur-subjects-list" className="xl:col-span-7 xl:order-1 bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 shadow-xs space-y-5">
         {/* Actions bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
@@ -425,6 +429,7 @@ export default function SimulateurPage() {
             );
           })}
         </div>
+      </div>
       </div>
 
       {/* Add Custom Subject Modal */}

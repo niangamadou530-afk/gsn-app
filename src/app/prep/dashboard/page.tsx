@@ -635,15 +635,7 @@ export default function PrepDashboardPage() {
           <span>Donner un avis / Signaler un problème</span>
         </button>
 
-        <a
-          href={PREP_WHATSAPP_SUPPORT.getGeneralHelpUrl("Bonjour GSN PREP, j'ai besoin d'aide pour mon compte ou mes révisions.")}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 hover:text-emerald-800 text-center sm:text-left py-2 min-h-[44px]"
-        >
-          <span className="material-symbols-outlined text-[16px]">support_agent</span>
-          <span>Besoin d&apos;assistance ? Contacte l&apos;équipe GSN sur WhatsApp ({PREP_WHATSAPP_SUPPORT.phoneFormatted})</span>
-        </a>
+
       </section>
 
       {/* Feedback Modal */}

@@ -20,6 +20,7 @@ export default function StudentProfilePage() {
   } | null>(null);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("");
   const [deleting, setDeleting] = useState(false);
@@ -303,13 +304,19 @@ export default function StudentProfilePage() {
         isOpen={showLogoutConfirm}
         onClose={() => setShowLogoutConfirm(false)}
         onConfirm={async () => {
+          if (isSigningOut) return;
+          setIsSigningOut(true);
           setShowLogoutConfirm(false);
-          await supabase.auth.signOut();
-          router.push("/login");
+          try {
+            await supabase.auth.signOut();
+            router.push("/login");
+          } finally {
+            setIsSigningOut(false);
+          }
         }}
         title="Te déconnecter ?"
         message="Tu pourras te reconnecter à tout moment avec ton numéro et ton mot de passe."
-        confirmText="Se déconnecter"
+        confirmText={isSigningOut ? "Déconnexion en cours..." : "Se déconnecter"}
         cancelText="Annuler"
       />
     </div>

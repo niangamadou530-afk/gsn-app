@@ -341,6 +341,7 @@ export default function PrivacyPage() {
                 </li>
                 <li>Les compteurs quotidiens d&apos;utilisation des outils IA.</li>
                 <li>Les retours et avis transmis.</li>
+                <li>La préférence de didacticiel déjà vu et les drapeaux locaux.</li>
                 <li>
                   Les demandes d&apos;assistance et réinitialisations traitées.
                 </li>

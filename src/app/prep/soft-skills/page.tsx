@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
 import { sounds } from "@/lib/soundEffects";
-import { SoundToggle } from "@/components/SoundToggle";
 
 type Tab = "stress" | "pomodoro" | "methodes" | "motivation";
 
@@ -168,7 +167,7 @@ export default function SoftSkillsPage() {
             </p>
           </div>
           <div className="self-start sm:self-center">
-            <SoundToggle />
+            
           </div>
         </div>
       </div>

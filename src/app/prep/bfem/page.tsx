@@ -216,7 +216,7 @@ export default function BfemPage() {
                 </div>
                 <p className="font-extrabold text-slate-900 text-base">{t("prep.bfem.contentUnavailable")}</p>
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                  Le contenu numérique direct n&apos;est pas disponible, mais vous pouvez consulter le document officiel source.
+                  Le contenu numérique direct n&apos;est pas disponible, mais vous pouvez consulter la Source externe.
                 </p>
                 <a
                   href={selected.url_originale}
@@ -224,7 +224,7 @@ export default function BfemPage() {
                   rel="noopener noreferrer"
                   className="mt-3 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#005bbf] text-white font-bold text-xs shadow-xs hover:bg-[#004899] transition-all"
                 >
-                  <span>Consulter la source officielle</span>
+                  <span>Consulter la Source externe</span>
                   <span className="material-symbols-outlined text-[16px]">open_in_new</span>
                 </a>
               </div>

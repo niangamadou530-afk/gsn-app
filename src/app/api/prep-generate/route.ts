@@ -432,7 +432,7 @@ CONSIGNES STRICTES :
 3. Adapte le niveau et le vocabulaire aux exigences du ${examType} sénégalais, avec un français impeccable.
 ${formatStr}
 Remplis chaque section avec du texte clair et des listes à tirets (-). Pas de HTML à l'intérieur des sections.${isAnglais(matiere) ? "\n- Pour la section exemples : *phrase anglaise* (traduction française entre parenthèses)." : ""}
-Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français."}`;
+Sois précis et pédagogique.${isAnglais(matiere) ? "" : " Tout en français. N'utilise jamais LaTeX : aucun \(, \), \[, \], $, $, ni commande commençant par une barre oblique inverse. Écris les formules en texte lisible avec les symboles usuels : x², x₁, √(x), ×, ÷, ≈, ≤, ≥, π, ∞, fractions écrites a/b ou (a+b)/(c+d), combinaisons C(n, k), probabilités P(A), une équation par ligne, nombres décimaux avec une virgule, jamais de formule dans un bloc de code."}`;
   }
 
   // ── Compétences exigibles ──────────────────────────────

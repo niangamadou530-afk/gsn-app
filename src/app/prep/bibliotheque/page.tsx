@@ -546,7 +546,7 @@ export default function BibliothequePage() {
                 <div className="max-w-3xl mx-auto space-y-4">
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2 text-xs text-amber-800">
                     <span className="material-symbols-outlined text-[18px] text-amber-600">info</span>
-                    <span>Sujet officiel retranscrit au format texte intégral (source officielle examens / DEXCO).</span>
+                    <span>Sujet d&apos;examen retranscrit au format texte intégral (Source externe).</span>
                   </div>
                   <div
                     className="prose prose-slate max-w-none text-xs sm:text-sm leading-relaxed text-slate-800 font-sans"

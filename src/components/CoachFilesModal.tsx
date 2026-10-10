@@ -1,3 +1,4 @@
+import { cleanAiText } from "@/lib/mathFormatter";
 "use client";
 
 import { useState } from "react";

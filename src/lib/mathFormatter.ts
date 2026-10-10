@@ -6,7 +6,7 @@
  *   marqueurs techniques (<<<FILE_START>>>, [[...]], undefined, null, \n littéraux).
  * - Nettoie et convertit tout LaTeX résiduel en texte lisible avec symboles Unicode.
  * - Ne modifie JAMAIS le contenu à l'intérieur des blocs de code markdown (```...```).
- * - Préserve intacte la virgule décimale (ex: 0,476) et les devises monétaires ($).
+ * - Préserve intacte la virgule décimale (ex: 0,476) et les montants monétaires ($).
  */
 
 /**
@@ -42,7 +42,7 @@ export function cleanAiText(raw: string | null | undefined): string {
   text = text.replace(/\\\\/g, "\n");
   text = text.replace(/\\n/g, "\n");
 
-  // 5. Normalisation des environnements LaTeX multi-lignes
+  // 5. Normalisation des environnements LaTeX multi-lignes (cases, aligned, pmatrix, matrix)
   text = text.replace(/\\begin\{(?:cases|aligned|pmatrix|matrix)\}([\s\S]*?)\\end\{(?:cases|aligned|pmatrix|matrix)\}/g, (_m, body) => {
     return body.split(/\n/).map((l: string) => l.trim().replace(/&/g, "  ")).join("\n");
   });
@@ -58,18 +58,25 @@ export function cleanAiText(raw: string | null | undefined): string {
   text = text.replace(/\\%/g, "%");
 
   // 7. Retrait des délimiteurs de blocs mathématiques
-  // Blocs multi-lignes \[ ... \] ou $$ ... $$
   text = text.replace(/\\\[([\s\S]*?)\\\]/g, (_m, c) => "\n" + c.trim() + "\n");
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, (_m, c) => "\n" + c.trim() + "\n");
-  // Formules en ligne \( ... \)
   text = text.replace(/\\\(([\s\S]*?)\\\)/g, "$1");
-  // Dollar isolé : ignorer les montants d'argent (ex: 500 $ ou 100$)
+
+  // Dollar isolé : ignorer les montants en dollars/devises (ex: 5 000 $, 100$)
   text = text.replace(/\$([^\$\n]+?)\$/g, (m, expr) => {
-    if (/^\s*\d+([.,]\d+)?\s*(F|CFA|EUR|USD|€|\$)?\s*$/i.test(expr)) return m;
+    if (/^\s*\d[\d\s.,]*\s*(F|CFA|EUR|USD|€|\$)?\s*$/i.test(expr)) return m;
     return expr;
   });
 
-  // 8. Opérateurs et symboles mathématiques usuels
+  // 8. Opérateurs mathématiques avancés (limites, sommes, intégrales)
+  text = text.replace(/\\lim_\{([^}]+)\}/g, "lim ($1) ");
+  text = text.replace(/\\lim_\s*([a-zA-Z0-9]+)/g, "lim ($1) ");
+  text = text.replace(/\\sum_\{([^}]+)\}\^\{([^}]+)\}/g, "∑ ($1 à $2) ");
+  text = text.replace(/\\sum_\{([^}]+)\}\^([a-zA-Z0-9])/g, "∑ ($1 à $2) ");
+  text = text.replace(/\\int_\{([^}]+)\}\^\{([^}]+)\}/g, "∫ (de $1 à $2) ");
+  text = text.replace(/\\int_([a-zA-Z0-9])\^([a-zA-Z0-9])/g, "∫ (de $1 à $2) ");
+
+  // 9. Opérateurs et symboles mathématiques usuels
   const symbolMap: Array<[RegExp, string]> = [
     [/\\approx/g, "≈"],
     [/\\times/g, "×"],
@@ -96,7 +103,6 @@ export function cleanAiText(raw: string | null | undefined): string {
     [/\\sum/g, "∑"],
     [/\\prod/g, "∏"],
     [/\\int/g, "∫"],
-    [/\\lim/g, "lim"],
     [/\\cup/g, "∪"],
     [/\\cap/g, "∩"],
     [/\\emptyset/g, "∅"],
@@ -119,38 +125,49 @@ export function cleanAiText(raw: string | null | undefined): string {
     text = text.replace(re, sym);
   }
 
-  // 9. Combinaisons \binom{n}{k} -> C(n, k)
+  // 10. Combinaisons \binom{n}{k} -> C(n, k)
   while (/\\binom\{([^{}]+)\}\{([^{}]+)\}/.test(text)) {
     text = text.replace(/\\binom\{([^{}]+)\}\{([^{}]+)\}/g, "C($1, $2)");
   }
 
-  // 10. Fractions récursives \frac, \dfrac, \tfrac
+  // Insérer le signe × entre deux combinaisons ou facteurs collés : C(5, 2)C(5, 2) -> C(5, 2) × C(5, 2)
+  text = text.replace(/(C\([^)]+\))\s*(C\([^)]+\))/g, "$1 × $2");
+
+  // 11. Fractions récursives \frac, \dfrac, \tfrac
   while (/\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}/.test(text)) {
     text = text.replace(/\\(?:d|t)?frac\{([^{}]+)\}\{([^{}]+)\}/g, (_m, num, den) => {
-      const cleanNum = num.length > 3 || /[\+\-\*\/]/.test(num) ? `(${num.trim()})` : num.trim();
-      const cleanDen = den.length > 3 || /[\+\-\*\/]/.test(den) ? `(${den.trim()})` : den.trim();
-      return `${cleanNum}/${cleanDen}`;
+      let cleanNum = num.trim();
+      let cleanDen = den.trim();
+      // Si C(n, k) seul au numérateur ou dénominateur, pas besoin de parenthèses superflues
+      const numHasOp = /[+\-*\/×]/.test(cleanNum);
+      const denHasOp = /[+\-*\/×]/.test(cleanDen);
+      const formattedNum = numHasOp ? `(${cleanNum})` : cleanNum;
+      const formattedDen = denHasOp ? `(${cleanDen})` : cleanDen;
+      return `${formattedNum} / ${formattedDen}`;
     });
   }
 
-  // 11. Racines carrées et racines n-ièmes
+  // Allègement des parenthèses redondantes autour des produits simples au numérateur/dénominateur
+  text = text.replace(/\((C\([^)]+\)(?:\s*×\s*C\([^)]+\))*)\)\s*\/\s*\(?(C\([^)]+\))\)?/g, "$1 / $2");
+
+  // 12. Racines carrées et racines n-ièmes
   text = text.replace(/\\sqrt\[(\d+)\]\{([^{}]+)\}/g, "$1√($2)");
   text = text.replace(/\\sqrt\{([^{}]+)\}/g, "√($1)");
 
-  // 12. Ensembles de nombres
+  // 13. Ensembles de nombres
   text = text.replace(/\\mathbb\{R\}/g, "ℝ");
   text = text.replace(/\\mathbb\{N\}/g, "ℕ");
   text = text.replace(/\\mathbb\{Z\}/g, "ℤ");
   text = text.replace(/\\mathbb\{Q\}/g, "ℚ");
   text = text.replace(/\\mathbb\{C\}/g, "ℂ");
 
-  // 13. Textes, vecteurs et surlignages
+  // 14. Textes, vecteurs et surlignages
   text = text.replace(/\\(?:text|mathrm|mathbf|mathit)\{([^{}]+)\}/g, "$1");
-  text = text.replace(/\\vec\{([^{}]+)\}/g, "vec($1)");
+  text = text.replace(/\\vec\{([^{}]+)\}/g, "$1→");
   text = text.replace(/\\overline\{([^{}]+)\}/g, "($1)");
   text = text.replace(/\\hat\{([^{}]+)\}/g, "($1)");
 
-  // 14. Exposants et indices usuels
+  // 15. Exposants et indices usuels
   const supMap: Record<string, string> = {
     "0": "⁰", "1": "¹", "2": "²", "3": "³", "4": "⁴",
     "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹",
@@ -167,15 +184,15 @@ export function cleanAiText(raw: string | null | undefined): string {
   text = text.replace(/\_\{([0-9ijk\+\-]+)\}/g, (_m, sub) => sub.split("").map((c: string) => subMap[c] || c).join(""));
   text = text.replace(/\_([0-9ijk])/g, (_m, c) => subMap[c] || `_${c}`);
 
-  // 15. Commandes inconnues restantes : retire la barre oblique inverse et conserve l'argument
+  // 16. Commandes inconnues restantes
   text = text.replace(/\\([a-zA-Z]+)\{([^{}]+)\}/g, "$2");
   text = text.replace(/\\([a-zA-Z]+)/g, "$1");
 
-  // 16. Retrait des accolades orphelines
+  // 17. Retrait des accolades orphelines
   text = text.replace(/\{([^{}]+)\}/g, "$1");
   text = text.replace(/[{}]/g, "");
 
-  // 17. Restauration des blocs de code markdown
+  // 18. Restauration des blocs de code markdown
   codeBlocks.forEach((block, idx) => {
     text = text.replace(`__CODE_BLOCK_${idx}__`, block);
   });
@@ -183,23 +200,14 @@ export function cleanAiText(raw: string | null | undefined): string {
   return text.trim();
 }
 
-/**
- * Nettoyage des artefacts techniques spécifiquement (alias de cleanAiText).
- */
 export function cleanAiArtifacts(text: string): string {
   return cleanAiText(text);
 }
 
-/**
- * Formatage des formules mathématiques (alias de cleanAiText).
- */
 export function formatMathFormulas(text: string): string {
   return cleanAiText(text);
 }
 
-/**
- * Formatage du texte de correction d'épreuve ou d'exercice.
- */
 export function formatCorrectionText(text: string): string {
   return cleanAiText(text);
 }

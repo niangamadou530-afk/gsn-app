@@ -20,6 +20,7 @@ interface SettingsMenuProps {
 export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     if (typeof window === "undefined") return true;
     return sounds.isEnabled();
@@ -210,14 +211,20 @@ export function SettingsMenu({ student: _student, onSignOut }: SettingsMenuProps
       <ConfirmDialog
         isOpen={showConfirmLogout}
         onClose={() => setShowConfirmLogout(false)}
-        onConfirm={() => {
+        onConfirm={async () => {
+          if (isSigningOut) return;
+          setIsSigningOut(true);
           setShowConfirmLogout(false);
-          onSignOut();
+          try {
+            await onSignOut();
+          } finally {
+            setIsSigningOut(false);
+          }
         }}
         triggerRef={triggerBtnRef}
         title="Te déconnecter ?"
         message="Tu pourras te reconnecter à tout moment avec ton numéro et ton mot de passe."
-        confirmText="Se déconnecter"
+        confirmText={isSigningOut ? "Déconnexion en cours..." : "Se déconnecter"}
         cancelText="Annuler"
       />
     </>

@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     url.searchParams.set("type", "video");
     url.searchParams.set("maxResults", "3");
     url.searchParams.set("relevanceLanguage", "fr");
+    url.searchParams.set("regionCode", "SN");
+    url.searchParams.set("safeSearch", "strict");
+    url.searchParams.set("videoEmbeddable", "true");
     url.searchParams.set("videoDuration", "medium");
     url.searchParams.set("part", "snippet");
 
