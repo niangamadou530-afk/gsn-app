@@ -131,13 +131,10 @@ function LoginPageContent() {
         <div className="bg-white rounded-3xl p-5 sm:p-8 border border-slate-200/90 shadow-xl shadow-slate-900/5 space-y-5">
           {/* Header Title */}
           <div className="text-center space-y-3">
-            <div className="flex flex-col items-center justify-center gap-2.5 pb-1">
+            <div className="flex flex-col items-center justify-center pb-1">
               <div className="w-[108px] h-[108px] sm:w-[124px] sm:h-[124px] flex items-center justify-center">
                 <GsnLogo size={116} />
               </div>
-              <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-800">
-                Global Skills Network
-              </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight pt-1">
               Connexion à ton espace

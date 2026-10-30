@@ -1,5 +1,6 @@
 "use client";
 
+import { MascotGuide } from "@/components/MascotGuide";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -231,8 +232,8 @@ export default function ClassementPage() {
         {tab !== "ecole" && (
           list.length === 0 ? (
             <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center shadow-xs space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
-                <span className="material-symbols-outlined text-[32px]">emoji_events</span>
+              <div className="flex justify-center mb-1">
+                <MascotGuide attitude="idle" size="md" />
               </div>
               <p className="font-extrabold text-slate-900 text-base">{t("prep.classement.emptyResultsTitle")}</p>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">{t("prep.classement.emptyResultsSubtitle")}</p>

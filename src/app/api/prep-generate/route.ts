@@ -524,7 +524,19 @@ export async function POST(req: Request) {
   const fileType   = body.fileType as string | undefined;
 
   // Cache check (mode B uniquement — pas document, pas evaluate)
-  const generateCacheKey = (mode !== "document" && mode !== "evaluate")
+  // Règle PARTIE H : Ne mettre en cache que si le chapitre appartient au programme officiel
+  let isChapitreOfficiel = false;
+  if (chapitre && matiere) {
+    const matData = getMatiereData(examType, serie, matiere);
+    if (matData?.chapitres) {
+      const normChap = chapitre.trim().toLowerCase();
+      isChapitreOfficiel = matData.chapitres.some(
+        ch => ch.toLowerCase() === normChap || ch.toLowerCase().includes(normChap) || normChap.includes(ch.toLowerCase())
+      );
+    }
+  }
+
+  const generateCacheKey = (mode !== "document" && mode !== "evaluate" && isChapitreOfficiel)
     ? buildCacheKey("generate", type, examType, serie, matiere, chapitre)
     : "";
   if (generateCacheKey) {

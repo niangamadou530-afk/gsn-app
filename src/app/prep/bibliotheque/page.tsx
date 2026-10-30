@@ -1,5 +1,6 @@
 "use client";
 
+import { MascotGuide } from "@/components/MascotGuide";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -484,7 +485,9 @@ export default function BibliothequePage() {
       {/* Empty State */}
       {!loading && filtered.length === 0 && (
         <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center shadow-xs space-y-2">
-          <span className="material-symbols-outlined text-[44px] text-slate-300 block mx-auto">search_off</span>
+          <div className="flex justify-center mb-1">
+            <MascotGuide attitude="idle" size="md" />
+          </div>
           <p className="font-extrabold text-slate-900 text-sm">Aucune épreuve trouvée</p>
           <p className="text-xs text-slate-500">Essayez d&apos;élargir vos filtres d&apos;année ou de discipline.</p>
         </div>

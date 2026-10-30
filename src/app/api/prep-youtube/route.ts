@@ -3,58 +3,133 @@ import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 
 /**
- * Route sécurisée de vidéos pédagogiques YouTube (Phase 7 - GSN PREP)
+ * Route sécurisée de vidéos pédagogiques YouTube (Phase 7 / PARTIE H)
  * - Jeton validé côté serveur
- * - Cache de 30 jours (table prep_cache si présente)
- * - Limite de 10 recherches par jour et par élève
- * - Limite de rafale (burst) par IP hachée
- * - Plafond global journalier PREP_YT_DAILY_UNITS (8 000 par défaut sur 10 000 max Google)
+ * - Cache de 30 jours (table prep_cache avec service role key)
+ * - Limite de 10 recherches par jour et par élève dans prep_usage_quotidien (colonne youtube_count)
+ * - Limite de rafale (burst) persistante dans prep_rate_limits (target_identifier: "yt_burst:<ipHash>")
+ * - Plafond global journalier PREP_YT_DAILY_UNITS persistant dans prep_rate_limits (target_identifier: "yt_global_units:<YYYY-MM-DD>")
  * - Filtres stricts : safeSearch=strict, videoEmbeddable=true, relevanceLanguage=fr, regionCode=SN
- * - Sans YOUTUBE_API_KEY : masquer proprement sans erreur
+ * - Refus propre sans faille (« Les vidéos reviennent demain. »)
  */
 
-// Mémoire vive pour burst rate limit et compteur d'unités journalier global
-interface BurstRecord {
-  count: number;
-  resetAt: number;
-}
-const burstMap = new Map<string, BurstRecord>();
-
-let globalDailyUnitsUsed = 0;
-let globalDailyResetDate = new Date().toISOString().slice(0, 10);
-
-function checkGlobalDailyUnits(cost = 100): boolean {
-  const today = new Date().toISOString().slice(0, 10);
-  if (today !== globalDailyResetDate) {
-    globalDailyResetDate = today;
-    globalDailyUnitsUsed = 0;
-  }
-  const maxUnits = parseInt(process.env.PREP_YT_DAILY_UNITS || "8000", 10);
-  if (globalDailyUnitsUsed + cost > maxUnits) {
-    return false;
-  }
-  globalDailyUnitsUsed += cost;
-  return true;
+function getAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) return null;
+  return createClient(url, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
 }
 
-function checkBurstLimit(ipHash: string, maxRequests = 5, windowMs = 30000): boolean {
-  const now = Date.now();
-  const rec = burstMap.get(ipHash);
-  if (!rec || now > rec.resetAt) {
-    burstMap.set(ipHash, { count: 1, resetAt: now + windowMs });
+// 1. Limite de rafale (5 requêtes / 30 secondes) persistante dans prep_rate_limits
+async function checkBurstRateLimit(sbAdmin: any, ipHash: string): Promise<boolean> {
+  const key = `yt_burst:${ipHash}`;
+  const now = new Date();
+  const windowMs = 30 * 1000;
+  const maxRequests = 5;
+
+  if (!sbAdmin) return true;
+
+  try {
+    const { data: rec } = await sbAdmin
+      .from("prep_rate_limits")
+      .select("target_identifier, attempt_count, first_attempt_at")
+      .eq("target_identifier", key)
+      .maybeSingle();
+
+    if (!rec) {
+      await sbAdmin.from("prep_rate_limits").insert({
+        target_identifier: key,
+        attempt_count: 1,
+        first_attempt_at: now.toISOString(),
+        last_attempt_at: now.toISOString(),
+      });
+      return true;
+    }
+
+    const firstMs = new Date(rec.first_attempt_at).getTime();
+    if (now.getTime() - firstMs > windowMs) {
+      await sbAdmin
+        .from("prep_rate_limits")
+        .update({
+          attempt_count: 1,
+          first_attempt_at: now.toISOString(),
+          last_attempt_at: now.toISOString(),
+        })
+        .eq("target_identifier", key);
+      return true;
+    }
+
+    if (rec.attempt_count >= maxRequests) {
+      return false;
+    }
+
+    await sbAdmin
+      .from("prep_rate_limits")
+      .update({
+        attempt_count: rec.attempt_count + 1,
+        last_attempt_at: now.toISOString(),
+      })
+      .eq("target_identifier", key);
+
+    return true;
+  } catch {
     return true;
   }
-  if (rec.count >= maxRequests) {
+}
+
+// 2. Plafond journalier global PREP_YT_DAILY_UNITS persistant dans prep_rate_limits
+async function checkAndIncrementGlobalUnits(sbAdmin: any, cost = 100): Promise<boolean> {
+  const today = new Date().toISOString().slice(0, 10);
+  const key = `yt_global_units:${today}`;
+  const maxUnits = parseInt(process.env.PREP_YT_DAILY_UNITS || "8000", 10);
+
+  if (!sbAdmin) {
+    // Si pas de base connectée en service role, refuser prudemment
     return false;
   }
-  rec.count++;
-  return true;
+
+  try {
+    const { data: rec } = await sbAdmin
+      .from("prep_rate_limits")
+      .select("target_identifier, attempt_count")
+      .eq("target_identifier", key)
+      .maybeSingle();
+
+    const currentUnits = rec?.attempt_count || 0;
+    if (currentUnits + cost > maxUnits) {
+      return false;
+    }
+
+    if (!rec) {
+      await sbAdmin.from("prep_rate_limits").insert({
+        target_identifier: key,
+        attempt_count: cost,
+        first_attempt_at: new Date().toISOString(),
+        last_attempt_at: new Date().toISOString(),
+      });
+    } else {
+      await sbAdmin
+        .from("prep_rate_limits")
+        .update({
+          attempt_count: currentUnits + cost,
+          last_attempt_at: new Date().toISOString(),
+        })
+        .eq("target_identifier", key);
+    }
+
+    return true;
+  } catch {
+    // En cas d'erreur de base de données, refuser pour ne pas appeler YouTube sans contrôle
+    return false;
+  }
 }
 
 export async function POST(req: Request) {
   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
-    // Phase 7.5 : sans clé, la section est masquée proprement sans erreur
+    // Sans clé : masquer proprement la section sans erreur
     return NextResponse.json({ videos: [], configured: false });
   }
 
@@ -63,7 +138,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ videos: [], message: "Non authentifié" }, { status: 401 });
   }
 
-  // 1. Validation du jeton de l'élève
+  // Vérification de la session élève
   const sbAnon = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -75,14 +150,20 @@ export async function POST(req: Request) {
   }
   const userId = user.id;
 
-  // Hachage de l'adresse IP avec sel serveur (Phase 6.4 & 7.3)
+  const sbAdmin = getAdminClient();
+  if (!sbAdmin) {
+    return NextResponse.json({ videos: [], message: "Les vidéos reviennent demain." });
+  }
+
+  // Hachage salé de l'adresse IP
   const forwarded = req.headers.get("x-forwarded-for") || "127.0.0.1";
   const clientIp = forwarded.split(",")[0].trim();
   const ipSalt = process.env.PREP_IP_SALT || process.env.SUPABASE_SERVICE_ROLE_KEY || "prep_salt_secret";
   const ipHash = crypto.createHmac("sha256", ipSalt).update(clientIp).digest("hex").slice(0, 16);
 
-  // Vérification de rafale (5 requêtes par tranche de 30 secondes)
-  if (!checkBurstLimit(ipHash)) {
+  // Limite de rafale multi-instances
+  const burstAllowed = await checkBurstRateLimit(sbAdmin, ipHash);
+  if (!burstAllowed) {
     return NextResponse.json(
       { videos: [], message: "Trop de requêtes rapides. Réessaie dans quelques secondes." },
       { status: 429 }
@@ -99,64 +180,55 @@ export async function POST(req: Request) {
   const { matiere = "", chapitre = "", examType = "BAC", serie = "" } = body;
   const cacheKey = `yt:${examType.toLowerCase()}:${serie.toLowerCase()}:${matiere.toLowerCase()}:${chapitre.toLowerCase()}:fr`;
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const sbAdmin = serviceKey
-    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey, { auth: { persistSession: false } })
-    : null;
+  // 1. Consultation du cache de 30 jours (ne consomme ni unités ni quota élève)
+  try {
+    const { data: cached } = await sbAdmin
+      .from("prep_cache")
+      .select("payload, created_at")
+      .eq("cache_key", cacheKey)
+      .maybeSingle();
 
-  // 2. Lecture du cache de 30 jours avant tout appel externe (Phase 7.2)
-  if (sbAdmin) {
-    try {
-      const { data: cached } = await sbAdmin
-        .from("prep_cache")
-        .select("payload, created_at")
-        .eq("cache_key", cacheKey)
-        .maybeSingle();
-
-      if (cached?.payload && cached.created_at) {
-        const ageDays = (Date.now() - new Date(cached.created_at).getTime()) / (1000 * 60 * 60 * 24);
-        if (ageDays <= 30) {
-          // Servir depuis le cache : ne compte ni dans la limite de l'élève ni dans les unités YouTube
-          return NextResponse.json({ videos: cached.payload, cached: true });
-        }
+    if (cached?.payload && cached.created_at) {
+      const ageDays = (Date.now() - new Date(cached.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      if (ageDays <= 30) {
+        return NextResponse.json({ videos: cached.payload, cached: true });
       }
-    } catch {
-      // Table optionnelle
     }
+  } catch {
+    // Continuer si pas de cache
   }
 
-  // 3. Vérification du quota journalier de l'élève (10 recherches / jour)
+  // 2. Vérification du quota journalier élève (10 recherches / jour dans prep_usage_quotidien)
   const todayStr = new Date().toISOString().slice(0, 10);
-  if (sbAdmin) {
-    try {
-      const { data: usage } = await sbAdmin
-        .from("prep_usage_quotidien")
-        .select("youtube_count")
-        .eq("user_id", userId)
-        .eq("date", todayStr)
-        .maybeSingle();
+  try {
+    const { data: usage } = await sbAdmin
+      .from("prep_usage_quotidien")
+      .select("youtube_count")
+      .eq("user_id", userId)
+      .eq("date", todayStr)
+      .maybeSingle();
 
-      const currentCount = usage?.youtube_count || 0;
-      if (currentCount >= 10) {
-        return NextResponse.json({
-          videos: [],
-          message: "Tu as atteint ta limite de 10 recherches vidéo pour aujourd'hui. Reviens demain !"
-        });
-      }
-    } catch {
-      // Si la colonne n'existe pas encore, autoriser
+    const currentCount = usage?.youtube_count || 0;
+    if (currentCount >= 10) {
+      return NextResponse.json({
+        videos: [],
+        message: "Tu as atteint ta limite de 10 recherches vidéo pour aujourd'hui. Reviens demain !"
+      });
     }
+  } catch {
+    // Continuer
   }
 
-  // 4. Plafond global journalier PREP_YT_DAILY_UNITS (défaut 8 000 unités)
-  if (!checkGlobalDailyUnits(100)) {
+  // 3. Vérification du plafond global journalier (8 000 unités dans prep_rate_limits)
+  const unitsAllowed = await checkAndIncrementGlobalUnits(sbAdmin, 100);
+  if (!unitsAllowed) {
     return NextResponse.json({
       videos: [],
       message: "Les vidéos reviennent demain."
     });
   }
 
-  // 5. Appel de l'API YouTube avec filtres stricts (Phase 7.4)
+  // 4. Requête API YouTube officielle avec filtres stricts
   const q = `${matiere}${chapitre ? " " + chapitre : ""} cours ${examType} Sénégal`;
   try {
     const url = new URL("https://www.googleapis.com/youtube/v3/search");
@@ -207,22 +279,38 @@ export async function POST(req: Request) {
       };
     });
 
-    // 6. Écriture dans prep_cache et incrémentation quota élève
-    if (sbAdmin && videos.length > 0) {
+    // 5. Mise en cache 30 jours et incrémentation quota élève
+    if (videos.length > 0) {
       try {
         await sbAdmin.from("prep_cache").upsert({
           cache_key: cacheKey,
           payload: videos,
           created_at: new Date().toISOString(),
-        });
+        }, { onConflict: "cache_key" });
       } catch {}
 
       try {
-        await sbAdmin.from("prep_usage_quotidien").upsert({
-          user_id: userId,
-          date: todayStr,
-          youtube_count: 1,
-        }, { onConflict: "user_id,date" });
+        const { data: usageRow } = await sbAdmin
+          .from("prep_usage_quotidien")
+          .select("youtube_count")
+          .eq("user_id", userId)
+          .eq("date", todayStr)
+          .maybeSingle();
+
+        const currentYt = usageRow?.youtube_count || 0;
+        if (!usageRow) {
+          await sbAdmin.from("prep_usage_quotidien").insert({
+            user_id: userId,
+            date: todayStr,
+            youtube_count: 1,
+          });
+        } else {
+          await sbAdmin
+            .from("prep_usage_quotidien")
+            .update({ youtube_count: currentYt + 1 })
+            .eq("user_id", userId)
+            .eq("date", todayStr);
+        }
       } catch {}
     }
 

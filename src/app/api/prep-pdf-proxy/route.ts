@@ -18,7 +18,7 @@ const ALLOWED_PDF_HOSTS = [
   "www.niangprogrammeur.com",
 ];
 
-export const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024; // 25 Mo
+const MAX_PDF_SIZE_BYTES = 25 * 1024 * 1024; // 25 Mo
 
 function isAllowedUrl(urlStr: string): boolean {
   try {

@@ -1,5 +1,6 @@
 "use client";
 
+import { MascotGuide } from "@/components/MascotGuide";
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -984,9 +985,9 @@ function GenererPageInner() {
 
   // ── GENERATING ──
   if (phase === "generating") return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-6 p-6">
-      <div className="w-16 h-16 rounded-full border-4 border-t-transparent animate-spin" style={{ borderColor: "#FF6B00", borderTopColor: "transparent" }} />
-      <div className="text-center">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center gap-4 p-6">
+      <MascotGuide attitude="reflechit" size="md" />
+      <div className="text-center mt-2">
         <p className="font-black text-xl text-slate-900">{t("prep.generer.generating.title")}</p>
         <p className="text-slate-500 text-sm mt-1">{t("prep.generer.generating.subtitle", { genLabel: genLabel.toLowerCase() })}</p>
       </div>
@@ -1321,9 +1322,16 @@ function GenererPageInner() {
             className="rounded-3xl p-6 sm:p-8 text-center text-white shadow-lg space-y-2 relative overflow-hidden"
             style={{ backgroundColor: pct >= 60 ? "#16a34a" : pct >= 40 ? "#ea580c" : "#dc2626" }}
           >
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-black uppercase tracking-wider text-white">
-              <span className="material-symbols-outlined text-[16px]">military_tech</span>
-              <span>{pct >= 60 ? "Très bon travail !" : pct >= 40 ? "Encourageant !" : "À réviser !"}</span>
+            <div className="flex flex-col items-center gap-2">
+              {pct >= 60 && (
+                <div className="mb-1">
+                  <MascotGuide attitude="felicite" size="sm" withShadow={false} />
+                </div>
+              )}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-xs text-xs font-black uppercase tracking-wider text-white">
+                <span className="material-symbols-outlined text-[16px]">military_tech</span>
+                <span>{pct >= 60 ? "Très bon travail !" : pct >= 40 ? "Encourageant !" : "À réviser !"}</span>
+              </div>
             </div>
             <p className="text-5xl sm:text-6xl font-black tracking-tight">{finalScore}/{total}</p>
             <p className="text-base sm:text-lg font-bold opacity-90">{pct}% de réussite · {activeMat()}</p>
@@ -1884,7 +1892,9 @@ function FriendlyErrorBanner({
   return (
     <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 text-amber-900 space-y-3 shadow-xs">
       <div className="flex items-start gap-3">
-        <span className="text-xl select-none">💛</span>
+        <div className="shrink-0 -mt-1">
+          <MascotGuide attitude="erreur" size="sm" withShadow={false} />
+        </div>
         <div className="flex-1 min-w-0">
           <p className="font-extrabold text-sm text-amber-950">Génération en pause</p>
           <p className="text-xs sm:text-sm text-amber-800 mt-0.5 leading-relaxed">{error}</p>
