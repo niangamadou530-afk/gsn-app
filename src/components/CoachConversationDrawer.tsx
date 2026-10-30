@@ -1,6 +1,7 @@
-import { cleanAiText } from "@/lib/mathFormatter";
 "use client";
 
+import { MascotGuide } from "./MascotGuide";
+import { cleanAiText } from "@/lib/mathFormatter";
 import { useState } from "react";
 import Link from "next/link";
 

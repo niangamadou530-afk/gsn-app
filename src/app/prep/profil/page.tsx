@@ -73,6 +73,7 @@ export default function StudentProfilePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
+        body: JSON.stringify({ confirmation: deleteConfirmationText }),
       });
 
       const data = await res.json().catch(() => ({}));

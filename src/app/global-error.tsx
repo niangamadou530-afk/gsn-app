@@ -1,39 +1,19 @@
 "use client";
 
-export default function GlobalError({
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+export default function GlobalError() {
   return (
     <html lang="fr">
-      <body className="min-h-screen bg-slate-50 text-slate-900 flex flex-col items-center justify-center p-6 text-center font-sans">
-        <div className="max-w-md w-full bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-[#005bbf] flex items-center justify-center mx-auto text-2xl font-bold">
-            !
-          </div>
-          <h1 className="text-xl font-extrabold text-slate-900">
-            Une interruption est survenue
-          </h1>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            L&apos;application a rencontré un incident passager. Cliquez ci-dessous pour relancer la session.
-          </p>
-          <div className="pt-2 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => reset()}
-              className="w-full py-3 px-4 rounded-xl bg-[#005bbf] hover:bg-[#004899] text-white font-bold text-sm shadow-xs transition-colors"
-            >
-              Recharger l&apos;application
-            </button>
-            <a
-              href="/"
-              className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-colors block"
-            >
-              Retour à l&apos;accueil
-            </a>
-          </div>
+      <body style={{ margin: 0, fontFamily: "sans-serif", background: "#f8fafc", color: "#0f172a", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: "20px" }}>
+        <div style={{ maxWidth: "400px", width: "100%", background: "#fff", padding: "30px", borderRadius: "16px", border: "1px solid #e2e8f0", textAlign: "center" }}>
+          <h1 style={{ fontSize: "20px", fontWeight: "bold", margin: "0 0 10px" }}>Une interruption est survenue</h1>
+          <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 20px" }}>L&apos;application a rencontré un incident passager.</p>
+          <button
+            type="button"
+            onClick={() => { if (typeof window !== "undefined") window.location.reload(); }}
+            style={{ width: "100%", padding: "12px", background: "#005bbf", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "bold", cursor: "pointer" }}
+          >
+            Recharger
+          </button>
         </div>
       </body>
     </html>

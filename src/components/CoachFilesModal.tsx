@@ -1,6 +1,7 @@
-import { cleanAiText } from "@/lib/mathFormatter";
 "use client";
 
+import { MascotGuide } from "./MascotGuide";
+import { cleanAiText } from "@/lib/mathFormatter";
 import { useState } from "react";
 import { CoachFile } from "./CoachFileSheet";
 import { CoachFileCard } from "./CoachFileCard";
@@ -83,10 +84,8 @@ export function CoachFilesModal({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
           {files.length === 0 ? (
             <div className="text-center py-12 px-4 space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              <div className="flex justify-center mb-1">
+                <MascotGuide attitude="idle" size="md" withShadow={false} />
               </div>
               <p className="text-xs sm:text-sm text-slate-600 max-w-sm mx-auto font-medium">
                 {isAllFilesMode
